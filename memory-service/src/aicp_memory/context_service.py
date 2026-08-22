@@ -13,8 +13,11 @@ def _cosine(left, right):
     return dot / (left_norm * right_norm) if left_norm and right_norm else 0.0
 
 
+_STOP_WORDS = {"a", "an", "and", "as", "at", "before", "by", "for", "from", "in", "into", "of", "on", "or", "the", "to", "with", "without"}
+
+
 def _terms(value):
-    return re.findall(r"[A-Za-z0-9_$]+", value.lower())
+    return [term for term in re.findall(r"[A-Za-z0-9_$]+", value.lower()) if term not in _STOP_WORDS]
 
 
 def _bm25(query_terms, chunks, k1=1.2, b=0.75):
@@ -48,8 +51,8 @@ def _retrieval_confidence(query_terms, chunks, exact_symbols, lexical_scores):
     coverage = len(set(query_terms) & top_terms) / len(set(query_terms))
     ordered = sorted(lexical_scores.values(), reverse=True)
     dominance = 1.0 if len(ordered) == 1 else max(0.0, (ordered[0] - ordered[1]) / max(ordered[0], .000001))
-    exact = 1.0 if (top.get("symbol") or "").lower() in exact_symbols else 0.0
-    return min(1.0, .62 * coverage + .22 * dominance + .16 * exact)
+    exact = 1.0 if any((item.get("symbol") or "").lower() in exact_symbols for item in chunks) else 0.0
+    return min(1.0, max(.86 * exact, .62 * coverage + .22 * dominance + .16 * exact))
 
 
 def _memory_relevance(memory, query_terms):
@@ -131,6 +134,10 @@ class ContextService:
         effective_budget = min(requested_budget, available)
         if effective_budget <= 0:
             raise ValueError("context envelope has no available tokens")
+        packing_target_utilization = float(payload.get("packing_target_utilization", .98))
+        if not 0 < packing_target_utilization <= 1:
+            raise ValueError("packing target utilization must be in (0, 1]")
+        packing_limit = max(1, math.floor(effective_budget * packing_target_utilization))
         query = payload["query"]
         terms = _terms(query)
         exact = {value.lower() for value in payload.get("exact_symbols", [])}
@@ -161,7 +168,7 @@ class ContextService:
             distance = graph_distance.get(chunk["path"])
             graph_boost = {0: 1.0, 1: 0.7, 2: 0.4, 3: 0.2}.get(distance, 0.0)
             git_boost = 1.0 if chunk["path"] in changed_paths else 0.0
-            fused_score = .28 * rrf_lexical + .24 * rrf_vector + .20 * symbol_boost + .12 * graph_boost + .08 * git_boost
+            fused_score = .38 * rrf_lexical + .14 * rrf_vector + .20 * symbol_boost + .12 * graph_boost + .08 * git_boost
             category = "exact_symbols" if exact_score else "tests" if re.search(r"(^|/)(test|tests|spec)", chunk["path"], re.I) else "relevant_code"
             candidates.append({
                 **chunk,
@@ -191,7 +198,7 @@ class ContextService:
         candidates.sort(key=lambda item: (item["priority"], -item["score"], item["id"]))
         selected, token_count = [], 0
         seen = set()
-        reserves = {"exact_symbols": .24, "relevant_code": .30, "tests": .12, "architecture": .10, "memory": .07, "security": .07, "constraints": .10}
+        reserves = {"exact_symbols": .24, "relevant_code": .60, "tests": .12, "architecture": .10, "memory": .07, "security": .07, "constraints": .10}
         measured = []
         for candidate in candidates:
             content_hash = candidate["content_hash"]
@@ -204,11 +211,11 @@ class ContextService:
         for category, ratio in reserves.items():
             used = 0
             for candidate in (item for item in measured if item.get("category") == category):
-                if used + candidate["token_count"] <= effective_budget * ratio and token_count + candidate["token_count"] <= effective_budget:
+                if used + candidate["token_count"] <= packing_limit * ratio and token_count + candidate["token_count"] <= packing_limit:
                     selected.append(candidate); chosen.add(candidate["id"]); used += candidate["token_count"]; token_count += candidate["token_count"]
-        remaining = sorted((item for item in measured if item["id"] not in chosen), key=lambda item: (-item["score"] / max(item["token_count"], 1), item["id"]))
+        remaining = sorted((item for item in measured if item["id"] not in chosen), key=lambda item: (-item["score"], -item["score"] / max(item["token_count"], 1), item["id"]))
         for candidate in remaining:
-            if token_count + candidate["token_count"] <= effective_budget:
+            if token_count + candidate["token_count"] <= packing_limit:
                 selected.append(candidate); token_count += candidate["token_count"]
         selected.sort(key=lambda item: (-item["score"], item["id"]))
         policy = payload.get("retrieval_policy_version", "retrieval-v3")
@@ -217,6 +224,7 @@ class ContextService:
             "schema_version": 3, "task_id": payload["task_id"], "repository_id": payload["repository"],
             "commit": payload.get("commit"), "query_hash": sha256(query.encode()).hexdigest(), "budget": effective_budget,
             "model_window": model_window, "envelope_reserves": envelope_reserves,
+            "packing_target_utilization": packing_target_utilization,
             "retrieval_policy_version": policy, "packing_policy_version": packing,
             "embedding_model": self.embedder.model, "embedding_dimensions": self.embedder.dimensions,
             "tokenizer": self.token_counter.model if self.token_counter else "approx-chars-v1",
@@ -230,6 +238,7 @@ class ContextService:
             "task_id": payload["task_id"],
             "token_count": token_count,
             "budget": effective_budget,
+            "packing_limit": packing_limit,
             "requested_budget": requested_budget,
             "envelope": {"model_window": model_window, "available": available, **envelope_reserves},
             "artifacts": selected,

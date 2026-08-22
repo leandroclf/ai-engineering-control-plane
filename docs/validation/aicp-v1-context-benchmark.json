@@ -6,26 +6,268 @@
   "baseCommit": "abba46743744c9a32372b5226709505600497e5a",
   "tasks": 30,
   "repetitions": 3,
-  "corpusChunks": 214,
+  "corpusChunks": 215,
   "baseline": {
     "runs": 90,
-    "meanSelectedTokens": 4034.633333333333,
-    "meanContextPrecision": 0.13150793650793652,
+    "meanSelectedTokens": 4039.3333333333335,
+    "meanContextPrecision": 0.15484126984126984,
     "vectorUseRate": 1
   },
   "candidate": {
     "runs": 90,
-    "meanSelectedTokens": 3963.5333333333333,
-    "meanContextPrecision": 0.09362394957983193,
-    "vectorUseRate": 1
+    "meanSelectedTokens": 3966.4666666666667,
+    "meanContextPrecision": 0.17335812335812337,
+    "vectorUseRate": 0.8333333333333334
   },
   "delta": {
-    "selectedTokenRatio": 0.9823775807797487,
-    "contextPrecision": -0.03788398692810459,
-    "vectorUseRate": 0
+    "selectedTokenRatio": 0.9819607195906915,
+    "contextPrecision": 0.018516853516853532,
+    "vectorUseRate": -0.16666666666666663
   },
+  "perTask": [
+    {
+      "taskId": "bench-001",
+      "baselinePrecision": 0.25,
+      "candidatePrecision": 0.18181818181818182,
+      "baselineTokens": 4065,
+      "candidateTokens": 3995,
+      "vectorSkipped": true
+    },
+    {
+      "taskId": "bench-002",
+      "baselinePrecision": 0.0,
+      "candidatePrecision": 0.0,
+      "baselineTokens": 4064,
+      "candidateTokens": 4007,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-003",
+      "baselinePrecision": 0.25,
+      "candidatePrecision": 0.42857142857142855,
+      "baselineTokens": 3996,
+      "candidateTokens": 3974,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-004",
+      "baselinePrecision": 0.2857142857142857,
+      "candidatePrecision": 0.2857142857142857,
+      "baselineTokens": 4038,
+      "candidateTokens": 3989,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-005",
+      "baselinePrecision": 0.0,
+      "candidatePrecision": 0.0,
+      "baselineTokens": 4048,
+      "candidateTokens": 3988,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-006",
+      "baselinePrecision": 0.2,
+      "candidatePrecision": 0.0,
+      "baselineTokens": 3989,
+      "candidateTokens": 3937,
+      "vectorSkipped": true
+    },
+    {
+      "taskId": "bench-007",
+      "baselinePrecision": 0.2,
+      "candidatePrecision": 0.14285714285714285,
+      "baselineTokens": 4012,
+      "candidateTokens": 3986,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-008",
+      "baselinePrecision": 0.0,
+      "candidatePrecision": 0.0,
+      "baselineTokens": 4009,
+      "candidateTokens": 3918,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-009",
+      "baselinePrecision": 0.0,
+      "candidatePrecision": 0.14285714285714285,
+      "baselineTokens": 4092,
+      "candidateTokens": 3986,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-010",
+      "baselinePrecision": 0.0,
+      "candidatePrecision": 0.0,
+      "baselineTokens": 4006,
+      "candidateTokens": 3995,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-011",
+      "baselinePrecision": 0.3333333333333333,
+      "candidatePrecision": 0.625,
+      "baselineTokens": 3990,
+      "candidateTokens": 3955,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-012",
+      "baselinePrecision": 0.0,
+      "candidatePrecision": 0.0,
+      "baselineTokens": 4078,
+      "candidateTokens": 3938,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-013",
+      "baselinePrecision": 0.0,
+      "candidatePrecision": 0.0,
+      "baselineTokens": 4081,
+      "candidateTokens": 3946,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-014",
+      "baselinePrecision": 0.6,
+      "candidatePrecision": 0.5714285714285714,
+      "baselineTokens": 3996,
+      "candidateTokens": 3941,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-015",
+      "baselinePrecision": 0.4,
+      "candidatePrecision": 0.5714285714285714,
+      "baselineTokens": 4094,
+      "candidateTokens": 3983,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-016",
+      "baselinePrecision": 0.0,
+      "candidatePrecision": 0.0,
+      "baselineTokens": 3973,
+      "candidateTokens": 3999,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-017",
+      "baselinePrecision": 0.0,
+      "candidatePrecision": 0.1111111111111111,
+      "baselineTokens": 3995,
+      "candidateTokens": 3982,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-018",
+      "baselinePrecision": 0.2,
+      "candidatePrecision": 0.125,
+      "baselineTokens": 4078,
+      "candidateTokens": 3975,
+      "vectorSkipped": true
+    },
+    {
+      "taskId": "bench-019",
+      "baselinePrecision": 0.0,
+      "candidatePrecision": 0.0,
+      "baselineTokens": 4009,
+      "candidateTokens": 4001,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-020",
+      "baselinePrecision": 0.2,
+      "candidatePrecision": 0.16666666666666666,
+      "baselineTokens": 4001,
+      "candidateTokens": 3899,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-021",
+      "baselinePrecision": 0.0,
+      "candidatePrecision": 0.4444444444444444,
+      "baselineTokens": 4095,
+      "candidateTokens": 3940,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-022",
+      "baselinePrecision": 0.0,
+      "candidatePrecision": 0.0,
+      "baselineTokens": 4047,
+      "candidateTokens": 3892,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-023",
+      "baselinePrecision": 0.16666666666666666,
+      "candidatePrecision": 0.2,
+      "baselineTokens": 4005,
+      "candidateTokens": 4000,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-024",
+      "baselinePrecision": 0.14285714285714285,
+      "candidatePrecision": 0.0,
+      "baselineTokens": 4087,
+      "candidateTokens": 3952,
+      "vectorSkipped": true
+    },
+    {
+      "taskId": "bench-025",
+      "baselinePrecision": 0.0,
+      "candidatePrecision": 0.0,
+      "baselineTokens": 4066,
+      "candidateTokens": 4014,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-026",
+      "baselinePrecision": 0.6,
+      "candidatePrecision": 0.625,
+      "baselineTokens": 4040,
+      "candidateTokens": 3995,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-027",
+      "baselinePrecision": 0.2,
+      "candidatePrecision": 0.125,
+      "baselineTokens": 4048,
+      "candidateTokens": 3972,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-028",
+      "baselinePrecision": 0.16666666666666666,
+      "candidatePrecision": 0.1,
+      "baselineTokens": 4019,
+      "candidateTokens": 3927,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-029",
+      "baselinePrecision": 0.2,
+      "candidatePrecision": 0.2,
+      "baselineTokens": 4081,
+      "candidateTokens": 3914,
+      "vectorSkipped": false
+    },
+    {
+      "taskId": "bench-030",
+      "baselinePrecision": 0.25,
+      "candidatePrecision": 0.15384615384615385,
+      "baselineTokens": 4078,
+      "candidateTokens": 3994,
+      "vectorSkipped": true
+    }
+  ],
   "limitations": [
     "No LLM generation, cost, defect or human-acceptance claim is made by this structural benchmark."
   ],
-  "observationsHash": "08d61df0ab1c5004ac27192293cc7a79a072b11b0c127b71dd67aefc8c42e6e7"
+  "observationsHash": "e83b67bd5d7cb73646fafc924d05e779dc91f6616d4563b47ab60c04ed547c04"
 }

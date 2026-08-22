@@ -148,6 +148,8 @@ jobs:
       - run: npm ci
       - run: npm run evaluate:baseline
       - run: npm run validate:benchmark
+      - run: python3 observability/evaluation/run-context-v3-benchmark.py .aicp/evaluations/context-v3.report.json
+      - run: jq -e '.delta.selectedTokenRatio <= 1 and .delta.contextPrecision >= 0 and .delta.vectorUseRate < 0' .aicp/evaluations/context-v3.report.json
       - run: jq -e '.metrics.taskCount > 0 and .baseline.status == "observation"' .aicp/evaluations/baseline.report.json
 
   supply-chain:

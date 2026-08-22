@@ -139,6 +139,7 @@ class ContextServiceTest(unittest.TestCase):
         result = service.compile(base, [])
         self.assertEqual(result["budget"], 10)
         self.assertLessEqual(result["token_count"], result["budget"])
+        self.assertEqual(result["packing_limit"], 9)
         self.assertNotEqual(result["context_id"], service.compile({**base, "safety_reserve": 2}, [])["context_id"])
 
     def test_vector_is_used_when_cheap_retrieval_confidence_is_low(self):
@@ -181,3 +182,14 @@ class ContextServiceTest(unittest.TestCase):
         payload = {"repository": "repo", "task_id": "task", "query": "Service.run payment",
                    "exact_symbols": ["Service.run"], "budget": 20, "index_snapshot": "commit-1", "graph_snapshot": "graph-1"}
         self.assertEqual(service.compile(payload, [])["context_id"], service.compile(payload, [])["context_id"])
+
+    def test_packing_target_is_bounded_and_changes_context_identity(self):
+        service = ContextService(FakeRepository(), FakeEmbedder(), FakeGraph(), FakeTokenCounter())
+        payload = {"repository": "repo", "task_id": "task", "query": "payment", "budget": 100}
+        default = service.compile(payload, [])
+        constrained = service.compile({**payload, "packing_target_utilization": .75}, [])
+        self.assertEqual(default["packing_limit"], 98)
+        self.assertEqual(constrained["packing_limit"], 75)
+        self.assertNotEqual(default["context_id"], constrained["context_id"])
+        with self.assertRaisesRegex(ValueError, "packing target"):
+            service.compile({**payload, "packing_target_utilization": 1.1}, [])
