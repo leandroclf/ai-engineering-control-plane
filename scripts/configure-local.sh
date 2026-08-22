@@ -42,6 +42,7 @@ set_if_placeholder EMBEDDING_MODEL openai/text-embedding-3-small
 set_if_placeholder LITELLM_MASTER_KEY "sk-$(openssl rand -hex 32)"
 set_if_placeholder LITELLM_SALT_KEY "$(openssl rand -hex 32)"
 set_if_placeholder NEO4J_AUTH "neo4j/$(openssl rand -hex 24)"
+set_if_placeholder MEMORY_SERVICE_TOKEN "$(openssl rand -hex 32)"
 
 chmod 600 "$runtime_file"
 echo '[PASS] local runtime defaults configured without changing provider credentials'

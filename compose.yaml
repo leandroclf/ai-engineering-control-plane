@@ -80,6 +80,12 @@ services:
     restart: unless-stopped
     environment:
       PORT: 8080
+      MEMORY_SERVICE_TOKEN: ${MEMORY_SERVICE_TOKEN:-}
+      MEMORY_AUTHORIZED_SCOPES: ${MEMORY_AUTHORIZED_SCOPES:-GLOBAL:local,ORGANIZATION:local,SOLUTION:local,PROJECT:local,REPOSITORY:site-lf-solucoes,REPOSITORY:ai-engineering-control-plane,AGENT:opencode,EXECUTION:local}
+    entrypoint: ["/bin/sh", "/aicp/entrypoint.sh"]
+    secrets: [postgres_password]
+    volumes:
+      - ./docker/memory-service/entrypoint.sh:/aicp/entrypoint.sh:ro
     depends_on:
       postgres: { condition: service_healthy }
       neo4j: { condition: service_healthy }
@@ -104,6 +110,7 @@ services:
       LITELLM_BASE_URL: http://litellm:4000/v1
       LITELLM_API_KEY: ${LITELLM_API_KEY:-}
       MEMORY_SERVICE_URL: http://memory-service:8080
+      MEMORY_SERVICE_TOKEN: ${MEMORY_SERVICE_TOKEN:-}
     volumes:
       - ${PROJECTS_DIR:-./projects}:/workspace/projects
       - ./opencode:/home/dev/.config/opencode:ro

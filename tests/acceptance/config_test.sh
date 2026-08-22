@@ -95,5 +95,6 @@ test "$EMBEDDING_MODEL" = "openai/text-embedding-3-small"
 [[ "$LITELLM_MASTER_KEY" != *change-me* ]]
 [[ "$LITELLM_SALT_KEY" != *change-me* ]]
 [[ "$NEO4J_AUTH" != *change-me* ]]
+[[ "$MEMORY_SERVICE_TOKEN" != *change-me* ]]
 rg -q '^  database_url: os\.environ/DATABASE_URL$' litellm/config.template.yaml
 echo '[PASS] local runtime configuration'
