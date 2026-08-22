@@ -55,7 +55,7 @@
 ## Observabilidade, backup e multi-host
 
 - [ ] Task ID correlaciona contexto, agentes, modelos, tools, gates e loops.
-- [ ] Tokens, custo, fallback, gate status e context mix são calculáveis.
+- [x] Tokens, custo, fallback, gate status e context mix são calculáveis.
 - [ ] Source code/full prompts não são exportados por default.
 - [ ] Backup inclui estado canônico e material gateway indispensável.
 - [ ] Restore drill recupera estado e reconstrói projeções.

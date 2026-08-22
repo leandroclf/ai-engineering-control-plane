@@ -35,6 +35,7 @@ Validate an existing environment:
 ./scripts/memory-smoke.sh
 ./scripts/context-smoke.sh
 ./scripts/telemetry-smoke.sh
+./scripts/fallback-smoke.sh
 ```
 
 Index a repository after granting its exact `REPOSITORY:<id>` scope:
@@ -55,6 +56,9 @@ context ID, usage, retrieval reasons and provenance, never raw source content.
 cross-service task correlation plus rejection of prompt, source and credential
 fields. LiteLLM OTel v2 exports model aliases, resolved models, token usage and
 cost with message-content capture disabled.
+`fallback-smoke.sh` invokes an isolated invalid primary alias and proves that
+LiteLLM routes to `coding-fast`, reports one attempted fallback and exports the
+correlated failure/success spans with tokens and cost.
 
 Start a governed workflow through the authenticated Harness API:
 

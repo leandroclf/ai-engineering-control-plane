@@ -324,7 +324,7 @@ indicados.
   - Completion criteria: trace de teste liga estágios; teste garante ausência de
     source/prompt/secret por default.
 
-- [ ] 6.2 Instrumentar gateway e cálculo de custo
+- [x] 6.2 Instrumentar gateway e cálculo de custo
   - Objective: capturar alias/resolved model, token count, cache, fallback,
     latência e custo.
   - Likely files/components: LiteLLM config, OTel collector, metrics.
