@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-08-22",
+  "threats": [
+    {
+      "id": "THR-HOST-DAEMON",
+      "boundary": "host-workspace",
+      "threat": "Agent gains host control through Docker socket or Linux capabilities.",
+      "mitigation": "No daemon socket mount, all capabilities dropped and non-root workspace identity.",
+      "test": "tests/security/abuse_test.sh#host-workspace",
+      "evidence": "Resolved Compose contract and runtime workspace negative checks.",
+      "owner": "AI Platform",
+      "status": "mitigated",
+      "residualRisk": { "rating": "low", "rationale": "Kernel and container-runtime vulnerabilities remain outside application controls." }
+    },
+    {
+      "id": "THR-GATEWAY-CREDENTIAL",
+      "boundary": "gateway",
+      "threat": "Agent exfiltrates provider credentials or creates unbounded model spend.",
+      "mitigation": "Workspace receives only a budgeted LiteLLM virtual key and provider keys remain gateway-only.",
+      "test": "tests/security/abuse_test.sh#gateway",
+      "evidence": "Compose environment inspection, virtual-key provisioning and budget unit tests.",
+      "owner": "AI Platform",
+      "status": "mitigated",
+      "residualRisk": { "rating": "medium", "rationale": "A compromised agent can spend within the configured virtual-key budget." }
+    },
+    {
+      "id": "THR-API-AUTH",
+      "boundary": "apis",
+      "threat": "Unauthenticated caller creates workflows or reads canonical memory.",
+      "mitigation": "Bearer authentication, constant-time Harness token comparison and server-side Memory authorization.",
+      "test": "tests/security/abuse_test.sh#api-auth",
+      "evidence": "HTTP unauthorized tests and Memory API authorization unit suite.",
+      "owner": "AI Platform",
+      "status": "mitigated",
+      "residualRisk": { "rating": "medium", "rationale": "Local bearer-token theft remains possible on a compromised host." }
+    },
+    {
+      "id": "THR-PROMPT-INJECTION",
+      "boundary": "repository-agent",
+      "threat": "Repository text attempts to override policy and trigger push, secret access or external traversal.",
+      "mitigation": "Repository/context are explicitly untrusted, OpenCode permissions deny sensitive files, external directories and Git writes.",
+      "test": "tests/security/abuse_test.sh#prompt-injection",
+      "evidence": "Adversarial fixture, governed prompt contract and static agent permission checks.",
+      "owner": "AI Platform Security",
+      "status": "mitigated",
+      "residualRisk": { "rating": "medium", "rationale": "Model behavior can still cause in-scope unwanted edits requiring deterministic gates and human review." }
+    },
+    {
+      "id": "THR-CROSS-SCOPE",
+      "boundary": "memory-scope",
+      "threat": "One repository retrieves or promotes memory belonging to another scope.",
+      "mitigation": "Exact scope grants are enforced server-side for read, write, promotion, index and context compilation.",
+      "test": "tests/security/abuse_test.sh#cross-scope",
+      "evidence": "Memory REST lifecycle and negative cross-scope unit/integration tests.",
+      "owner": "AI Platform",
+      "status": "mitigated",
+      "residualRisk": { "rating": "low", "rationale": "Misconfigured authorized scope lists remain an operator risk." }
+    },
+    {
+      "id": "THR-SUPPLY-CHAIN",
+      "boundary": "supply-chain",
+      "threat": "Mutable or compromised dependencies and images execute during bootstrap or CI.",
+      "mitigation": "Owned images build in CI and selected components are versioned; full digest/SBOM freeze is tracked by Foundation task 3.5.",
+      "test": "tests/security/abuse_test.sh#supply-chain",
+      "evidence": "CI build contract and explicit open-risk assertion until release manifest and SBOM exist.",
+      "owner": "Platform Release",
+      "status": "open",
+      "residualRisk": { "rating": "high", "rationale": "Several core third-party images are not yet digest-pinned and no release SBOM is published." }
+    },
+    {
+      "id": "THR-TELEMETRY-LEAK",
+      "boundary": "telemetry",
+      "threat": "Source, prompts, credentials, database queries or stack traces persist in telemetry.",
+      "mitigation": "No-content model capture, collector deletion rules and redaction before finding/stage persistence.",
+      "test": "tests/security/abuse_test.sh#telemetry",
+      "evidence": "OTLP sensitive-field smoke plus finding and command-output redaction tests.",
+      "owner": "Observability",
+      "status": "mitigated",
+      "residualRisk": { "rating": "medium", "rationale": "New instrumentation attributes require review before collector upgrades." }
+    },
+    {
+      "id": "THR-SUPPRESSION-BYPASS",
+      "boundary": "apis",
+      "threat": "Agent or developer suppresses a blocking finding without accountable approval.",
+      "mitigation": "Exact fingerprint policy requires independent approval, ticket, owner and future expiry; invalid policy fails closed.",
+      "test": "tests/unit/suppressions.test.mjs",
+      "evidence": "Valid, wildcard, expired and self-approved suppression contracts.",
+      "owner": "AI Platform Security",
+      "status": "mitigated",
+      "residualRisk": { "rating": "low", "rationale": "Approver identity is repository metadata until remote identity integration is completed." }
+    }
+  ]
+}
