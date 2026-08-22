@@ -379,7 +379,7 @@ indicados.
   - Completion criteria: fixture bloqueia CI; artifact inclui gates/findings
     normalizados; permissões seguem menor privilégio.
 
-- [ ] 7.2 Implementar governança de suppressions
+- [x] 7.2 Implementar governança de suppressions
   - Objective: validar owner, approval, fingerprint, reason, ticket e expiry.
   - Likely files/components: `security/suppressions.yaml`, Harness policy/gate.
   - Depends on: 4.6, 7.1.

@@ -125,6 +125,15 @@ node harness/src/cli/audit-project.mjs \
   --project tests/fixtures/vulnerable-project
 ```
 
+Security suppressions are empty by default and fail closed when malformed or
+expired. Validate exact, independently approved records with:
+
+```bash
+npm run validate:suppressions
+```
+
+See `security/README.md` for the audited record format.
+
 For a real repository, point `--project` to a Node.js checkout containing a
 `package.json`, lockfile and Dockerfile. The baseline auditor is a deterministic
 pre-check; official Semgrep, Gitleaks, Trivy, Snyk and Sonar JSON outputs are
