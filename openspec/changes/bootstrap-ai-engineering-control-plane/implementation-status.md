@@ -4,13 +4,13 @@ Updated: 2026-08-21
 
 ## Current verdict
 
-`FOUNDATION_PARTIAL`
+`FOUNDATION_READY`
 
-The repository now contains an executable and tested Foundation preview, but it
-MUST NOT be classified as `READY_FOR_HUMAN_REVIEW` for the full OpenSpec change.
-Provider-backed model smoke, durable Memory API, complete Harness gates,
-GraphRAG, telemetry backend, restore drill and multi-host acceptance remain
-open.
+The repository now contains an executable and tested Foundation with a
+PostgreSQL-backed LiteLLM gateway, limited workspace virtual key and live model
+smoke. It MUST NOT yet be classified as `READY_FOR_HUMAN_REVIEW` for the full
+OpenSpec change. Durable Memory API, complete Harness gates, GraphRAG, telemetry
+backend, restore drill and multi-host acceptance remain open.
 
 ## Verified evidence
 
@@ -26,6 +26,9 @@ open.
 | Memory readiness | `GET /ready` inside service | PASS |
 | Migration rerun | two sequential `scripts/migrate.sh` runs | PASS |
 | Provider isolation contract | resolved Compose workspace env check | PASS |
+| Gateway persistence | LiteLLM readiness response | PASS: PostgreSQL connected |
+| Workspace virtual key | provision followed by idempotent validation | PASS: limited key preserved |
+| Live model routing | `scripts/smoke.sh` | PASS: `coding-fast`, `coding-strong` |
 | SDK structured output | injected OpenCode SDK client contract | PASS |
 | Budget/no-progress | unit tests | PASS |
 | Context budget/dedup | unit tests | PASS |
@@ -47,12 +50,17 @@ open.
 - GitHub clean-checkout contract pipeline.
 - Threat model, runbook, memory model, compatibility and ADR documentation.
 
-## Blocking external configuration
+## Resolved local configuration
+
+- OpenAI credential is configured locally and remains ignored by Git.
+- OpenAI-only model defaults are configured for all required aliases.
+- Internal LiteLLM and Neo4j secrets were generated locally.
+- The existing Neo4j password was rotated to match persistent state.
+
+## Blocking external configuration for later phases
 
 The following values cannot be invented or committed:
 
-- real provider credential in `.env.runtime`;
-- valid model IDs for all required capability aliases;
 - production LiteLLM immutable release pin replacing `latest`;
 - CI/registry credentials for publishing and full scanner execution;
 - remote identity/TLS/VPN and secret-manager selection;
@@ -74,10 +82,12 @@ The following values cannot be invented or committed:
 
 ## Resume command
 
-After configuring valid non-placeholder values locally:
+The Foundation can be revalidated at any time with:
 
 ```bash
-./scripts/bootstrap.sh
+./scripts/doctor.sh
+./scripts/smoke.sh
 ```
 
-The next required evidence is a complete Foundation `doctor` and `smoke` pass.
+The next required evidence is the Engineering Harness vulnerable-project suite
+with deterministic gates and bounded targeted repair.

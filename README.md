@@ -4,8 +4,9 @@ Governed, reproducible engineering environment for bounded AI-assisted work.
 
 ## Current status
 
-Foundation preview. Local contracts pass, while real provider aliases, immutable
-LiteLLM pinning and full-service smoke remain operator/environment dependent.
+Foundation validated locally with PostgreSQL-backed LiteLLM, a limited workspace
+virtual key and live OpenAI smoke tests for `coding-fast` and `coding-strong`.
+The full OpenSpec change remains in progress.
 
 ## Prerequisites
 
@@ -19,7 +20,9 @@ LiteLLM pinning and full-service smoke remain operator/environment dependent.
 ```bash
 cp .env.example .env.runtime
 chmod 600 .env.runtime
-# Replace every change-me/model-id value and add one provider credential.
+# Add one provider credential. The helper preserves it while generating local
+# Control Plane secrets and OpenAI-only model defaults.
+./scripts/configure-local.sh
 ./scripts/bootstrap.sh
 ```
 
