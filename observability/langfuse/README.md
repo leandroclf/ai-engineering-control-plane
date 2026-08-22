@@ -12,6 +12,9 @@ digests in `versions.env`. The core AICP stack does not depend on this profile.
 ./scripts/configure-observability.sh
 ./scripts/observability.sh up
 ./scripts/observability.sh status
+docker compose --env-file versions.env --env-file .env.observability \
+  -f compose.yaml -f compose/observability-export.yaml \
+  up -d --force-recreate otel-collector
 ./scripts/observability.sh down
 ```
 
@@ -20,6 +23,12 @@ to `127.0.0.1:9090` for media links and backup; its console, PostgreSQL,
 ClickHouse and Redis are not published. Credentials live only in the ignored,
 mode-0600 `.env.observability`. Prompt/input/output capture remains disabled in
 the core collector until a data owner explicitly approves it.
+
+The optional collector overlay exports redacted traces through Langfuse's native
+OTLP endpoint (`/api/public/otel`) with ingestion version 4. It keeps metrics in
+the local collector and never exports prompts, completions, source, request
+bodies, database statements or stack traces. Without the overlay, the core
+runtime continues to use only its local file exporters.
 
 ## Update procedure
 

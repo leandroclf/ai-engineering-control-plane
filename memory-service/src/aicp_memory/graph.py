@@ -26,6 +26,7 @@ class Neo4jGraphProjection:
             "statement": "MERGE (r:Repository {id: $repository}) SET r.repository_id=$repository",
             "parameters": {"repository": repository},
         })
+        occurrences = {}
         for source_file in payload.get("files", []):
             statements.append({
                 "statement": """MATCH (r:Repository {id: $repository})
@@ -34,9 +35,10 @@ class Neo4jGraphProjection:
                 "parameters": {"repository": repository, "path": source_file["path"], "oid": source_file["oid"]},
             })
             for symbol in source_file.get("symbols", []):
-                identity = "\0".join((repository, symbol.get("language", "javascript"),
-                    symbol.get("semanticContainer", source_file["path"]), symbol["qualifiedName"],
-                    symbol["kind"], symbol.get("signatureHash", "")))
+                semantic_key = (symbol.get("language", "javascript"), symbol.get("semanticContainer", source_file["path"]),
+                                symbol["qualifiedName"], symbol["kind"], symbol.get("signatureHash", ""))
+                occurrences[semantic_key] = occurrences.get(semantic_key, 0) + 1
+                identity = "\0".join((repository, *semantic_key, str(occurrences[semantic_key])))
                 symbol_id = sha256(identity.encode()).hexdigest()
                 statements.append({
                     "statement": """MATCH (f:File {repository_id: $repository, path: $path})
@@ -83,14 +85,17 @@ class Neo4jGraphProjection:
         data = result.get("results", [{}])[0].get("data", [])
         return [item["row"][0] for item in data]
 
-    def retrieve(self, repository, symbols, limit=25):
+    def retrieve(self, repository, symbols, limit=25, max_hops=2):
         if not symbols:
             return []
+        if max_hops not in (1, 2):
+            raise ValueError("graph traversal max_hops must be 1 or 2")
+        relationship = ":IMPORTS*1..1" if max_hops == 1 else ":IMPORTS*1..2"
         result = self._execute([{
-            "statement": """MATCH (s:Symbol {repository_id:$repository})
+            "statement": f"""MATCH (s:Symbol {{repository_id:$repository}})
             WHERE toLower(s.qualified_name) IN $symbols
             MATCH (s)<-[:DECLARES]-(origin:File)
-            OPTIONAL MATCH (origin)-[:IMPORTS*1..3]-(related:File)
+            OPTIONAL MATCH (origin)-[{relationship}]-(related:File)
             RETURN DISTINCT coalesce(related.path, origin.path) AS path,
               CASE WHEN related IS NULL THEN 0 ELSE 1 END AS distance
             ORDER BY distance, path LIMIT $limit""",

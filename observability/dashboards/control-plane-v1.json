@@ -5,10 +5,10 @@
   "sections": {
     "aiCost": ["aicp_task_cost_usd", "aicp_task_input_tokens", "aicp_task_output_tokens"],
     "engineeringEfficiency": ["aicp_task_duration_seconds", "aicp_first_pass_total", "aicp_repair_loops_total"],
-    "contextEfficiency": ["aicp_context_tokens", "aicp_context_utilization_ratio", "aicp_context_reuse_total"],
-    "budget": ["aicp_budget_rejections_total", "aicp_budget_utilization_ratio"],
+    "contextEfficiency": ["aicp_context_candidate_tokens", "aicp_context_selected_tokens", "aicp_context_dedup_saved_tokens", "aicp_context_utilization_ratio", "aicp_context_reuse_total"],
+    "budget": ["aicp_budget_rejections_total", "aicp_budget_utilization_ratio", "aicp_budget_reservation_drift_ratio", "aicp_budget_overshoot_total", "aicp_budget_stale_reservations_total"],
     "qualityAndSecurity": ["aicp_gate_failures_total", "aicp_findings_total"],
-    "platform": ["aicp_agent_calls_total", "aicp_agent_call_duration_seconds", "aicp_fallbacks_total"]
+    "platform": ["aicp_agent_calls_total", "aicp_agent_call_duration_seconds", "aicp_llm_fallback_total", "aicp_llm_provider_errors_total", "aicp_capability_probe_failures_total"]
   },
   "cardinalityPolicy": "task_id, run_id and context_id belong only in traces/logs"
 }

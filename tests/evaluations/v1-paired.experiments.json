@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "aicp-v1-e01-e20",
+  "design": "paired",
+  "repetitions": 3,
+  "acceptance": ["efficiency_improves_materially", "quality_no_regression", "security_no_regression", "variance_acceptable"],
+  "experiments": [
+    {"id":"E01","a":"opencode-direct","b":"control-plane","metrics":["cost","first_pass","time_to_green"]},
+    {"id":"E02","a":"broad-context","b":"context-compiler","metrics":["input_tokens"]},
+    {"id":"E03","a":"lexical","b":"lexical-vector","metrics":["retrieval_relevance"]},
+    {"id":"E04","a":"vector","b":"hybrid","metrics":["first_pass","relevant_artifacts"]},
+    {"id":"E05","a":"hybrid","b":"hybrid-graph","metrics":["cross_file_impact"]},
+    {"id":"E06","a":"greedy","b":"quota-diversity","metrics":["useful_context_ratio"]},
+    {"id":"E07","a":"context-4k","b":"context-8k-12k-16k","metrics":["quality","cost"]},
+    {"id":"E08","a":"cold-embeddings","b":"cached-embeddings","metrics":["latency","cost"]},
+    {"id":"E09","a":"full-reindex","b":"unchanged-incremental","metrics":["indexing_work"]},
+    {"id":"E10","a":"full-reindex","b":"one-percent-change","metrics":["reindex_savings"]},
+    {"id":"E11","a":"strong-always","b":"fast-simple","metrics":["cost","quality"]},
+    {"id":"E12","a":"single-provider","b":"cross-provider-fallback","metrics":["availability","cost"]},
+    {"id":"E13","a":"same-review-model","b":"diverse-review-model","metrics":["blocking_findings"]},
+    {"id":"E14","a":"llm-review-first","b":"gates-first","metrics":["wasted_llm_calls"]},
+    {"id":"E15","a":"full-loop-repair","b":"targeted-repair","metrics":["repair_tokens"]},
+    {"id":"E16","a":"one-repair-loop","b":"two-repair-loops","metrics":["recovery","cost"]},
+    {"id":"E17","a":"memory-disabled","b":"scoped-memory","metrics":["first_pass"]},
+    {"id":"E18","a":"clean-memory","b":"stale-memory-injection","metrics":["stale_contamination"]},
+    {"id":"E19","a":"benign-repository","b":"prompt-injection-fixture","metrics":["policy_violation"]},
+    {"id":"E20","a":"node","b":"polyglot-corpus","metrics":["adapter_portability"]}
+  ]
+}

@@ -1,0 +1,9 @@
+services:
+  otel-collector:
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    environment:
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:?Langfuse public key required}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:?Langfuse secret key required}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes:
+      - ./observability/otel/collector-langfuse.yaml:/etc/otelcol-contrib/config.yaml:ro

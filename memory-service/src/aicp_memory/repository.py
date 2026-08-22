@@ -294,6 +294,9 @@ class PostgresMemoryRepository:
             current_hash = changed.get(row["path"])
             if row["path"] in deleted or current_hash != row["content_hash"]:
                 cursor.execute("UPDATE memory.memories SET status='INVALIDATED',updated_at=now() WHERE id=%s", (row["id"],))
+                cursor.execute("""INSERT INTO memory.reconciliation_events(memory_id,source_hash_before,source_hash_after,outcome,reason)
+                    VALUES(%s,%s,%s,'INVALIDATED',%s)""", (row["id"], row["content_hash"], current_hash,
+                    "SOURCE_DELETED" if row["path"] in deleted else "SOURCE_HASH_CHANGED"))
                 self._event(cursor, row["id"], "INVALIDATED", "system:index-sync",
                             "SOURCE_DELETED" if row["path"] in deleted else "SOURCE_HASH_CHANGED")
                 invalidated += 1

@@ -1,0 +1,49 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { InvocationEstimator, RoutingPricingCatalog } from "../../harness/src/budget/invocation-estimator.mjs";
+import { GateRegistry, ProjectGateProvider } from "../../harness/src/gates/gate-registry.mjs";
+import { ProjectAdapter } from "../../harness/src/gates/project-adapter.mjs";
+import { ControlPlaneAuthorizer } from "../../harness/src/security/identity-authority.mjs";
+import { EphemeralWorkerSpec, WorkloadIdentity } from "../../harness/src/runtime/ephemeral-worker-contract.mjs";
+
+test("invocation estimator reserves prompt schema output margin and worst eligible deployment", async () => {
+  const estimator = new InvocationEstimator({ tokenizer: { count: async (value) => String(value).length }, fixedOverheadTokens: 10, safetyMargin: 1.2,
+    pricingCatalog: new RoutingPricingCatalog({ strong: { deployments: [
+      { model: "cheap", inputPerMillion: 1, outputPerMillion: 2 }, { model: "expensive", inputPerMillion: 10, outputPerMillion: 20 },
+    ] } }) });
+  const result = await estimator.estimate({ alias: "strong", prompt: "12345", contextTokenCount: 8, schema: { x: 1 }, maxOutputTokens: 100 });
+  assert.equal(result.inputTokens, Math.ceil((8 + JSON.stringify({ response: { x: 1 }, tools: [] }).length + 10) * 1.2));
+  assert.equal(result.costUsd, result.inputTokens * 10 / 1e6 + 100 * 20 / 1e6);
+  await assert.rejects(estimator.estimate({ alias: "unknown", prompt: "x" }), /PRICING_UNKNOWN/);
+});
+
+test("polyglot repository produces composite modules and per-module executions", async () => {
+  const root = await mkdtemp(join(tmpdir(), "aicp-polyglot-"));
+  await mkdir(join(root, "frontend")); await mkdir(join(root, "service"));
+  await writeFile(join(root, "frontend/package.json"), JSON.stringify({ scripts: { build: "x", test: "x" } }));
+  await writeFile(join(root, "service/go.mod"), "module example/service\n");
+  const profile = await new ProjectAdapter().detect(root);
+  assert.equal(profile.kind, "composite");
+  assert.deepEqual(profile.modules.map((item) => item.path), ["frontend", "service"]);
+  assert.equal(profile.capabilities.build.status, "AVAILABLE");
+  assert.equal(profile.capabilities.build.executions.length, 2);
+});
+
+test("required undeclared capability fails preflight before execution", async () => {
+  const root = await mkdtemp(join(tmpdir(), "aicp-missing-cap-"));
+  await writeFile(join(root, "package.json"), JSON.stringify({ scripts: { build: "x" } }));
+  const profile = await new ProjectAdapter().detect(root);
+  const registry = new GateRegistry({ definitions: { tests: { provider: "project", capability: "unit-tests" } } }).register("project", new ProjectGateProvider());
+  await assert.rejects(registry.preflight({ names: ["tests"], project: root, profile }), /REQUIRED_GATE_UNAVAILABLE/);
+});
+
+test("static token RBAC remains compatible and worker contract rejects provider secrets", async () => {
+  const principal = await new ControlPlaneAuthorizer({ staticToken: "token" }).authenticate({ headers: { authorization: "Bearer token" }, socket: {} });
+  assert.doesNotThrow(() => principal.require("runs:write"));
+  const identity = new WorkloadIdentity({ runId: "run-1", litellmKeyRef: "secret:llm/run-1", memoryTokenRef: "secret:memory/run-1", expiresAt: new Date(Date.now() + 60_000) });
+  assert.throws(() => new EphemeralWorkerSpec({ runId: "run-1", projectDirectory: "/workspace/project", identity, environment: { OPENAI_API_KEY: "forbidden" } }), /forbidden/);
+});

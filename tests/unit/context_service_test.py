@@ -127,3 +127,13 @@ class ContextServiceTest(unittest.TestCase):
             service.sync("repo", {"files": [], "deleted": []})
 
         self.assertIsNone(repository.synced)
+
+    def test_context_envelope_is_effective_budget_and_part_of_identity(self):
+        service = ContextService(FakeRepository(), FakeEmbedder(), FakeGraph(), FakeTokenCounter())
+        base = {"repository": "repo", "task_id": "task", "query": "payment", "budget": 100,
+                "model_window": 20, "output_reserve": 4, "system_reserve": 3,
+                "tool_schema_reserve": 2, "safety_reserve": 1}
+        result = service.compile(base, [])
+        self.assertEqual(result["budget"], 10)
+        self.assertLessEqual(result["token_count"], result["budget"])
+        self.assertNotEqual(result["context_id"], service.compile({**base, "safety_reserve": 2}, [])["context_id"])
