@@ -23,13 +23,32 @@ async function jsonBody(request, limit = 1_048_576) {
   return body ? JSON.parse(body) : {};
 }
 
-function startRequest(body, projectsRoot, idempotencyHeader = null) {
+const CREATE_RUN_FIELDS = new Set(["project", "repository", "query", "idempotencyKey", "exactSymbols", "scopes", "constraints"]);
+const CONSTRAINT_RULES = Object.freeze({
+  maxCostUsd: { integer: false, minimum: 0, exclusive: true },
+  maxCalls: { integer: true, minimum: 1 },
+  maxInputTokens: { integer: true, minimum: 1 },
+  maxOutputTokens: { integer: true, minimum: 1 },
+  maxIterations: { integer: true, minimum: 0 },
+});
+
+export function startRequest(body, projectsRoot, idempotencyHeader = null) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw new TypeError("request body must be an object");
+  const unknown = Object.keys(body).find((name) => !CREATE_RUN_FIELDS.has(name));
+  if (unknown) throw new TypeError(`unknown request field: ${unknown}`);
   const idempotencyKey = idempotencyHeader || body.idempotencyKey;
-  if (!body.project || !body.query || !idempotencyKey) {
+  if (typeof body.project !== "string" || !body.project.trim() || typeof body.query !== "string" || !body.query.trim() || typeof idempotencyKey !== "string" || idempotencyKey.length < 8) {
     throw new TypeError("project, query and idempotencyKey are required");
   }
+  if (body.repository !== undefined && (typeof body.repository !== "string" || !body.repository.trim())) throw new TypeError("repository must be a non-empty string");
+  if (body.exactSymbols !== undefined && (!Array.isArray(body.exactSymbols) || body.exactSymbols.some((value) => typeof value !== "string" || !value))) throw new TypeError("exactSymbols must contain non-empty strings");
+  if (body.scopes !== undefined && (!Array.isArray(body.scopes) || body.scopes.some((value) => typeof value !== "string" || !value))) throw new TypeError("scopes must contain non-empty strings");
   const constraints = body.constraints ?? {};
-  for (const [name, value] of Object.entries(constraints)) if (!["maxCostUsd", "maxCalls", "maxInputTokens", "maxOutputTokens", "maxIterations"].includes(name) || !Number.isFinite(value) || value < 0) throw new TypeError(`invalid constraint: ${name}`);
+  if (!constraints || typeof constraints !== "object" || Array.isArray(constraints)) throw new TypeError("constraints must be an object");
+  for (const [name, value] of Object.entries(constraints)) {
+    const rule = CONSTRAINT_RULES[name];
+    if (!rule || !Number.isFinite(value) || (rule.integer && !Number.isInteger(value)) || (rule.exclusive ? value <= rule.minimum : value < rule.minimum)) throw new TypeError(`invalid constraint: ${name}`);
+  }
   return {
     idempotencyKey,
     constraints,

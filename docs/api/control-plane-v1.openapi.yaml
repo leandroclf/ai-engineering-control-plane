@@ -61,14 +61,24 @@ components:
   schemas:
     CreateRunRequest:
       type: object
+      additionalProperties: false
       required: [project, query]
       properties:
-        project: { type: string }
-        repository: { type: string }
-        query: { type: string }
-        idempotencyKey: { type: string }
-        exactSymbols: { type: array, items: { type: string } }
-        constraints: { type: object, additionalProperties: false, properties: { maxCostUsd: { type: number }, maxCalls: { type: integer } } }
+        project: { type: string, minLength: 1 }
+        repository: { type: string, minLength: 1 }
+        query: { type: string, minLength: 1 }
+        idempotencyKey: { type: string, minLength: 8, description: Required unless supplied in the Idempotency-Key header. }
+        exactSymbols: { type: array, items: { type: string, minLength: 1 } }
+        scopes: { type: array, items: { type: string, minLength: 1 } }
+        constraints:
+          type: object
+          additionalProperties: false
+          properties:
+            maxCostUsd: { type: number, exclusiveMinimum: 0 }
+            maxCalls: { type: integer, minimum: 1 }
+            maxInputTokens: { type: integer, minimum: 1 }
+            maxOutputTokens: { type: integer, minimum: 1 }
+            maxIterations: { type: integer, minimum: 0 }
     ErrorEnvelope:
       type: object
       required: [error]

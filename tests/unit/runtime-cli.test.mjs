@@ -47,13 +47,13 @@ test("harness HTTP server authenticates and delegates a bounded start request", 
   const response = await fetch(`http://127.0.0.1:${port}/v1/runs`, {
     method: "POST",
     headers: { Authorization: "Bearer test-token", "Content-Type": "application/json" },
-    body: JSON.stringify({ project: "site", query: "Improve", idempotencyKey: "issue-1" }),
+    body: JSON.stringify({ project: "site", query: "Improve", idempotencyKey: "issue-001" }),
   });
 
   assert.equal(response.status, 201);
   assert.equal((await response.json()).run.id, "run-1");
   assert.deepEqual(calls[0], {
-    idempotencyKey: "issue-1",
+    idempotencyKey: "issue-001",
     constraints: {},
     metadata: {
       projectDirectory: "/workspace/projects/site",
@@ -62,4 +62,33 @@ test("harness HTTP server authenticates and delegates a bounded start request", 
       scopes: ["REPOSITORY:site"],
     },
   });
+});
+
+test("OpenAPI create-run examples are accepted behaviorally and invalid schema fields fail closed", async (context) => {
+  const calls = [];
+  const server = createHarnessServer({
+    token: "test-token",
+    projectsRoot: "/workspace/projects",
+    runtime: { start: async (request) => { calls.push(request); return { run: { id: "run-contract" } }; } },
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  context.after(() => new Promise((resolve) => server.close(resolve)));
+  const endpoint = `http://127.0.0.1:${server.address().port}/v1/runs`;
+  const headers = { Authorization: "Bearer test-token", "Content-Type": "application/json", "Idempotency-Key": "contract-123" };
+  const valid = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify({
+    project: "site", repository: "org/site", query: "Improve", exactSymbols: ["App.render"], scopes: ["REPOSITORY:site"],
+    constraints: { maxCostUsd: 1.5, maxCalls: 2, maxInputTokens: 1000, maxOutputTokens: 200, maxIterations: 0 },
+  }) });
+  assert.equal(valid.status, 201);
+  assert.deepEqual(calls[0].constraints, { maxCostUsd: 1.5, maxCalls: 2, maxInputTokens: 1000, maxOutputTokens: 200, maxIterations: 0 });
+
+  for (const body of [
+    { project: "site", query: "Improve", unknown: true },
+    { project: "site", query: "Improve", constraints: { maxCalls: 0 } },
+    { project: "site", query: "Improve", constraints: { maxCostUsd: 0 } },
+  ]) {
+    const response = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(body) });
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).error.code, "INVALID_REQUEST");
+  }
 });
