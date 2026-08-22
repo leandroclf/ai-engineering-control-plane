@@ -97,6 +97,13 @@ class MemoryLedgerTest(unittest.TestCase):
         with self.assertRaises(AuthorizationError):
             ledger.promote(memory.id, "PROJECT:B", "agent:1", authorized_scopes={"PROJECT:A"})
 
+    def test_llm_inference_cannot_be_promoted_as_policy(self):
+        ledger = MemoryLedger()
+        memory = ledger.create_candidate(scope="RUN:T1", canonical_key="policy.inferred", summary="inferred rule",
+                                         authority="LLM_INFERENCE", kind="POLICY")
+        with self.assertRaisesRegex(ValueError, "cannot be promoted"):
+            ledger.promote(memory.id, "REPOSITORY:aicp", "agent:1")
+
 
 if __name__ == "__main__":
     unittest.main()

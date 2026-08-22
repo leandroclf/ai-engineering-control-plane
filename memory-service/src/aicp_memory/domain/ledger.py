@@ -63,7 +63,7 @@ class MemoryLedger:
     def create_candidate(
         self, *, scope, canonical_key, summary, authority, source_hash=None,
         kind="FACT", payload=None, confidence=None, expires_at=None,
-        idempotency_key=None, policy_version=None, schema_version=None,
+        idempotency_key=None, policy_version=None, schema_version=None, source_refs=None, parent_scope=None,
     ):
         if idempotency_key and idempotency_key in self._idempotency:
             return self.get(self._idempotency[idempotency_key])
@@ -83,6 +83,8 @@ class MemoryLedger:
     def promote(self, memory_id, target_scope, actor, authorized_scopes=None):
         self._authorize(target_scope, authorized_scopes)
         current = self.get(memory_id)
+        if current.kind == "POLICY" and current.authority == "LLM_INFERENCE":
+            raise ValueError("LLM inference cannot be promoted as policy")
         if current.status != "CANDIDATE":
             raise ValueError("only candidate memory can be promoted")
         promoted = replace(current, scope=target_scope, status="ACTIVE")

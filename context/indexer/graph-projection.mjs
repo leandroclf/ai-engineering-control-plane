@@ -11,10 +11,15 @@ export function planGraphDelta({ repositoryId, changed, deleted }) {
   for (const file of changed) {
     if (file.previousPath) deletePaths.add(file.previousPath);
     upsertFiles.push({ id: id(repositoryId, file.path), repositoryId, path: file.path });
+    const occurrences = new Map();
     for (const symbol of file.symbols) {
+      const semanticKey = [symbol.language ?? "javascript", symbol.semanticContainer ?? file.path, symbol.qualifiedName, symbol.kind, symbol.signatureHash ?? ""].join("\0");
+      const occurrence = (occurrences.get(semanticKey) ?? 0) + 1;
+      occurrences.set(semanticKey, occurrence);
       upsertSymbols.push({
         ...symbol,
-        id: id(repositoryId, file.path, symbol.qualifiedName, symbol.lineStart),
+        id: id(repositoryId, symbol.language ?? "javascript", symbol.semanticContainer ?? file.path,
+          symbol.qualifiedName, symbol.kind, symbol.signatureHash ?? "", occurrence),
         repositoryId,
         path: file.path,
       });

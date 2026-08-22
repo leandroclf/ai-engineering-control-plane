@@ -56,6 +56,7 @@ class MemoryApplication:
             confidence=payload.get("confidence"), expires_at=expires_at,
             idempotency_key=payload.get("idempotency_key"),
             policy_version=payload.get("policy_version"), schema_version=payload.get("schema_version"),
+            source_refs=payload.get("source_refs"), parent_scope=payload.get("parent_scope"),
         )
         return Response(201, memory.to_dict())
 

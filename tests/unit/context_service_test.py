@@ -7,6 +7,7 @@ class FakeRepository:
     def __init__(self):
         self.synced = None
         self.queries = []
+        self.invalidated = None
 
     def index_state(self, repository):
         return {"files": []}
@@ -16,6 +17,7 @@ class FakeRepository:
 
     def sync_index(self, repository, payload, rebuild=False):
         self.synced = (repository, payload, rebuild)
+        return 1
 
     def retrieve_chunks(self, repository, query, exact_symbols=None, limit=50):
         self.queries.append((repository, query, exact_symbols))
@@ -84,6 +86,7 @@ class ContextServiceTest(unittest.TestCase):
         self.assertEqual(embedder.calls, [["new"]])
         self.assertEqual(repository.synced[0], "repo")
         self.assertEqual(len(graph.deltas), 1)
+        self.assertEqual(result["memories_invalidated"], 1)
 
     def test_compile_ranks_exact_before_vector_and_respects_budget(self):
         counter = FakeTokenCounter()
@@ -101,6 +104,20 @@ class ContextServiceTest(unittest.TestCase):
         self.assertEqual(service.repository.queries, [("repo", "Service.run payment", ["service.run"])])
         self.assertEqual(counter.calls, ["run payment", "other"])
         self.assertEqual(result["token_count_model"], "coding-fast")
+        self.assertEqual(result["schema_version"], 2)
+        self.assertEqual(result["retrieval_policy_version"], "retrieval-v2")
+
+    def test_context_identity_changes_with_semantic_policy_or_index_version(self):
+        service = ContextService(FakeRepository(), FakeEmbedder(), FakeGraph(), FakeTokenCounter())
+        base = {"repository": "repo", "task_id": "task-1", "query": "Service.run payment",
+                "exact_symbols": ["Service.run"], "budget": 6, "index_schema_version": "5"}
+        first = service.compile(base, [])
+        same = service.compile(dict(base), [])
+        changed_policy = service.compile({**base, "retrieval_policy_version": "retrieval-v3"}, [])
+        changed_index = service.compile({**base, "index_schema_version": "6"}, [])
+        self.assertEqual(first["context_id"], same["context_id"])
+        self.assertNotEqual(first["context_id"], changed_policy["context_id"])
+        self.assertNotEqual(first["context_id"], changed_index["context_id"])
 
     def test_sync_does_not_advance_index_when_graph_projection_fails(self):
         repository = FakeRepository()

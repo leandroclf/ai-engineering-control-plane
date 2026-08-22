@@ -1,4 +1,5 @@
 from base64 import b64encode
+from hashlib import sha256
 import json
 import posixpath
 import urllib.error
@@ -33,7 +34,10 @@ class Neo4jGraphProjection:
                 "parameters": {"repository": repository, "path": source_file["path"], "oid": source_file["oid"]},
             })
             for symbol in source_file.get("symbols", []):
-                symbol_id = f"{repository}:{source_file['path']}:{symbol['qualifiedName']}:{symbol['lineStart']}"
+                identity = "\0".join((repository, symbol.get("language", "javascript"),
+                    symbol.get("semanticContainer", source_file["path"]), symbol["qualifiedName"],
+                    symbol["kind"], symbol.get("signatureHash", "")))
+                symbol_id = sha256(identity.encode()).hexdigest()
                 statements.append({
                     "statement": """MATCH (f:File {repository_id: $repository, path: $path})
                     MERGE (s:Symbol {id: $id}) SET s.repository_id=$repository,
@@ -78,6 +82,21 @@ class Neo4jGraphProjection:
         }])
         data = result.get("results", [{}])[0].get("data", [])
         return [item["row"][0] for item in data]
+
+    def retrieve(self, repository, symbols, limit=25):
+        if not symbols:
+            return []
+        result = self._execute([{
+            "statement": """MATCH (s:Symbol {repository_id:$repository})
+            WHERE toLower(s.qualified_name) IN $symbols
+            MATCH (s)<-[:DECLARES]-(origin:File)
+            OPTIONAL MATCH (origin)-[:IMPORTS*1..3]-(related:File)
+            RETURN DISTINCT coalesce(related.path, origin.path) AS path,
+              CASE WHEN related IS NULL THEN 0 ELSE 1 END AS distance
+            ORDER BY distance, path LIMIT $limit""",
+            "parameters": {"repository": repository, "symbols": [value.lower() for value in symbols], "limit": limit},
+        }])
+        return [{"path": item["row"][0], "distance": item["row"][1]} for item in result.get("results", [{}])[0].get("data", [])]
 
     def _execute(self, statements):
         request = urllib.request.Request(
