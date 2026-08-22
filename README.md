@@ -122,9 +122,11 @@ grants through `MEMORY_AUTHORIZED_SCOPES`; do not grant wildcard scopes.
 
 ```bash
 ./scripts/backup.sh
-./scripts/restore.sh ./backups/<timestamp>
+./scripts/restore.sh ./backups/aicp-backup-<timestamp>.tar.zst.gpg \
+  projects/<repository> <repository-id>
 ```
 
-Encrypt and move backups according to the target environment policy. Langfuse
-self-hosted data requires its own PostgreSQL, ClickHouse and object-storage
-backup procedure.
+Bootstrap generates `secrets/backup_passphrase`. Backups are AES256-encrypted
+before reaching the destination and include layered checksums plus gateway
+recovery keys for salt validation. Move them according to an approved policy.
+Langfuse requires its own PostgreSQL, ClickHouse and object-storage procedure.

@@ -13,8 +13,8 @@ in PostgreSQL; Neo4j is rebuilt as a derived projection; retrieval is
 exact-first with lexical/vector fallback and gateway token counting. Harness
 stages receive policy-scoped packages and persist sanitized provenance. It MUST
 NOT yet be classified as `READY_FOR_HUMAN_REVIEW` for the full OpenSpec change.
-Runtime agent wiring, fallback fault injection, Langfuse deployment, restore
-drill and multi-host acceptance remain open.
+Runtime agent wiring, fallback fault injection, Langfuse deployment, backup
+governance and multi-host acceptance remain open.
 
 ## Verified evidence
 
@@ -61,6 +61,8 @@ drill and multi-host acceptance remain open.
 | Cross-service telemetry | `scripts/telemetry-smoke.sh` | PASS: Harness/Memory task correlation and sensitive-field rejection |
 | Gateway telemetry | LiteLLM OTel v2 | PASS: alias, resolved model, input/output tokens and total cost exported |
 | Collector baseline | OTel Collector contrib `0.157.0` | PASS: pinned image, OTLP HTTP and local redacted evidence |
+| Encrypted backup | `scripts/backup.sh` | PASS: AES256 archive, layered checksums, no plaintext dump at destination |
+| Restore drill | encrypted archive plus current Git | PASS: databases restored, graph rebuilt, doctor/Memory/Context accepted |
 
 ## Implemented artifacts
 
@@ -84,6 +86,7 @@ drill and multi-host acceptance remain open.
 - Gateway token counter, impact traversal and stage-specific Context policies.
 - Harness Context provider with sanitized atomic stage evidence.
 - OTel emitters for Harness/Memory, LiteLLM OTel v2 and collector redaction/file baseline.
+- Encrypted canonical backup and verified restore/rebuild workflow.
 - GitHub clean-checkout contract pipeline.
 - Threat model, runbook, memory model, compatibility and ADR documentation.
 
@@ -110,7 +113,7 @@ The following values cannot be invented or committed:
 - Wire the runtime entrypoint to PostgreSQL, OpenCode and installed scanner CLIs.
 - Validate LiteLLM fallback through controlled fault injection.
 - Vendor and validate the separate Langfuse observability profile.
-- Execute encrypted backup/restore drill.
+- Approve backup owner, external destination, retention, cadence and disposal.
 - Run clean-host, provider, CI and multi-host acceptance.
 
 ## Resume command

@@ -352,7 +352,7 @@ indicados.
   - Completion criteria: dataset reproduz métricas e thresholds começam como
     baseline documentada, não SLO inventado.
 
-- [ ] 6.5 Implementar backup, restore e rebuild
+- [x] 6.5 Implementar backup, restore e rebuild
   - Objective: proteger estado canônico/gateway e reconstruir graph/cache.
   - Likely files/components: `scripts/backup.sh`, `scripts/restore.sh`, runbook.
   - Depends on: 5.6, 6.2.

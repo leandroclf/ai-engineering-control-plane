@@ -25,9 +25,11 @@ telemetry received the value.
 
 ## Backup and restore
 
-Run `./scripts/backup.sh`, encrypt and move the resulting directory. Restore in
-a compatible isolated environment with `./scripts/restore.sh <directory>` and
-require doctor, scope-isolation and context checks. Neo4j is rebuilt; Redis is
+Run `./scripts/backup.sh [destination-directory]`. The result is one AES256
+archive plus an external checksum; plaintext dumps exist only in trap-cleaned
+staging. Restore with `./scripts/restore.sh <archive> [repository-path
+repository-id]`. Restore rejects checksum or `LITELLM_SALT_KEY` mismatch
+before database mutation, rebuilds Neo4j from Git and runs acceptance. Redis is
 discarded.
 
 ## Safe shutdown
