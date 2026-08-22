@@ -16,6 +16,7 @@
 | `feat/model-catalog-routing-policy` | IMPLEMENTED | catálogo gerado + routing policy tests | Deployments secundários exigem configuração explícita de modelo, key e preço |
 | `feat/scanner-bundle-offline-readiness` | IMPLEMENTED | hash/freshness unit test; Compose validado | Atualização da DB requer egress apenas no updater confiável |
 | `feat/worker-profile-registry` | IMPLEMENTED | seleção polyglot e probes positivos/negativos PASS | Builds das cinco imagens serão executados com o manager efêmero |
+| `feat/ephemeral-worker-manager` | IMPLEMENTED | lifecycle/cross-run/revocation unit + Docker smoke | Deployment do manager deve permanecer fora da trust boundary do agente |
 
 ## Metrics
 
@@ -30,6 +31,7 @@
 | Fallback silencioso `strong → fast` | 1 | 0 |
 | Scanners core usando configuração online automática | 2 | 0 |
 | Perfis de toolchain com capability attestation | 0 | 5 |
+| Implementações concretas de `WorkerManager` | 0 | 1 |
 | Protected `main` no GitHub | NOT_MEASURED | NOT_MEASURED |
 
 ## Open risks

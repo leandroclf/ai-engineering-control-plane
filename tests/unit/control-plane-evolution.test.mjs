@@ -14,6 +14,8 @@ import { RoutingPolicy } from "../../harness/src/routing/routing-policy.mjs";
 import { ScannerBundleAttestor } from "../../harness/src/scanners/scanner-bundle-attestor.mjs";
 import { createHash } from "node:crypto";
 import { WorkerProfileRegistry } from "../../harness/src/workers/worker-profile-registry.mjs";
+import { WorkloadIdentityService } from "../../harness/src/workers/workload-identity-service.mjs";
+import { DockerWorkerManager } from "../../harness/src/workers/docker-worker-manager.mjs";
 
 test("invocation estimator reserves prompt schema output margin and worst eligible deployment", async () => {
   const estimator = new InvocationEstimator({ tokenizer: { count: async (value) => String(value).length }, fixedOverheadTokens: 10, safetyMargin: 1.2,
@@ -117,4 +119,24 @@ test("worker profile selection supports polyglot projects and availability requi
   assert.equal(attestation.status, "AVAILABLE");
   assert.match(attestation.attestationId, /^[a-f0-9]{64}$/);
   await assert.rejects(registry.attest("go", { exec: async () => ({ exitCode: 127 }) }), /WORKER_CAPABILITY_UNAVAILABLE/);
+});
+
+test("ephemeral worker is scoped to one run and destroy revokes its identity", async () => {
+  const now = () => new Date("2026-08-22T12:00:00.000Z");
+  const identities = new WorkloadIdentityService({ secret: "x".repeat(32), now });
+  const token = identities.issue("run-a");
+  const inspect = { Config: { User: "worker", Env: ["AICP_RUN_ID=run-a"], Labels: { "aicp.run_id": "run-a" } }, HostConfig: { ReadonlyRootfs: true, NetworkMode: "none", CapDrop: ["ALL"], SecurityOpt: ["no-new-privileges"] }, Mounts: [] };
+  const calls = [];
+  const docker = { create: async () => "worker-a", inspect: async () => inspect, exec: async (id, command) => { calls.push([id, command]); return { exitCode: 0, stdout: "v1" }; }, diff: async () => ({ exitCode: 0, stdout: "C /workspace/project/a" }), remove: async (id) => calls.push(["remove", id]) };
+  const profiles = new WorkerProfileRegistry({ schemaVersion: 1, profiles: { node: { projectKinds: ["node"], image: "node", dockerfile: "Dockerfile", probes: [["node", "--version"]] } } });
+  const manager = new DockerWorkerManager({ docker, profiles, identityService: identities, secretResolver: async () => "scoped" });
+  const identity = new WorkloadIdentity({ runId: "run-a", litellmKeyRef: "llm/a", memoryTokenRef: "memory/a", expiresAt: new Date(Date.now() + 60_000) });
+  const spec = new EphemeralWorkerSpec({ runId: "run-a", projectDirectory: "/workspace/project", profile: "node", identity, identityToken: token });
+  const handle = await manager.create(spec);
+  assert.equal(handle.attestation.nonRoot, true);
+  await assert.rejects(manager.exec("run-b", ["node", "--version"]), /WORKER_NOT_FOUND/);
+  assert.equal((await manager.collectEvidence("run-a")).changedEntries, 1);
+  assert.equal(await manager.destroy("run-a"), true);
+  assert.throws(() => identities.verify(token, "run-a"), /WORKLOAD_IDENTITY_INVALID/);
+  assert.deepEqual(calls.at(-1), ["remove", "worker-a"]);
 });
