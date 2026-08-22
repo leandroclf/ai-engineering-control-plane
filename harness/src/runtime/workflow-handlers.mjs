@@ -70,7 +70,11 @@ function repairEvidence(stages) {
   return prior?.evidence?.handler?.gates ?? [];
 }
 
-export function createWorkflowHandlers({ definition, store = null, controller, projectAdapter, gateRunner, gateRegistry = null, budgetAuthority = null }) {
+function implementationProvider(stages) {
+  return [...stages].reverse().find((stage) => stageFrom(stage) === "implement")?.evidence?.handler?.usage?.provider ?? null;
+}
+
+export function createWorkflowHandlers({ definition, store = null, controller, projectAdapter, gateRunner, gateRegistry = null, budgetAuthority = null, routingPolicy = null }) {
   if (!definition?.states) throw new TypeError("workflow definition is required");
   const handlers = {};
   for (const [state, stateDefinition] of Object.entries(definition.states)) {
@@ -81,9 +85,12 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
         try {
           const prompt = agentPrompt({ task, state, context });
           const schema = agentSchema(Object.keys(stateDefinition.next));
+          const alias = modelAlias(stateDefinition);
+          const priorStages = routingPolicy && store?.listStages ? await store.listStages(run.id) : [];
+          const routing = routingPolicy?.decide({ alias, role: stateDefinition.agent?.includes("reviewer") ? "reviewer" : "producer", producerProvider: implementationProvider(priorStages) }) ?? null;
           reservation = budgetAuthority ? await budgetAuthority.reserve({
             taskId: task.id, runId: run.id, stage: state, contextBudget: context?.budget ?? 0, attempt: run.version,
-            invocation: { alias: modelAlias(stateDefinition), prompt, contextTokenCount: context?.tokenCount ?? 0, schema, maxOutputTokens: stateDefinition.maxOutputTokens ?? 4096 },
+            invocation: { alias, prompt, contextTokenCount: context?.tokenCount ?? 0, schema, maxOutputTokens: stateDefinition.maxOutputTokens ?? 4096 },
           }) : null;
           if (reservation?.idempotentReplay) throw Object.assign(new Error("invocation reservation is already active"), { name: "InvocationInProgressError" });
           const execution = await runAgent(controller, {
@@ -93,6 +100,7 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
           schema,
           maxOutputTokens: reservation ? Number(reservation.reserved_output_tokens) : undefined,
           invocation: reservation ? { taskId: task.id, runId: run.id, stage, reservationId: reservation.id, logicalInvocationId: reservation.logical_invocation_id, modelAlias: reservation.model_alias } : null,
+          modelAlias: routing?.selected.gatewayAlias ?? alias,
           });
           const settlement = reservation ? await budgetAuthority.commit({ reservationId: reservation.id, actualUsage: execution.usage ?? {} }) : null;
           if (settlement?.drift?.exceeded) throw Object.assign(new Error("BUDGET_RESERVATION_DRIFT"), { name: "BudgetReservationDriftError", drift: settlement.drift });
@@ -101,14 +109,15 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
           evidence: {
             ...normalizeAgentEvidence(execution.structured),
             ...(execution.usage ? { usage: execution.usage } : {}),
+            ...(routing ? { routing } : {}),
             ...(reservation ? { budget: { reservationId: reservation.id, reservedInputTokens: Number(reservation.reserved_input_tokens), reservedOutputTokens: Number(reservation.reserved_output_tokens), reservedCostUsd: Number(reservation.reserved_cost_usd), actual: execution.usage ?? {}, drift: settlement?.drift ?? null } } : {}),
           },
           };
         } catch (error) {
           if (reservation) await budgetAuthority.release({ reservationId: reservation.id });
-          if (["BudgetExceededError", "PricingUnknownError", "BudgetReservationDriftError"].includes(error.name)) {
+          if (["BudgetExceededError", "PricingUnknownError", "RoutingPolicyError", "BudgetReservationDriftError"].includes(error.name)) {
             const outcomes = Object.keys(stateDefinition.next);
-            return { outcome: outcomes.find((value) => ["blocked", "exhausted", "failed", "error"].includes(value)) ?? outcomes.at(-1), evidence: { reason: error.name === "PricingUnknownError" ? "PRICING_UNKNOWN" : error.name === "BudgetReservationDriftError" ? "BUDGET_RESERVATION_DRIFT" : "BUDGET_EXCEEDED", limit: error.limit, ...(error.drift ? { drift: error.drift } : {}) } };
+            return { outcome: outcomes.find((value) => ["blocked", "exhausted", "failed", "error"].includes(value)) ?? outcomes.at(-1), evidence: { reason: error.name === "PricingUnknownError" ? "PRICING_UNKNOWN" : error.name === "RoutingPolicyError" ? "ROUTE_UNAVAILABLE" : error.name === "BudgetReservationDriftError" ? "BUDGET_RESERVATION_DRIFT" : "BUDGET_EXCEEDED", limit: error.limit, ...(error.drift ? { drift: error.drift } : {}) } };
           }
           throw error;
         }

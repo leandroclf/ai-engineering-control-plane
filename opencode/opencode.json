@@ -10,10 +10,19 @@
       },
       "models": {
         "coding-strong": { "name": "Coding Strong" },
+        "coding-strong-openai": { "name": "Coding Strong — OpenAI" },
+        "coding-strong-anthropic": { "name": "Coding Strong — Anthropic" },
         "coding-fast": { "name": "Coding Fast" },
+        "coding-fast-openai": { "name": "Coding Fast — OpenAI" },
         "architecture": { "name": "Architecture" },
+        "architecture-openai": { "name": "Architecture — OpenAI" },
+        "architecture-anthropic": { "name": "Architecture — Anthropic" },
         "security": { "name": "Security" },
-        "review": { "name": "Independent Review" }
+        "security-openai": { "name": "Security — OpenAI" },
+        "security-anthropic": { "name": "Security — Anthropic" },
+        "review": { "name": "Independent Review" },
+        "review-openai": { "name": "Independent Review — OpenAI" },
+        "review-anthropic": { "name": "Independent Review — Anthropic" }
       }
     }
   },

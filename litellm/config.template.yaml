@@ -1,22 +1,165 @@
+# Generated from models/catalog.json. Do not edit.
 model_list:
   - model_name: coding-strong
     litellm_params:
       model: ${CODING_STRONG_MODEL}
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      deployment_id: openai-strong
+      provider_family: openai
+      capability_class: strong
+  - model_name: coding-strong-openai
+    litellm_params:
+      model: ${CODING_STRONG_MODEL}
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      deployment_id: openai-strong
+      provider_family: openai
+      capability_class: strong
+  - model_name: coding-strong
+    litellm_params:
+      model: ${CODING_STRONG_SECONDARY_MODEL}
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      deployment_id: anthropic-strong
+      provider_family: anthropic
+      capability_class: strong
+  - model_name: coding-strong-anthropic
+    litellm_params:
+      model: ${CODING_STRONG_SECONDARY_MODEL}
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      deployment_id: anthropic-strong
+      provider_family: anthropic
+      capability_class: strong
   - model_name: coding-fast
     litellm_params:
       model: ${CODING_FAST_MODEL}
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      deployment_id: openai-fast
+      provider_family: openai
+      capability_class: fast
+  - model_name: coding-fast-openai
+    litellm_params:
+      model: ${CODING_FAST_MODEL}
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      deployment_id: openai-fast
+      provider_family: openai
+      capability_class: fast
   - model_name: architecture
     litellm_params:
       model: ${ARCHITECTURE_MODEL}
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      deployment_id: openai-architecture
+      provider_family: openai
+      capability_class: strong
+  - model_name: architecture-openai
+    litellm_params:
+      model: ${ARCHITECTURE_MODEL}
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      deployment_id: openai-architecture
+      provider_family: openai
+      capability_class: strong
+  - model_name: architecture
+    litellm_params:
+      model: ${ARCHITECTURE_SECONDARY_MODEL}
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      deployment_id: anthropic-architecture
+      provider_family: anthropic
+      capability_class: strong
+  - model_name: architecture-anthropic
+    litellm_params:
+      model: ${ARCHITECTURE_SECONDARY_MODEL}
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      deployment_id: anthropic-architecture
+      provider_family: anthropic
+      capability_class: strong
   - model_name: security
     litellm_params:
       model: ${SECURITY_MODEL}
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      deployment_id: openai-security
+      provider_family: openai
+      capability_class: strong
+  - model_name: security-openai
+    litellm_params:
+      model: ${SECURITY_MODEL}
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      deployment_id: openai-security
+      provider_family: openai
+      capability_class: strong
+  - model_name: security
+    litellm_params:
+      model: ${SECURITY_SECONDARY_MODEL}
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      deployment_id: anthropic-security
+      provider_family: anthropic
+      capability_class: strong
+  - model_name: security-anthropic
+    litellm_params:
+      model: ${SECURITY_SECONDARY_MODEL}
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      deployment_id: anthropic-security
+      provider_family: anthropic
+      capability_class: strong
   - model_name: review
     litellm_params:
       model: ${REVIEW_MODEL}
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      deployment_id: anthropic-review
+      provider_family: anthropic
+      capability_class: strong
+  - model_name: review-anthropic
+    litellm_params:
+      model: ${REVIEW_MODEL}
+      api_key: os.environ/ANTHROPIC_API_KEY
+    model_info:
+      deployment_id: anthropic-review
+      provider_family: anthropic
+      capability_class: strong
+  - model_name: review
+    litellm_params:
+      model: ${REVIEW_SECONDARY_MODEL}
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      deployment_id: openai-review
+      provider_family: openai
+      capability_class: strong
+  - model_name: review-openai
+    litellm_params:
+      model: ${REVIEW_SECONDARY_MODEL}
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      deployment_id: openai-review
+      provider_family: openai
+      capability_class: strong
   - model_name: embeddings
     litellm_params:
       model: ${EMBEDDING_MODEL}
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      deployment_id: openai-embedding
+      provider_family: openai
+      capability_class: embedding
+  - model_name: embeddings-openai
+    litellm_params:
+      model: ${EMBEDDING_MODEL}
+      api_key: os.environ/OPENAI_API_KEY
+    model_info:
+      deployment_id: openai-embedding
+      provider_family: openai
+      capability_class: embedding
   - model_name: aicp-fallback-smoke
     litellm_params:
       model: openai/aicp-intentional-fault
@@ -24,7 +167,6 @@ router_settings:
   routing_strategy: simple-shuffle
   num_retries: 1
   fallbacks:
-    - coding-strong: [coding-fast]
     - aicp-fallback-smoke: [coding-fast]
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY

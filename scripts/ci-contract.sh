@@ -7,6 +7,7 @@ mkdir -p .aicp/ci
 npm run validate
 npm run test:architecture > .aicp/ci/architecture-contracts.json
 npm run validate:supply-chain > .aicp/ci/supply-chain.json
+npm run validate:model-catalog
 npm run evaluate:baseline > .aicp/ci/evaluation.stdout.json
 npm run validate:benchmark > .aicp/ci/paired-benchmark.json
 

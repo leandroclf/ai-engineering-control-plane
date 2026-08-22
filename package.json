@@ -17,6 +17,8 @@
     "ci:contracts": "bash scripts/ci-contract.sh",
     "test:architecture": "node scripts/architecture-contracts.mjs",
     "validate:supply-chain": "node scripts/validate-supply-chain.mjs",
+    "generate:model-catalog": "node scripts/generate-model-catalog.mjs",
+    "validate:model-catalog": "node scripts/generate-model-catalog.mjs --check",
     "validate:project": "node harness/src/cli/validate-project.mjs",
     "validate": "npm test && npm run test:python && npm run validate:suppressions && npm run test:security && npm run test:acceptance"
   },

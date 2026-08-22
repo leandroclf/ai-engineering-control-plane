@@ -10,6 +10,7 @@ import { ProjectAdapter } from "../../harness/src/gates/project-adapter.mjs";
 import { ControlPlaneAuthorizer } from "../../harness/src/security/identity-authority.mjs";
 import { EphemeralWorkerSpec, WorkloadIdentity } from "../../harness/src/runtime/ephemeral-worker-contract.mjs";
 import { reconcilePhysicalUsage } from "../../harness/src/budget/physical-usage.mjs";
+import { RoutingPolicy } from "../../harness/src/routing/routing-policy.mjs";
 
 test("invocation estimator reserves prompt schema output margin and worst eligible deployment", async () => {
   const estimator = new InvocationEstimator({ tokenizer: { count: async (value) => String(value).length }, fixedOverheadTokens: 10, safetyMargin: 1.2,
@@ -63,4 +64,25 @@ test("physical reconciliation fails closed when a provider attempt has unknown p
   assert.throws(() => reconcilePhysicalUsage({}, [
     { provider: "unknown", model: "m", providerRequestId: "req", pricingKnown: false },
   ]), (error) => error.name === "PricingUnknownError");
+});
+
+test("routing keeps capability class and enforces producer reviewer diversity", () => {
+  const catalog = { schemaVersion: 1, policyVersion: "test", aliases: { review: { class: "strong", requireProviderDiversity: true, deployments: [
+    { id: "a", provider: "openai", modelEnv: "A_MODEL", apiKeyEnv: "A_KEY", inputPerMillionEnv: "A_IN", outputPerMillionEnv: "A_OUT" },
+    { id: "b", provider: "anthropic", modelEnv: "B_MODEL", apiKeyEnv: "B_KEY", inputPerMillionEnv: "B_IN", outputPerMillionEnv: "B_OUT" },
+  ] } } };
+  const environment = { A_MODEL: "a", A_KEY: "key", A_IN: "1", A_OUT: "2", B_MODEL: "b", B_KEY: "key", B_IN: "3", B_OUT: "4" };
+  const decision = new RoutingPolicy(catalog, environment).decide({ alias: "review", role: "reviewer", producerProvider: "openai" });
+  assert.equal(decision.capabilityClass, "strong");
+  assert.deepEqual(decision.deployments.map((item) => item.provider), ["anthropic"]);
+  assert.equal(decision.selected.gatewayAlias, "review-anthropic");
+  assert.match(decision.decisionId, /^[a-f0-9]{64}$/);
+});
+
+test("routing fails closed for unknown pricing and unavailable diverse reviewer", () => {
+  const route = { schemaVersion: 1, policyVersion: "test", aliases: { strong: { class: "strong", requireProviderDiversity: true, deployments: [
+    { id: "a", provider: "openai", modelEnv: "MODEL", apiKeyEnv: "KEY", inputPerMillionEnv: "IN", outputPerMillionEnv: "OUT" },
+  ] } } };
+  assert.throws(() => new RoutingPolicy(route, { MODEL: "m", KEY: "k" }).decide({ alias: "strong" }), (error) => error.name === "PricingUnknownError");
+  assert.throws(() => new RoutingPolicy(route, { MODEL: "m", KEY: "k", IN: "1", OUT: "2" }).decide({ alias: "strong", role: "reviewer", producerProvider: "openai" }), /ROUTE_UNAVAILABLE/);
 });

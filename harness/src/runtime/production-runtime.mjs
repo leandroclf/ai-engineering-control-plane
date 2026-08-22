@@ -14,6 +14,7 @@ import { ProjectAdapter } from "../gates/project-adapter.mjs";
 import { ProjectGateRunner } from "../gates/project-gate-runner.mjs";
 import { GateRegistry, ProjectGateProvider, ScannerGateProvider } from "../gates/gate-registry.mjs";
 import { OtlpHttpTelemetry } from "../telemetry/otlp-http-telemetry.mjs";
+import { RoutingPolicy } from "../routing/routing-policy.mjs";
 import { WorkspaceAttestor } from "../security/workspace-attestation.mjs";
 import { PostgresRunStore } from "../workflow/postgres-run-store.mjs";
 import { GovernedRuntime } from "./governed-runtime.mjs";
@@ -50,7 +51,7 @@ export async function createProductionRuntime({ environment = process.env } = {}
     const budgetAuthority = new BudgetAuthority({
       store: new PostgresBudgetStore(database),
       estimator: new InvocationEstimator({
-        pricingCatalog: new RoutingPricingCatalog(routingConfiguration.aliases),
+        pricingCatalog: new RoutingPricingCatalog(routingConfiguration.aliases, environment),
         safetyMargin: Number(environment.HARNESS_RESERVATION_SAFETY_MARGIN ?? 1.2),
       }),
       reservation: { maxOutputTokens: Number(environment.HARNESS_RESERVATION_OUTPUT_TOKENS ?? 4096) },
@@ -71,6 +72,7 @@ export async function createProductionRuntime({ environment = process.env } = {}
       gateRunner: new ProjectGateRunner({ runner: processRunner }),
       gateRegistry,
       budgetAuthority,
+      routingPolicy: new RoutingPolicy(routingConfiguration, environment),
     });
     const runtime = new GovernedRuntime({
       definition,
@@ -87,7 +89,7 @@ export async function createProductionRuntime({ environment = process.env } = {}
       metadata: {
         versions: { workflow: `${definition.name}-v${definition.version}`, policy: "policy-v1", context: "context-v2" },
         policies: [{ name: "control-plane", version: "policy-v1" }, { name: "workspace", version: "workspace-v1" }],
-        models: Object.entries(routingConfiguration.aliases).map(([alias, route]) => ({ alias, deployments: route.deployments.map(({ model }) => model) })),
+        models: Object.entries(routingConfiguration.aliases).map(([alias, route]) => ({ alias, capabilityClass: route.class, deployments: route.deployments.map(({ id, provider, modelEnv }) => ({ id, provider, configured: Boolean(environment[modelEnv]) })) })),
       },
       readiness: async () => {
         const checks = { postgres: "ok", memory: "ok", litellm: "ok", opencode: "ok", workflow: "ok", gateRegistry: "ok" };

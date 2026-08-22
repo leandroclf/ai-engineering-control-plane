@@ -32,10 +32,14 @@ set_if_placeholder() {
 }
 
 set_if_placeholder CODING_STRONG_MODEL openai/gpt-5.3-codex
+set_if_placeholder CODING_STRONG_SECONDARY_MODEL anthropic/claude-sonnet-4-5
 set_if_placeholder CODING_FAST_MODEL openai/gpt-5.4-mini
 set_if_placeholder ARCHITECTURE_MODEL openai/gpt-5.4
+set_if_placeholder ARCHITECTURE_SECONDARY_MODEL anthropic/claude-opus-4-1
 set_if_placeholder SECURITY_MODEL openai/gpt-5.4
-set_if_placeholder REVIEW_MODEL openai/gpt-5.4
+set_if_placeholder SECURITY_SECONDARY_MODEL anthropic/claude-sonnet-4-5
+set_if_placeholder REVIEW_MODEL anthropic/claude-sonnet-4-5
+set_if_placeholder REVIEW_SECONDARY_MODEL openai/gpt-5.4
 set_if_placeholder SUMMARIZER_MODEL openai/gpt-5.4-mini
 set_if_placeholder EMBEDDING_MODEL openai/text-embedding-3-small
 

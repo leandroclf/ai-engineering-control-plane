@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "routing-v1",
+  "aliases": {
+    "coding-strong": {
+      "class": "strong",
+      "requireProviderDiversity": false,
+      "deployments": [
+        {
+          "id": "openai-strong",
+          "provider": "openai",
+          "modelEnv": "CODING_STRONG_MODEL"
+        },
+        {
+          "id": "anthropic-strong",
+          "provider": "anthropic",
+          "modelEnv": "CODING_STRONG_SECONDARY_MODEL"
+        }
+      ]
+    },
+    "coding-fast": {
+      "class": "fast",
+      "requireProviderDiversity": false,
+      "deployments": [
+        {
+          "id": "openai-fast",
+          "provider": "openai",
+          "modelEnv": "CODING_FAST_MODEL"
+        }
+      ]
+    },
+    "architecture": {
+      "class": "strong",
+      "requireProviderDiversity": false,
+      "deployments": [
+        {
+          "id": "openai-architecture",
+          "provider": "openai",
+          "modelEnv": "ARCHITECTURE_MODEL"
+        },
+        {
+          "id": "anthropic-architecture",
+          "provider": "anthropic",
+          "modelEnv": "ARCHITECTURE_SECONDARY_MODEL"
+        }
+      ]
+    },
+    "security": {
+      "class": "strong",
+      "requireProviderDiversity": false,
+      "deployments": [
+        {
+          "id": "openai-security",
+          "provider": "openai",
+          "modelEnv": "SECURITY_MODEL"
+        },
+        {
+          "id": "anthropic-security",
+          "provider": "anthropic",
+          "modelEnv": "SECURITY_SECONDARY_MODEL"
+        }
+      ]
+    },
+    "review": {
+      "class": "strong",
+      "requireProviderDiversity": true,
+      "deployments": [
+        {
+          "id": "anthropic-review",
+          "provider": "anthropic",
+          "modelEnv": "REVIEW_MODEL"
+        },
+        {
+          "id": "openai-review",
+          "provider": "openai",
+          "modelEnv": "REVIEW_SECONDARY_MODEL"
+        }
+      ]
+    },
+    "embeddings": {
+      "class": "embedding",
+      "requireProviderDiversity": false,
+      "deployments": [
+        {
+          "id": "openai-embedding",
+          "provider": "openai",
+          "modelEnv": "EMBEDDING_MODEL"
+        }
+      ]
+    }
+  }
+}

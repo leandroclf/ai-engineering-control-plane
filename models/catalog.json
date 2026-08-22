@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "routing-v1",
+  "aliases": {
+    "coding-strong": {
+      "class": "strong",
+      "deployments": [
+        { "id": "openai-strong", "provider": "openai", "modelEnv": "CODING_STRONG_MODEL", "apiKeyEnv": "OPENAI_API_KEY", "inputPerMillionEnv": "AICP_OPENAI_STRONG_INPUT_PRICE", "outputPerMillionEnv": "AICP_OPENAI_STRONG_OUTPUT_PRICE" },
+        { "id": "anthropic-strong", "provider": "anthropic", "modelEnv": "CODING_STRONG_SECONDARY_MODEL", "apiKeyEnv": "ANTHROPIC_API_KEY", "inputPerMillionEnv": "AICP_ANTHROPIC_STRONG_INPUT_PRICE", "outputPerMillionEnv": "AICP_ANTHROPIC_STRONG_OUTPUT_PRICE" }
+      ]
+    },
+    "coding-fast": {
+      "class": "fast",
+      "deployments": [
+        { "id": "openai-fast", "provider": "openai", "modelEnv": "CODING_FAST_MODEL", "apiKeyEnv": "OPENAI_API_KEY", "inputPerMillionEnv": "AICP_OPENAI_FAST_INPUT_PRICE", "outputPerMillionEnv": "AICP_OPENAI_FAST_OUTPUT_PRICE" }
+      ]
+    },
+    "architecture": {
+      "class": "strong",
+      "deployments": [
+        { "id": "openai-architecture", "provider": "openai", "modelEnv": "ARCHITECTURE_MODEL", "apiKeyEnv": "OPENAI_API_KEY", "inputPerMillionEnv": "AICP_OPENAI_STRONG_INPUT_PRICE", "outputPerMillionEnv": "AICP_OPENAI_STRONG_OUTPUT_PRICE" },
+        { "id": "anthropic-architecture", "provider": "anthropic", "modelEnv": "ARCHITECTURE_SECONDARY_MODEL", "apiKeyEnv": "ANTHROPIC_API_KEY", "inputPerMillionEnv": "AICP_ANTHROPIC_STRONG_INPUT_PRICE", "outputPerMillionEnv": "AICP_ANTHROPIC_STRONG_OUTPUT_PRICE" }
+      ]
+    },
+    "security": {
+      "class": "strong",
+      "deployments": [
+        { "id": "openai-security", "provider": "openai", "modelEnv": "SECURITY_MODEL", "apiKeyEnv": "OPENAI_API_KEY", "inputPerMillionEnv": "AICP_OPENAI_STRONG_INPUT_PRICE", "outputPerMillionEnv": "AICP_OPENAI_STRONG_OUTPUT_PRICE" },
+        { "id": "anthropic-security", "provider": "anthropic", "modelEnv": "SECURITY_SECONDARY_MODEL", "apiKeyEnv": "ANTHROPIC_API_KEY", "inputPerMillionEnv": "AICP_ANTHROPIC_STRONG_INPUT_PRICE", "outputPerMillionEnv": "AICP_ANTHROPIC_STRONG_OUTPUT_PRICE" }
+      ]
+    },
+    "review": {
+      "class": "strong",
+      "requireProviderDiversity": true,
+      "deployments": [
+        { "id": "anthropic-review", "provider": "anthropic", "modelEnv": "REVIEW_MODEL", "apiKeyEnv": "ANTHROPIC_API_KEY", "inputPerMillionEnv": "AICP_ANTHROPIC_STRONG_INPUT_PRICE", "outputPerMillionEnv": "AICP_ANTHROPIC_STRONG_OUTPUT_PRICE" },
+        { "id": "openai-review", "provider": "openai", "modelEnv": "REVIEW_SECONDARY_MODEL", "apiKeyEnv": "OPENAI_API_KEY", "inputPerMillionEnv": "AICP_OPENAI_STRONG_INPUT_PRICE", "outputPerMillionEnv": "AICP_OPENAI_STRONG_OUTPUT_PRICE" }
+      ]
+    },
+    "embeddings": {
+      "class": "embedding",
+      "deployments": [
+        { "id": "openai-embedding", "provider": "openai", "modelEnv": "EMBEDDING_MODEL", "apiKeyEnv": "OPENAI_API_KEY", "inputPerMillionEnv": "AICP_OPENAI_EMBEDDING_INPUT_PRICE", "outputPerMillionEnv": "AICP_OPENAI_EMBEDDING_OUTPUT_PRICE" }
+      ]
+    }
+  }
+}
