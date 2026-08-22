@@ -167,10 +167,10 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Validate owned image build graph
-        run: docker compose --env-file versions.env config --quiet
+      - name: Validate immutable owned image inputs
+        run: npm run validate:supply-chain
       - name: Build owned images for downstream scanning
-        run: docker compose --env-file versions.env build memory-service workspace harness
+        run: npm run build:owned-images
       - name: Build and attest ephemeral worker profiles
         run: bash scripts/build-worker-images.sh
       - name: Exercise deployment-side worker lifecycle

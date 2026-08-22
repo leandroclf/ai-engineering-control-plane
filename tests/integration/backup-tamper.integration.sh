@@ -2,6 +2,7 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+mkdir -p "$root/.aicp"
 temporary="$(mktemp -d "$root/.aicp/backup-tamper.XXXXXX")"
 trap 'rm -rf "$temporary"' EXIT
 printf 'test-only-passphrase\n' > "$temporary/passphrase"

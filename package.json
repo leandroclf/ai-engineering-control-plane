@@ -23,6 +23,7 @@
     "test:architecture": "node scripts/architecture-contracts.mjs",
     "validate:supply-chain": "node scripts/validate-supply-chain.mjs",
     "scan:owned-images": "bash scripts/scan-owned-images.sh",
+    "build:owned-images": "bash scripts/build-owned-images.sh",
     "generate:model-catalog": "node scripts/generate-model-catalog.mjs",
     "validate:model-catalog": "node scripts/generate-model-catalog.mjs --check",
     "validate:project": "node harness/src/cli/validate-project.mjs",
