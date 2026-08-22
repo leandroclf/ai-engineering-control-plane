@@ -92,3 +92,26 @@ test("OpenAPI create-run examples are accepted behaviorally and invalid schema f
     assert.equal((await response.json()).error.code, "INVALID_REQUEST");
   }
 });
+
+test("harness HTTP server rejects oversized request bodies with 413", async (context) => {
+  const server = createHarnessServer({
+    token: "test-token",
+    projectsRoot: "/workspace/projects",
+    runtime: { start: async () => ({ run: { id: "run-too-large" } }) },
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  context.after(() => new Promise((resolve) => server.close(resolve)));
+  const endpoint = `http://127.0.0.1:${server.address().port}/v1/runs`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { Authorization: "Bearer test-token", "Content-Type": "application/json" },
+    body: JSON.stringify({
+      project: "site",
+      query: "x".repeat(1_048_576),
+      idempotencyKey: "issue-oversized",
+    }),
+  });
+
+  assert.equal(response.status, 413);
+  assert.equal((await response.json()).error.code, "PAYLOAD_TOO_LARGE");
+});

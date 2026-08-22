@@ -9,18 +9,25 @@ export const API_OPERATIONS = Object.freeze([
   "getTask", "getTaskBudget", "listBudgetEvents", "cancelTaskBudget", "listCapabilities", "listWorkflows", "listPolicies", "listModels", "getContext",
 ]);
 
+export const MAX_REQUEST_BODY_BYTES = 1_048_576;
+
 function send(response, status, body) {
   response.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
   response.end(`${JSON.stringify(body)}\n`);
 }
 
 async function jsonBody(request, limit = 1_048_576) {
-  let body = "";
+  let bytes = 0;
+  const chunks = [];
+  let oversized = false;
   for await (const chunk of request) {
-    body += chunk;
-    if (Buffer.byteLength(body) > limit) throw new RangeError("request body exceeds limit");
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    bytes += buffer.length;
+    if (bytes > limit) oversized = true;
+    if (!oversized) chunks.push(buffer);
   }
-  return body ? JSON.parse(body) : {};
+  if (oversized) throw new RangeError("request body exceeds limit");
+  return chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
 }
 
 const CREATE_RUN_FIELDS = new Set(["project", "repository", "query", "idempotencyKey", "exactSymbols", "scopes", "constraints"]);
@@ -122,14 +129,15 @@ export function createHarnessServer({ runtime, token, authorizer = null, project
       if (cancelBudget) { send(response, 200, await runtime.cancelBudget(decodeURIComponent(cancelBudget[1]))); return; }
       send(response, 404, { error: { code: "NOT_FOUND", message: "The requested resource was not found.", retryable: false, requestId, details: {} } });
     } catch (error) {
-      const clientError = error instanceof TypeError || error instanceof RangeError || error instanceof SyntaxError;
+      const payloadTooLarge = error instanceof RangeError;
+      const clientError = error instanceof TypeError || error instanceof SyntaxError;
       const unavailable = error.name === "GateResolutionError" || error.name === "PricingUnknownError";
       const forbidden = error.name === "AuthorizationError";
       const conflict = error.name === "IdempotencyConflictError";
       const notFound = /^unknown (?:run|task|context|task budget)/.test(error.message);
-      send(response, clientError ? 400 : forbidden ? 403 : notFound ? 404 : conflict ? 409 : unavailable ? 422 : 500, { error: {
-        code: clientError ? "INVALID_REQUEST" : forbidden ? "FORBIDDEN" : notFound ? "NOT_FOUND" : conflict ? "IDEMPOTENCY_CONFLICT" : unavailable ? error.code ?? error.name : "RUNTIME_FAILURE",
-        message: clientError || unavailable ? error.message : "The control plane could not complete the request.", retryable: false, requestId, details: {},
+      send(response, payloadTooLarge ? 413 : clientError ? 400 : forbidden ? 403 : notFound ? 404 : conflict ? 409 : unavailable ? 422 : 500, { error: {
+        code: payloadTooLarge ? "PAYLOAD_TOO_LARGE" : clientError ? "INVALID_REQUEST" : forbidden ? "FORBIDDEN" : notFound ? "NOT_FOUND" : conflict ? "IDEMPOTENCY_CONFLICT" : unavailable ? error.code ?? error.name : "RUNTIME_FAILURE",
+        message: payloadTooLarge || clientError || unavailable ? error.message : "The control plane could not complete the request.", retryable: false, requestId, details: {},
       } });
     }
   });

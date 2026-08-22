@@ -4,6 +4,7 @@ import { resolve, sep } from "node:path";
 
 import { EphemeralWorkerSpec, WorkloadIdentity } from "../runtime/ephemeral-worker-contract.mjs";
 import { DockerWorkerManager } from "./docker-worker-manager.mjs";
+import { readJsonBody, statusForWorkerManagerError, validateCreateWorkerPayload, validateExecPayload } from "./worker-manager-http.mjs";
 import { ProcessDockerControl } from "./process-docker-control.mjs";
 import { WorkerProfileRegistry } from "./worker-profile-registry.mjs";
 import { WorkloadIdentityService } from "./workload-identity-service.mjs";
@@ -23,7 +24,6 @@ function projectPath(project) {
   if (candidate !== projectsRoot && !candidate.startsWith(`${projectsRoot}${sep}`)) throw new Error("WORKER_PROJECT_OUTSIDE_SERVER_ROOT");
   return candidate;
 }
-async function body(request) { const chunks = []; for await (const chunk of request) chunks.push(chunk); return chunks.length ? JSON.parse(Buffer.concat(chunks)) : {}; }
 function send(response, status, payload) { const encoded = JSON.stringify(payload); response.writeHead(status, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(encoded) }); response.end(encoded); }
 
 const server = createServer(async (request, response) => {
@@ -31,18 +31,25 @@ const server = createServer(async (request, response) => {
     if (request.headers.authorization !== `Bearer ${apiToken}`) return send(response, 401, { error: "UNAUTHORIZED" });
     if (request.method === "GET" && request.url === "/ready") return send(response, 200, { status: "ready", profiles: [...profiles.profiles.keys()].sort() });
     if (request.method === "POST" && request.url === "/v1/workers") {
-      const payload = await body(request); const token = identities.issue(payload.runId);
+      const payload = validateCreateWorkerPayload(await readJsonBody(request));
+      const token = identities.issue(payload.runId);
       const identity = new WorkloadIdentity({ runId: payload.runId, litellmKeyRef: `llm/${payload.runId}`, memoryTokenRef: `memory/${payload.runId}`, expiresAt: new Date(Date.now() + Number(process.env.WORKER_IDENTITY_TTL_SECONDS ?? 900) * 1000) });
       return send(response, 201, await manager.create(new EphemeralWorkerSpec({ runId: payload.runId, projectDirectory: projectPath(payload.project), profile: payload.profile, environment: payload.environment, identity, identityToken: token })));
     }
     const match = request.url?.match(/^\/v1\/workers\/([^/]+)(?:\/(exec|evidence))?$/);
     if (!match) return send(response, 404, { error: "NOT_FOUND" });
     const runId = decodeURIComponent(match[1]);
-    if (request.method === "POST" && match[2] === "exec") return send(response, 200, await manager.exec(runId, (await body(request)).command));
+    if (request.method === "POST" && match[2] === "exec") {
+      const { command } = validateExecPayload(await readJsonBody(request));
+      return send(response, 200, await manager.exec(runId, command));
+    }
     if (request.method === "GET" && match[2] === "evidence") return send(response, 200, await manager.collectEvidence(runId));
     if (request.method === "DELETE" && !match[2]) return send(response, 200, { destroyed: await manager.destroy(runId) });
     return send(response, 405, { error: "METHOD_NOT_ALLOWED" });
-  } catch (error) { return send(response, 400, { error: error.message }); }
+  } catch (error) {
+    const status = statusForWorkerManagerError(error);
+    return send(response, status, { error: error.message });
+  }
 });
 
 const port = Number(process.env.WORKER_MANAGER_PORT ?? 8090);

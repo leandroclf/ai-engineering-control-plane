@@ -13,6 +13,30 @@ from aicp_memory.repository import PostgresMemoryRepository
 from aicp_memory.token_counter import LiteLLMTokenCounter
 from aicp_memory.telemetry import OtlpHttpTelemetry
 
+MAX_REQUEST_BODY_BYTES = int(os.environ.get("MEMORY_SERVICE_MAX_REQUEST_BODY_BYTES", "1048576"))
+
+
+class PayloadTooLargeError(ValueError):
+    pass
+
+
+def read_request_body(headers, stream, limit=MAX_REQUEST_BODY_BYTES):
+    raw_length = headers.get("Content-Length")
+    if raw_length in (None, ""):
+        return b""
+    try:
+        length = int(raw_length)
+    except ValueError as exc:
+        raise ValueError("invalid content length") from exc
+    if length < 0:
+        raise ValueError("invalid content length")
+    if length > limit:
+        raise PayloadTooLargeError("request body exceeds limit")
+    body = stream.read(length)
+    if len(body) > limit:
+        raise PayloadTooLargeError("request body exceeds limit")
+    return body
+
 
 def build_application():
     token = os.environ["MEMORY_SERVICE_TOKEN"]
@@ -57,8 +81,14 @@ class Handler(BaseHTTPRequestHandler):
         self._dispatch()
 
     def _dispatch(self):
-        length = int(self.headers.get("Content-Length", "0"))
-        body = self.rfile.read(length)
+        try:
+            body = read_request_body(self.headers, self.rfile)
+        except PayloadTooLargeError as error:
+            self._send(413, {"error": "PAYLOAD_TOO_LARGE", "message": str(error)})
+            return
+        except ValueError as error:
+            self._send(400, {"error": "INVALID_REQUEST", "message": str(error)})
+            return
         response = self.application.handle(self.command, self.path, dict(self.headers.items()), body)
         try:
             payload = json.loads(body or b"{}")
