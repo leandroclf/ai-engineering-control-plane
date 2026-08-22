@@ -4,7 +4,7 @@ Updated: 2026-08-21
 
 ## Current verdict
 
-`CONTEXT_MEMORY_READY`
+`OBSERVABILITY_CORE_READY`
 
 The repository now contains an executable Foundation, deterministic Engineering
 Harness, persistent scoped Memory API and an authenticated Context runtime.
@@ -13,14 +13,14 @@ in PostgreSQL; Neo4j is rebuilt as a derived projection; retrieval is
 exact-first with lexical/vector fallback and gateway token counting. Harness
 stages receive policy-scoped packages and persist sanitized provenance. It MUST
 NOT yet be classified as `READY_FOR_HUMAN_REVIEW` for the full OpenSpec change.
-Runtime agent wiring, telemetry backend, restore drill and multi-host acceptance
-remain open.
+Runtime agent wiring, fallback fault injection, Langfuse deployment, restore
+drill and multi-host acceptance remain open.
 
 ## Verified evidence
 
 | Capability | Evidence | Result |
 |---|---|---|
-| Local contracts | `npm run validate` | PASS: 33 Node tests, 20 Python tests, configuration and Harness acceptance |
+| Local contracts | `npm run validate` | PASS: 34 Node tests, 21 Python tests, configuration and Harness acceptance |
 | Workspace image | `docker compose build workspace` | PASS |
 | Memory image | `docker compose build memory-service` | PASS |
 | OpenCode baseline | `docker run --rm aicp-workspace opencode --version` | PASS: `1.18.21` |
@@ -58,6 +58,9 @@ remain open.
 | Reference graph | Control Plane corpus | PASS: 99 references persisted and local `IMPORTS` projected |
 | Impact traversal | `incremental-index.mjs` | PASS: four direct/transitive dependents returned |
 | Harness context delivery | `scripts/context-smoke.sh` | PASS: package delivered and raw content omitted from stage evidence |
+| Cross-service telemetry | `scripts/telemetry-smoke.sh` | PASS: Harness/Memory task correlation and sensitive-field rejection |
+| Gateway telemetry | LiteLLM OTel v2 | PASS: alias, resolved model, input/output tokens and total cost exported |
+| Collector baseline | OTel Collector contrib `0.157.0` | PASS: pinned image, OTLP HTTP and local redacted evidence |
 
 ## Implemented artifacts
 
@@ -80,7 +83,7 @@ remain open.
 - Neo4j constraints, graph delta projection and reconstructible rebuild.
 - Gateway token counter, impact traversal and stage-specific Context policies.
 - Harness Context provider with sanitized atomic stage evidence.
-- OTel collector redaction baseline.
+- OTel emitters for Harness/Memory, LiteLLM OTel v2 and collector redaction/file baseline.
 - GitHub clean-checkout contract pipeline.
 - Threat model, runbook, memory model, compatibility and ADR documentation.
 
@@ -105,7 +108,8 @@ The following values cannot be invented or committed:
 
 - Expose authenticated REST v1 run APIs.
 - Wire the runtime entrypoint to PostgreSQL, OpenCode and installed scanner CLIs.
-- Instrument services and validate a real telemetry backend.
+- Validate LiteLLM fallback through controlled fault injection.
+- Vendor and validate the separate Langfuse observability profile.
 - Execute encrypted backup/restore drill.
 - Run clean-host, provider, CI and multi-host acceptance.
 
@@ -119,6 +123,6 @@ The Foundation and Harness can be revalidated at any time with:
 npm run validate
 ```
 
-The next required evidence is runtime integration and observability: wire real
-OpenCode/scanner handlers to persistent runs, propagate correlation identifiers
-and validate a telemetry backend without source, prompt or secret leakage.
+The next required evidence is runtime integration and advanced operations: wire
+real OpenCode/scanner handlers, test model fallback, vendor Langfuse and execute
+an encrypted clean-environment restore drill.

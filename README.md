@@ -34,6 +34,7 @@ Validate an existing environment:
 ./scripts/smoke.sh
 ./scripts/memory-smoke.sh
 ./scripts/context-smoke.sh
+./scripts/telemetry-smoke.sh
 ```
 
 Index a repository after granting its exact `REPOSITORY:<id>` scope:
@@ -49,6 +50,11 @@ recreate PostgreSQL index rows and the Neo4j projection from Git.
 `context-smoke.sh` compiles through the authenticated API, delivers the package
 to a Harness stage and verifies that persisted stage evidence contains only the
 context ID, usage, retrieval reasons and provenance, never raw source content.
+
+`telemetry-smoke.sh` requires the collector started by bootstrap and verifies
+cross-service task correlation plus rejection of prompt, source and credential
+fields. LiteLLM OTel v2 exports model aliases, resolved models, token usage and
+cost with message-content capture disabled.
 
 Open the workspace:
 

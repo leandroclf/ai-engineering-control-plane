@@ -316,7 +316,7 @@ indicados.
 
 ## 6. Observabilidade e operação
 
-- [ ] 6.1 Instrumentar Harness, Memory e Context com OTel
+- [x] 6.1 Instrumentar Harness, Memory e Context com OTel
   - Objective: propagar task/run IDs e emitir spans/métricas sem payload sensível.
   - Likely files/components: `harness/src/telemetry/`, serviços, collector config.
   - Depends on: 4.9, 5.9.

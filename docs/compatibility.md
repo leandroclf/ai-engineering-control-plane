@@ -9,6 +9,7 @@ Validated on 2026-08-21 against package and OCI registries.
 | Redis | `7.2.4` | OCI index `sha256:5a93f6b2e391b78e8bd3f9e7e1e1e06aeb5295043b4703fb88392835cec924a0` |
 | Neo4j | `2026.07.1` community | OCI index `sha256:0ddfa71c8f0bfe0d780d74fb66b985de4767bbd274bab70c0806cb3a6deec101` |
 | LiteLLM database | temporary `latest` | OCI index `sha256:4b3226f4ccd7793d7dca6862d3681604d7ab640d8d6285be6061fd48514e6e71` |
+| OTel Collector contrib | `0.157.0` | OCI digest `sha256:f2f01157055a9b2aab9df7118e1f1c9abf345e99b23bc7a2bc791db374a7d0f6` |
 
 OpenCode npm integrity:
 `sha512-BxQyxpD0y2X0sXJUKLOooXVmi9QIoeKPtdH68r7QRiqXJ/YulK1MQvSe8KyA8183zoPV0G6JAtgz1OqmE3OGUw==`.

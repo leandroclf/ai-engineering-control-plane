@@ -59,3 +59,11 @@ Run `./scripts/context-smoke.sh [repository-id] [query] [exact-symbol] [budget]`
 to verify gateway token counting, authorized compilation and sanitized Harness
 stage evidence. Use `/v1/context:impact` to inspect local import dependents of a
 path before planning a change.
+
+## Telemetry degradation
+
+Run `./scripts/telemetry-smoke.sh` and inspect `docker compose logs
+otel-collector`. Workflow execution remains functional if export fails, but the
+stage evidence records `telemetryExported=false`; this is degradation, not a
+successful telemetry result. Local OTLP evidence is written under ignored
+`.aicp/otel/` and excludes full prompts/source by default.
