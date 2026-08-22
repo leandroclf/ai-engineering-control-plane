@@ -35,3 +35,22 @@ discarded.
 `docker compose stop` preserves state. `docker compose down` removes containers
 and networks but not bind-mounted canonical state. Do not use volume/data
 deletion commands without a separately approved destructive procedure.
+
+## Repository index and graph rebuild
+
+Index a configured checkout and verify that a second run is a no-op:
+
+```bash
+./scripts/index.sh projects/<repository> <repository-id>
+./scripts/index.sh projects/<repository> <repository-id>
+```
+
+Use `--rebuild` after graph loss or a projection schema change:
+
+```bash
+./scripts/index.sh projects/<repository> <repository-id> --rebuild
+```
+
+PostgreSQL is canonical, Neo4j is reconstructible and Redis is not required for
+the rebuild. A failed graph projection returns `503` and does not advance the
+incremental index state, so retrying the same operation remains safe.

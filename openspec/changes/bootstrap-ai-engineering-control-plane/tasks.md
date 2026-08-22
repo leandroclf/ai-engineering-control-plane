@@ -262,7 +262,7 @@ indicados.
   - Completion criteria: memória stale nunca entra em busca ativa e todo motivo
     gera evento.
 
-- [ ] 5.4 Implementar indexador Git incremental
+- [x] 5.4 Implementar indexador Git incremental
   - Objective: identificar deltas por blob OID/hash e cache keys versionadas.
   - Likely files/components: `context/indexer/git_index.*`, `scripts/index.sh`.
   - Depends on: 5.1.
@@ -270,7 +270,7 @@ indicados.
   - Completion criteria: no-op parseia zero; alteração isolada limita o delta;
     branch reuse é comprovado.
 
-- [ ] 5.5 Implementar parser/symbol index da primeira linguagem
+- [x] 5.5 Implementar parser/symbol index da primeira linguagem
   - Objective: extrair arquivos, símbolos, referências, testes e chunks com
     proveniência.
   - Likely files/components: `context/parsers/`, `context/indexer/symbol_index.*`.
@@ -287,7 +287,7 @@ indicados.
   - Completion criteria: rebuild, rename, delete e impact traversal passam sem
     depender de Redis.
 
-- [ ] 5.7 Implementar retrieval lexical/vector como fallback
+- [x] 5.7 Implementar retrieval lexical/vector como fallback
   - Objective: indexar chunks semanticamente estáveis, com modelo/dimensão
     versionados e cache.
   - Likely files/components: graph vector/fulltext indexes, embedding adapter.

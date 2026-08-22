@@ -35,6 +35,16 @@ Validate an existing environment:
 ./scripts/memory-smoke.sh
 ```
 
+Index a repository after granting its exact `REPOSITORY:<id>` scope:
+
+```bash
+./scripts/index.sh projects/<repository> <repository-id>
+```
+
+The first run parses changed JavaScript files and embeds stable symbol chunks;
+an unchanged second run parses and embeds zero artifacts. Add `--rebuild` to
+recreate PostgreSQL index rows and the Neo4j projection from Git.
+
 Open the workspace:
 
 ```bash

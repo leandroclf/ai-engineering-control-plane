@@ -17,6 +17,10 @@ an actor, allowed actions and an exact set of scopes configured by
 | `POST` | `/v1/memories/{id}:promote` | Promote a candidate to an authorized scope |
 | `POST` | `/v1/memories/{id}:invalidate` | Invalidate current knowledge with a reason |
 | `POST` | `/v1/memories/{id}:supersede` | Create a new active version and supersede old knowledge |
+| `GET` | `/v1/index/repositories/{repo}` | Read the authorized persistent index state |
+| `POST` | `/v1/index/repositories/{repo}:sync` | Apply an incremental Git/index delta |
+| `POST` | `/v1/index/repositories/{repo}:rebuild` | Rebuild canonical index rows and the graph projection |
+| `POST` | `/v1/context:compile` | Compile an authorized, budgeted context package |
 
 ## Create
 
@@ -44,3 +48,20 @@ authorization record.
 Lifecycle state is never hard-deleted. Promotion, invalidation, supersession and
 TTL expiration append events to `memory.memory_events`. A database trigger
 rejects update or delete attempts against that ledger.
+
+## Index and context
+
+Repository routes require the exact `REPOSITORY:<repo>` grant. Sync payloads
+carry Git blob OIDs, parser/schema versions, symbols, references and stable
+chunks. Embeddings are requested through the limited LiteLLM `embeddings`
+alias, persisted with model/dimension/content identity and reused when that
+identity remains unchanged.
+
+Context compilation accepts `repository`, `task_id`, `query`, optional
+`exact_symbols`, authorized `scopes` and a positive `budget`. The response
+contains a deterministic `context_id`, calculated token usage and selected
+artifacts with retrieval reason and provenance. Exact symbols are fetched
+before the lexical result limit; semantic similarity is a fallback.
+
+Operational dependency failures return `503` with
+`{"error":"DEPENDENCY_UNAVAILABLE"}` and do not expose upstream details.

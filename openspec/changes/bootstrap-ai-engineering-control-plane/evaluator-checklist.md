@@ -29,16 +29,16 @@
 
 ## Context e memória
 
-- [ ] Os sete escopos estão implementados com autorização server-side.
-- [ ] Memória de projeto A não aparece em projeto B.
-- [ ] Toda memória ativa tem authority/status/version/provenance aplicáveis.
-- [ ] Invalidation/supersession/expiry gera evento auditável.
-- [ ] Raw secret é rejeitado ou redigido antes da persistência.
-- [ ] Reindex no-op processa zero arquivos.
+- [x] Os sete escopos estão implementados com autorização server-side.
+- [x] Memória de projeto A não aparece em projeto B.
+- [x] Toda memória ativa tem authority/status/version/provenance aplicáveis.
+- [x] Invalidation/supersession/expiry gera evento auditável.
+- [x] Raw secret é rejeitado ou redigido antes da persistência.
+- [x] Reindex no-op processa zero arquivos.
 - [ ] Rename/delete atualiza projeções sem órfãos relevantes.
-- [ ] Neo4j é reconstruído de Git + estado canônico.
-- [ ] Exact-symbol precede fallback semântico.
-- [ ] ContextPackage respeita token budget e explica seleção.
+- [x] Neo4j é reconstruído de Git + estado canônico.
+- [x] Exact-symbol precede fallback semântico.
+- [x] ContextPackage respeita o budget calculado e explica seleção.
 
 ## Gateway e segurança
 

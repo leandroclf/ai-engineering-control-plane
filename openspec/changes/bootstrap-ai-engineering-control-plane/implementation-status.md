@@ -4,21 +4,22 @@ Updated: 2026-08-21
 
 ## Current verdict
 
-`MEMORY_API_READY`
+`CONTEXT_RUNTIME_PARTIAL`
 
 The repository now contains an executable Foundation, deterministic Engineering
-Harness and persistent scoped Memory API. Memory lifecycle operations are
-transactional in PostgreSQL, authorized by exact scope, idempotent and audited
-through an append-only ledger. It MUST NOT yet be classified as
-`READY_FOR_HUMAN_REVIEW` for the full OpenSpec change. Incremental symbol/vector
-indexing, GraphRAG, telemetry backend, restore drill and multi-host acceptance
-remain open.
+Harness, persistent scoped Memory API and an authenticated Context runtime.
+Git deltas, JavaScript symbols/chunks and versioned embeddings persist in
+PostgreSQL; Neo4j is rebuilt as a derived projection; retrieval is exact-first,
+lexical/vector fallback and budgeted. It MUST NOT yet be classified as
+`READY_FOR_HUMAN_REVIEW` for the full OpenSpec change. Reference/impact graph
+traversal, exact model token counting, executor integration, telemetry backend,
+restore drill and multi-host acceptance remain open.
 
 ## Verified evidence
 
 | Capability | Evidence | Result |
 |---|---|---|
-| Local contracts | `npm run validate` | PASS: 24 Node tests, 2 Python tests, configuration and Harness acceptance |
+| Local contracts | `npm run validate` | PASS: 32 Node tests, 16 Python tests, configuration and Harness acceptance |
 | Workspace image | `docker compose build workspace` | PASS |
 | Memory image | `docker compose build memory-service` | PASS |
 | OpenCode baseline | `docker run --rm aicp-workspace opencode --version` | PASS: `1.18.21` |
@@ -47,6 +48,12 @@ remain open.
 | Memory REST lifecycle | `scripts/memory-smoke.sh` | PASS: idempotency, promotion, scoped search and cross-scope denial |
 | Memory persistence | container restart followed by authorized GET | PASS: active version 2 retained |
 | Append-only ledger | attempted SQL event mutation | PASS: database trigger blocked mutation |
+| Embedding route | live LiteLLM `embeddings` alias | PASS: 1,536 dimensions through limited virtual key |
+| Persistent real index | `site-lf-solucoes` at `2199053` | PASS: 7 files, 128 symbols/chunks |
+| Incremental no-op | second `scripts/index.sh` run | PASS: zero parsed, changed or embedded artifacts |
+| Context compile | exact `bootDashboard`, budget 1,000 | PASS: exact-first, 526 calculated tokens, provenance retained |
+| Projection recovery | graph deletion, Redis stopped, `--rebuild` | PASS: repository/file/symbol/chunk counts restored |
+| Dependency consistency | graph failure regression tests | PASS: index state does not advance; sanitized `503` returned |
 
 ## Implemented artifacts
 
@@ -64,7 +71,9 @@ remain open.
 - Generic Node.js/static-site project detection and governed gate runner.
 - PostgreSQL Memory Ledger and Control Plane migrations.
 - Authenticated Memory REST API and transactional Psycopg repository.
-- Neo4j constraints and full-text index definitions.
+- Authenticated index/context REST API and host client/CLI.
+- Persistent Git index state, JavaScript parser, chunk embeddings and hybrid retrieval.
+- Neo4j constraints, graph delta projection and reconstructible rebuild.
 - OTel collector redaction baseline.
 - GitHub clean-checkout contract pipeline.
 - Threat model, runbook, memory model, compatibility and ADR documentation.
@@ -88,11 +97,11 @@ The following values cannot be invented or committed:
 
 ## Remaining engineering work
 
-- Expose authenticated REST v1 memory/context/run APIs.
+- Expose authenticated REST v1 run APIs.
 - Wire the runtime entrypoint to PostgreSQL, OpenCode and installed scanner CLIs.
-- Implement parser/symbol extraction, persistent incremental index and Neo4j
-  graph deltas.
-- Add embeddings and semantic fallback after model selection.
+- Project references and implement deterministic impact traversal in Neo4j.
+- Replace calculated chunk token estimates with exact model token counting.
+- Wire the Context API package and provenance into the Harness executor.
 - Instrument services and validate a real telemetry backend.
 - Execute encrypted backup/restore drill.
 - Run clean-host, provider, CI and multi-host acceptance.
@@ -107,5 +116,6 @@ The Foundation and Harness can be revalidated at any time with:
 npm run validate
 ```
 
-The next required evidence is the durable Context and Memory phase: authenticated
-REST APIs, persistent incremental indexing, graph deltas and semantic retrieval.
+The next required evidence completes Context and Memory: reference/impact graph
+traversal, exact token counting and runtime delivery of the authorized context
+package to each Harness stage.

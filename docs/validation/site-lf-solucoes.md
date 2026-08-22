@@ -6,8 +6,8 @@ Date: 2026-08-21
 
 - Repository: `https://github.com/leandroclf/site-lf-solucoes.git`
 - Branch: `main`
-- Commit: `3389682f548d075c35a484a952007215afcc0511`
-- Execution mode: read-only shallow clone under ignored `projects/`
+- Commit: `21990535336d5ab20fb6983bd85f3c8a5e0c64c4`
+- Execution mode: governed local checkout under ignored `projects/`
 
 ## Detected profile
 
@@ -27,14 +27,26 @@ npm run validate:project -- --project projects/site-lf-solucoes
 |---|---|---|
 | `structure` | PASS | Menus, local links and About section valid |
 | `quality-smoke` | PASS | Basic SEO/accessibility passed for 12 HTML files |
-| `performance-budget` | FAIL | HTML 206,523 bytes; limit 170,000; excess 36,523 bytes |
+| `performance-budget` | PASS | Largest HTML page 40,358 bytes; per-page limit 50,000 bytes |
 | `accountability` | PASS | Five eligible tasks, zero violations, 100% coverage |
 | JavaScript syntax | PASS | All JavaScript files accepted by `node --check` |
 
-Terminal Harness result: `blocked`.
+Terminal Harness result: `pass`.
 
-The source checkout remained clean after validation. No repair, branch, commit,
-push or deployment was performed.
+The false aggregate-HTML budget was corrected to measure each navigation
+independently. Commit `2199053` was validated and pushed to `main`; no deployment
+was performed by the Control Plane.
+
+## Context/index evidence
+
+The persistent pipeline indexed the repository through the authenticated API:
+
+- first successful rebuild: 7 JavaScript files, 128 symbols and 128 chunks;
+- unchanged second run: zero files parsed and zero embeddings requested;
+- exact symbol `bootDashboard` ranked first as `exact-symbol+lexical`;
+- context package used 526 of a 1,000-token calculated budget;
+- after deleting the Neo4j projection and stopping Redis, `--rebuild` restored
+  1 repository, 7 files, 128 symbols and 128 chunks using cached embeddings.
 
 ## Deferred evidence
 
@@ -47,8 +59,7 @@ push or deployment was performed.
 
 ## Outcome
 
-The real-project exercise identified and closed a Harness compatibility gap:
-project gate detection can now support static sites with native Python scripts
-without inventing a `package.json` or reporting absent commands as successful.
-The performance finding belongs to the target project and requires explicit
-authorization before a repair branch is created.
+The real-project exercise closed both the Harness compatibility gap and the
+incorrect performance-budget semantics. It also proves persistent incremental
+indexing, exact-symbol retrieval and graph recovery against a non-fixture
+repository.
