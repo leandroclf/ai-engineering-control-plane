@@ -1,0 +1,120 @@
+name: aicp
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:16}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aicp
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    volumes:
+      - ${AICP_STATE_DIR:-./state}/postgres:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aicp -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [data]
+
+  redis:
+    image: ${REDIS_IMAGE:-redis:7.2.4}
+    restart: unless-stopped
+    command: ["sh", "-ec", "exec redis-server --requirepass \"$$(cat /run/secrets/redis_password)\" --save '' --appendonly no"]
+    secrets: [redis_password]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$(cat /run/secrets/redis_password)\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [data]
+
+  neo4j:
+    image: ${NEO4J_IMAGE:-neo4j:2026.07.1}
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/change-me-before-start}
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 1g
+      NEO4J_server_memory_pagecache_size: 1g
+    volumes:
+      - ${AICP_STATE_DIR:-./state}/neo4j/data:/data
+      - ${AICP_STATE_DIR:-./state}/neo4j/logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+    networks: [data]
+
+  litellm:
+    image: ${LITELLM_IMAGE:-docker.litellm.ai/berriai/litellm-database:latest}
+    restart: unless-stopped
+    env_file:
+      - path: .env.runtime
+        required: false
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    volumes:
+      - ./litellm/generated/config.yaml:/app/config.yaml:ro
+    ports: ["127.0.0.1:4000:4000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [frontend, data]
+
+  memory-service:
+    build:
+      context: .
+      dockerfile: docker/memory-service/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+    depends_on:
+      postgres: { condition: service_healthy }
+      neo4j: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [frontend, data]
+
+  workspace:
+    build:
+      context: .
+      dockerfile: docker/workspace/Dockerfile
+      args:
+        OPENCODE_VERSION: ${OPENCODE_VERSION:-1.18.21}
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+    environment:
+      OPENCODE_CONFIG_DIR: /home/dev/.config/opencode
+      LITELLM_BASE_URL: http://litellm:4000/v1
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-}
+      MEMORY_SERVICE_URL: http://memory-service:8080
+    volumes:
+      - ${PROJECTS_DIR:-./projects}:/workspace/projects
+      - ./opencode:/home/dev/.config/opencode:ro
+      - ${AICP_STATE_DIR:-./state}/opencode:/home/dev/.local/share/opencode
+      - ${AICP_STATE_DIR:-./state}/cache:/home/dev/.cache
+    command: ["sleep", "infinity"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    depends_on:
+      litellm: { condition: service_started }
+      memory-service: { condition: service_healthy }
+    networks: [frontend]
+
+networks:
+  frontend: {}
+  data:
+    internal: true
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+  redis_password:
+    file: ./secrets/redis_password

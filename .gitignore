@@ -1,0 +1,13 @@
+.env.runtime
+secrets/
+state/
+backups/
+litellm/generated/config.yaml
+.aicp/
+node_modules/
+__pycache__/
+*.pyc
+.coverage
+.pytest_cache/
+.DS_Store
+.idea/
