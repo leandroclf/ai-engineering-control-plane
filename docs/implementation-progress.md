@@ -25,6 +25,7 @@
 | `feat/ci-e2e-supply-chain` | IMPLEMENTED_WITH_FINDINGS | LiteLLM real + provider mock PASS; Trivy image offline + CycloneDX implementados | Findings das imagens são evidência de risco e não são suprimidos automaticamente |
 | `feat/state-recovery-multihost` | IMPLEMENTED | checksum tamper fail-closed, restore clean-host e tabelas operacionais | Drill completo do ambiente ativo permanece uma operação deliberadamente não destrutiva em CI |
 | `feat/ephemeral-worker-runtime-integration` | IMPLEMENTED | runtime create→evidence→destroy; cleanup em falha; manager deployment-side autenticado | Remote/team exige `AICP_EXECUTION_MODE=ephemeral`; Docker socket não entra no Harness |
+| `feat/aicp-v1-benchmark` | IMPLEMENTED_WITH_REGRESSION | protocolo 30×2×3 validado; Context v3 real: 90+90 observações | Precisão estrutural caiu 0,03788; ledger LLM/humano de 180 runs ainda não medido |
 
 ## Metrics
 

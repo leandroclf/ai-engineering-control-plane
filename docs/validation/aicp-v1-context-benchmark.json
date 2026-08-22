@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "benchmark": "aicp-v1-context-v3",
+  "measurementClass": "real-deterministic-repository-corpus",
+  "datasetId": "aicp-v1-paired-30",
+  "baseCommit": "abba46743744c9a32372b5226709505600497e5a",
+  "tasks": 30,
+  "repetitions": 3,
+  "corpusChunks": 214,
+  "baseline": {
+    "runs": 90,
+    "meanSelectedTokens": 4034.633333333333,
+    "meanContextPrecision": 0.13150793650793652,
+    "vectorUseRate": 1
+  },
+  "candidate": {
+    "runs": 90,
+    "meanSelectedTokens": 3963.5333333333333,
+    "meanContextPrecision": 0.09362394957983193,
+    "vectorUseRate": 1
+  },
+  "delta": {
+    "selectedTokenRatio": 0.9823775807797487,
+    "contextPrecision": -0.03788398692810459,
+    "vectorUseRate": 0
+  },
+  "limitations": [
+    "No LLM generation, cost, defect or human-acceptance claim is made by this structural benchmark."
+  ],
+  "observationsHash": "08d61df0ab1c5004ac27192293cc7a79a072b11b0c127b71dd67aefc8c42e6e7"
+}

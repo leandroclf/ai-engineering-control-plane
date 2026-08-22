@@ -14,6 +14,8 @@
     "smoke:fallback": "bash scripts/fallback-smoke.sh",
     "evaluate:baseline": "node observability/evaluation/run-baseline.mjs",
     "validate:benchmark": "node observability/evaluation/validate-paired-benchmark.mjs",
+    "benchmark:context-v3": "PYTHONPATH=memory-service/src python3 observability/evaluation/run-context-v3-benchmark.py",
+    "validate:benchmark-results": "node observability/evaluation/validate-v1-run-results.mjs",
     "validate:suppressions": "node harness/src/cli/validate-suppressions.mjs",
     "test:security": "bash tests/security/abuse_test.sh",
     "ci:contracts": "bash scripts/ci-contract.sh",

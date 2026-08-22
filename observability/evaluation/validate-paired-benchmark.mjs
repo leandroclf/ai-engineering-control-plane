@@ -4,9 +4,9 @@ const path = process.argv[2] ?? "tests/evaluations/v1-paired.tasks.json";
 const experimentsPath = process.argv[3] ?? "tests/evaluations/v1-paired.experiments.json";
 const dataset = JSON.parse(await readFile(path, "utf8"));
 const experiments = JSON.parse(await readFile(experimentsPath, "utf8"));
-if (dataset.tasks?.length !== 20) throw new Error("paired benchmark requires exactly 20 tasks");
+if (dataset.tasks?.length !== 30) throw new Error("paired benchmark requires exactly 30 tasks");
 const counts = dataset.tasks.reduce((groups, task) => ({ ...groups, [task.type]: [...(groups[task.type] ?? []), task] }), {});
-for (const [type, expected] of Object.entries({ bug: 8, feature: 5, refactor: 4, security: 3 })) {
+for (const [type, expected] of Object.entries({ bug: 10, feature: 10, refactor: 5, security: 5 })) {
   if ((counts[type] ?? []).length !== expected) throw new Error(`expected ${expected} ${type} tasks`);
 }
 for (const task of dataset.tasks) {
