@@ -59,6 +59,10 @@ required=(
   security/threat-control-matrix.json
   security/threat-matrix.mjs
   tests/security/abuse_test.sh
+  scripts/ci-contract.sh
+  harness/src/cli/evaluate-scanner-reports.mjs
+  harness/src/scanners/scanner-report-gate.mjs
+  tests/unit/scanner-report-gate.test.mjs
 )
 
 for path in "${required[@]}"; do

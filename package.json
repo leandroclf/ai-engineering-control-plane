@@ -12,6 +12,7 @@
     "evaluate:baseline": "node observability/evaluation/run-baseline.mjs",
     "validate:suppressions": "node harness/src/cli/validate-suppressions.mjs",
     "test:security": "bash tests/security/abuse_test.sh",
+    "ci:contracts": "bash scripts/ci-contract.sh",
     "validate:project": "node harness/src/cli/validate-project.mjs",
     "validate": "npm test && npm run test:python && npm run validate:suppressions && npm run test:security && npm run test:acceptance"
   },

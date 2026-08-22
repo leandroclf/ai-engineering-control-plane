@@ -19,11 +19,68 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run validate
-      - run: docker compose --env-file versions.env config --quiet
+      - run: npm run ci:contracts
       - name: Build owned images
         run: |
           set -a
           source versions.env
           set +a
           docker compose build memory-service workspace harness
+      - name: Upload normalized contract evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aicp-contract-evidence
+          path: |
+            .aicp/ci/*.json
+            .aicp/evaluations/*.json
+            .aicp/security/*.json
+          if-no-files-found: error
+          retention-days: 14
+
+  security-scanners:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run versioned scanner containers
+        shell: bash
+        run: |
+          set +e
+          mkdir -p .aicp/ci/raw
+          raw="$PWD/.aicp/ci/raw"
+
+          docker run --rm -v "$PWD:/src:ro" -v "$raw:/reports" -w /src \
+            semgrep/semgrep:1.174.0 \
+            semgrep scan --config security/semgrep/rules/aicp-security.yaml \
+            --exclude tests/fixtures --json --output /reports/semgrep.json .
+          echo $? > .aicp/ci/raw/semgrep.exit
+
+          docker run --rm -v "$PWD:/repo:ro" -v "$raw:/reports" \
+            ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            detect --source=/repo --redact --report-format=json \
+            --report-path=/reports/gitleaks.json --exit-code=0
+          echo $? > .aicp/ci/raw/gitleaks.exit
+
+          docker run --rm -v "$PWD:/repo:ro" -v "$raw:/reports" \
+            aquasec/trivy:0.74.0 \
+            fs --format json --scanners vuln,misconfig,secret --severity HIGH,CRITICAL \
+            --skip-dirs /repo/tests/fixtures --skip-dirs /repo/projects \
+            --exit-code 0 --output /reports/trivy.json /repo
+          echo $? > .aicp/ci/raw/trivy.exit
+          exit 0
+      - name: Evaluate required scanner evidence
+        run: node harness/src/cli/evaluate-scanner-reports.mjs
+      - name: Upload scanner evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aicp-scanner-evidence
+          path: .aicp/ci
+          if-no-files-found: error
+          retention-days: 14
