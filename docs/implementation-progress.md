@@ -14,6 +14,7 @@
 | `feat/govern-main-and-contracts` | IMPLEMENTED | Node unit + architecture PASS | Aplicação do ruleset no GitHub depende de acesso/autorização externa |
 | `feat/budget-physical-reconciliation` | IMPLEMENTED | 2 novos unit tests PASS; integração adicionada | E2E real depende de o gateway fornecer attempts com pricing conhecido |
 | `feat/model-catalog-routing-policy` | IMPLEMENTED | catálogo gerado + routing policy tests | Deployments secundários exigem configuração explícita de modelo, key e preço |
+| `feat/scanner-bundle-offline-readiness` | IMPLEMENTED | hash/freshness unit test; Compose validado | Atualização da DB requer egress apenas no updater confiável |
 
 ## Metrics
 
@@ -26,6 +27,7 @@
 | Physical-attempt reconciliation tests | 0 | 3 |
 | Fontes editáveis de model/routing/pricing | 2 | 1 |
 | Fallback silencioso `strong → fast` | 1 | 0 |
+| Scanners core usando configuração online automática | 2 | 0 |
 | Protected `main` no GitHub | NOT_MEASURED | NOT_MEASURED |
 
 ## Open risks

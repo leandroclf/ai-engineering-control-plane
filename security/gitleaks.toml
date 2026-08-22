@@ -1,0 +1,4 @@
+title = "AICP deterministic Gitleaks configuration"
+
+[extend]
+useDefault = true

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "bundleVersion": "security-2026-08-22",
+  "semgrep": {
+    "rulesPath": "security/semgrep/rules/aicp-security.yaml",
+    "sha256": "8900358f783e04246e7cb80340b49fbe2f96cd0e0737bbba36737215a4b8c92d"
+  },
+  "gitleaks": {
+    "configPath": "security/gitleaks.toml",
+    "sha256": "b9bf24736165a6a2fc9afc76393ea78f55533d502ad7bfa2c86d9570f99a3b97"
+  },
+  "trivy": {
+    "cachePath": "/security/trivy",
+    "runtimeManifestPath": "/security/trivy/aicp-runtime-manifest.json",
+    "maxAgeHours": 24
+  },
+  "snyk": { "profile": "optional-online", "required": false }
+}

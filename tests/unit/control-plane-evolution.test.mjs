@@ -11,6 +11,8 @@ import { ControlPlaneAuthorizer } from "../../harness/src/security/identity-auth
 import { EphemeralWorkerSpec, WorkloadIdentity } from "../../harness/src/runtime/ephemeral-worker-contract.mjs";
 import { reconcilePhysicalUsage } from "../../harness/src/budget/physical-usage.mjs";
 import { RoutingPolicy } from "../../harness/src/routing/routing-policy.mjs";
+import { ScannerBundleAttestor } from "../../harness/src/scanners/scanner-bundle-attestor.mjs";
+import { createHash } from "node:crypto";
 
 test("invocation estimator reserves prompt schema output margin and worst eligible deployment", async () => {
   const estimator = new InvocationEstimator({ tokenizer: { count: async (value) => String(value).length }, fixedOverheadTokens: 10, safetyMargin: 1.2,
@@ -85,4 +87,21 @@ test("routing fails closed for unknown pricing and unavailable diverse reviewer"
   ] } } };
   assert.throws(() => new RoutingPolicy(route, { MODEL: "m", KEY: "k" }).decide({ alias: "strong" }), (error) => error.name === "PricingUnknownError");
   assert.throws(() => new RoutingPolicy(route, { MODEL: "m", KEY: "k", IN: "1", OUT: "2" }).decide({ alias: "strong", role: "reviewer", producerProvider: "openai" }), /ROUTE_UNAVAILABLE/);
+});
+
+test("scanner bundle validates vendored rules and rejects stale Trivy data", async () => {
+  const root = await mkdtemp(join(tmpdir(), "aicp-scanners-"));
+  await mkdir(join(root, "rules"), { recursive: true });
+  await mkdir(join(root, "cache/db"), { recursive: true });
+  await writeFile(join(root, "rules/rules.yaml"), "rules: []\n");
+  await writeFile(join(root, "cache/db/trivy.db"), "db");
+  const hash = (value) => createHash("sha256").update(value).digest("hex");
+  await writeFile(join(root, "cache/runtime.json"), JSON.stringify({ schemaVersion: 1, downloadedAt: "2026-08-20T00:00:00.000Z", dbSha256: hash("db") }));
+  const attestor = new ScannerBundleAttestor({ root, now: () => new Date("2026-08-22T00:00:00.000Z"), manifest: {
+    schemaVersion: 1, bundleVersion: "test", semgrep: { rulesPath: "rules/rules.yaml", sha256: hash("rules: []\n") },
+    gitleaks: { configPath: "rules/rules.yaml", sha256: hash("rules: []\n") },
+    trivy: { cachePath: "cache", runtimeManifestPath: "cache/runtime.json", maxAgeHours: 24 },
+  } });
+  assert.equal((await attestor.attest("semgrep")).offline, true);
+  await assert.rejects(attestor.attest("trivy"), /SCANNER_BUNDLE_STALE/);
 });

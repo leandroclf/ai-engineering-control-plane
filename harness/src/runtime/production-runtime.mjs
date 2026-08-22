@@ -15,6 +15,7 @@ import { ProjectGateRunner } from "../gates/project-gate-runner.mjs";
 import { GateRegistry, ProjectGateProvider, ScannerGateProvider } from "../gates/gate-registry.mjs";
 import { OtlpHttpTelemetry } from "../telemetry/otlp-http-telemetry.mjs";
 import { RoutingPolicy } from "../routing/routing-policy.mjs";
+import { ScannerBundleAttestor } from "../scanners/scanner-bundle-attestor.mjs";
 import { WorkspaceAttestor } from "../security/workspace-attestation.mjs";
 import { PostgresRunStore } from "../workflow/postgres-run-store.mjs";
 import { GovernedRuntime } from "./governed-runtime.mjs";
@@ -34,6 +35,7 @@ export async function createProductionRuntime({ environment = process.env } = {}
   ));
   const gateConfiguration = JSON.parse(await readFile(environment.HARNESS_GATES_PATH ?? "harness/config/gates.yaml", "utf8"));
   const routingConfiguration = JSON.parse(await readFile(environment.HARNESS_MODEL_ROUTING_PATH ?? "harness/config/model-routing.json", "utf8"));
+  const scannerBundle = JSON.parse(await readFile(environment.HARNESS_SCANNER_BUNDLE_PATH ?? "security/scanner-bundle.json", "utf8"));
   const database = new Pool({
     connectionString: required(environment, "DATABASE_URL"),
     max: Number(environment.HARNESS_DATABASE_POOL_SIZE ?? 5),
@@ -57,13 +59,14 @@ export async function createProductionRuntime({ environment = process.env } = {}
       reservation: { maxOutputTokens: Number(environment.HARNESS_RESERVATION_OUTPUT_TOKENS ?? 4096) },
     });
     const processRunner = new ProcessRunner();
+    const scannerBundleAttestor = new ScannerBundleAttestor({ manifest: scannerBundle, root: environment.AICP_ROOT ?? "/aicp" });
     const projectAdapter = new ProjectAdapter();
     const workspaceAttestor = new WorkspaceAttestor({ projectRoot: environment.PROJECTS_ROOT ?? "/workspace", environment });
     const gateRegistry = new GateRegistry({ definitions: gateConfiguration.gates })
       .register("project", new ProjectGateProvider())
-      .register("semgrep", new ScannerGateProvider("semgrep", { runner: processRunner }))
-      .register("gitleaks", new ScannerGateProvider("gitleaks", { runner: processRunner }))
-      .register("trivy", new ScannerGateProvider("trivy", { runner: processRunner }));
+      .register("semgrep", new ScannerGateProvider("semgrep", { runner: processRunner, bundleAttestor: scannerBundleAttestor }))
+      .register("gitleaks", new ScannerGateProvider("gitleaks", { runner: processRunner, bundleAttestor: scannerBundleAttestor }))
+      .register("trivy", new ScannerGateProvider("trivy", { runner: processRunner, bundleAttestor: scannerBundleAttestor }));
     const handlers = createWorkflowHandlers({
       definition,
       store,

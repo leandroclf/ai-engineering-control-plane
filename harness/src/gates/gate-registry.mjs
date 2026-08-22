@@ -32,18 +32,21 @@ export class ProjectGateProvider {
 }
 
 const SCANNERS = {
-  semgrep: ({ mode }) => ["semgrep", "scan", "--config", "auto", ...(mode === "diff" ? ["--baseline-commit", "HEAD~1"] : []), "--json", "."],
-  gitleaks: ({ mode }) => ["gitleaks", mode === "diff" ? "git" : "dir", "--no-banner", "--report-format", "json", "--report-path", "/dev/stdout", ...(mode === "diff" ? ["--log-opts=HEAD~1..HEAD"] : ["."])],
-  trivy: () => ["trivy", "fs", "--format", "json", "--severity", "HIGH,CRITICAL", "."],
+  semgrep: ({ mode }) => ["semgrep", "scan", "--config", "/aicp/security/semgrep/rules/aicp-security.yaml", "--metrics", "off", ...(mode === "diff" ? ["--baseline-commit", "HEAD~1"] : []), "--json", "."],
+  gitleaks: ({ mode }) => ["gitleaks", mode === "diff" ? "git" : "dir", "--config", "/aicp/security/gitleaks.toml", "--no-banner", "--report-format", "json", "--report-path", "/dev/stdout", ...(mode === "diff" ? ["--log-opts=HEAD~1..HEAD"] : ["."])],
+  trivy: () => ["trivy", "fs", "--cache-dir", "/security/trivy", "--skip-db-update", "--skip-java-db-update", "--skip-check-update", "--format", "json", "--severity", "HIGH,CRITICAL", "."],
 };
 export class ScannerGateProvider {
-  constructor(name, { runner = null, probeTimeoutMs = 5000 } = {}) { this.name = name; this.runner = runner; this.probeTimeoutMs = probeTimeoutMs; }
+  constructor(name, { runner = null, probeTimeoutMs = 5000, bundleAttestor = null } = {}) { this.name = name; this.runner = runner; this.probeTimeoutMs = probeTimeoutMs; this.bundleAttestor = bundleAttestor; }
   async resolve({ definition }) {
     const command = SCANNERS[this.name]({ mode: definition.mode });
     if (this.runner) {
+      let bundle;
+      try { bundle = this.bundleAttestor ? await this.bundleAttestor.attest(this.name) : null; }
+      catch { throw new GateResolutionError("REQUIRED_GATE_UNAVAILABLE", `${this.name}:SCANNER_DATA_INVALID`); }
       const probe = await this.runner.run(command[0], ["--version"], { timeoutMs: this.probeTimeoutMs });
       if (probe.kind !== "completed" || probe.exitCode !== 0) throw new GateResolutionError("REQUIRED_GATE_UNAVAILABLE", `${this.name}:MISCONFIGURED`);
-      return { command, required: true, scanner: this.name, mode: definition.mode, status: "AVAILABLE", evidence: { source: "scanner-version-probe", exitCode: probe.exitCode } };
+      return { command, required: true, scanner: this.name, mode: definition.mode, status: "AVAILABLE", evidence: { source: "scanner-runtime-attestation", exitCode: probe.exitCode, ...(bundle ? { bundle } : {}) } };
     }
     return { command, required: true, scanner: this.name, mode: definition.mode, status: "DECLARED", evidence: { source: "scanner-registry" } };
   }
