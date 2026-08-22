@@ -134,6 +134,15 @@ npm run validate:suppressions
 
 See `security/README.md` for the audited record format.
 
+Execute the threat-control abuse matrix with:
+
+```bash
+npm run test:security
+```
+
+The machine-readable result is written to `.aicp/security/abuse-report.json`;
+open residual risks remain visible even when implemented controls pass.
+
 For a real repository, point `--project` to a Node.js checkout containing a
 `package.json`, lockfile and Dockerfile. The baseline auditor is a deterministic
 pre-check; official Semgrep, Gitleaks, Trivy, Snyk and Sonar JSON outputs are

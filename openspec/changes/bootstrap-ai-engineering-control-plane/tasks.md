@@ -387,7 +387,7 @@ indicados.
   - Completion criteria: suppression inválida/expirada não desbloqueia; válida é
     auditável e específica ao finding.
 
-- [ ] 7.3 Elaborar threat model e executar testes de abuso
+- [x] 7.3 Elaborar threat model e executar testes de abuso
   - Objective: cobrir host/workspace, gateway, APIs, prompt injection,
     cross-scope, supply chain e telemetry.
   - Likely files/components: `docs/threat-model.md`, `tests/security/`.

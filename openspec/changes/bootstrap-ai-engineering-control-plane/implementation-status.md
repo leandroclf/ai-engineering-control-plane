@@ -13,7 +13,8 @@ in PostgreSQL; Neo4j is rebuilt as a derived projection; retrieval is
 exact-first with lexical/vector fallback and gateway token counting. Harness
 stages receive policy-scoped packages and persist sanitized provenance. It MUST
 NOT yet be classified as `READY_FOR_HUMAN_REVIEW` for the full OpenSpec change.
-Abuse acceptance, backup governance and multi-host acceptance remain open.
+Backup governance, supply-chain release freeze and multi-host acceptance remain
+open.
 
 ## Verified evidence
 
@@ -65,6 +66,7 @@ Abuse acceptance, backup governance and multi-host acceptance remain open.
 | Langfuse profile | `scripts/observability.sh up/down` | PASS: official v4.16.0 web/worker, isolated stores healthy, UI local and independent shutdown |
 | Evaluation baseline | `npm run evaluate:baseline` | PASS: nine reproducible cost/quality/context/routing metrics and two dashboard contracts |
 | Suppression governance | `npm run validate:suppressions` plus unit contracts | PASS: exact identity, independent approval, expiry and fail-closed invalid policy |
+| Abuse matrix | `npm run test:security` | PASS: seven trust boundaries, eight threats, redacted report and explicit supply-chain open risk |
 | Collector baseline | OTel Collector contrib `0.157.0` | PASS: pinned image, OTLP HTTP and local redacted evidence |
 | Encrypted backup | `scripts/backup.sh` | PASS: AES256 archive, layered checksums, no plaintext dump at destination |
 | Restore drill | encrypted archive plus current Git | PASS: databases restored, graph rebuilt, doctor/Memory/Context accepted |
@@ -116,7 +118,7 @@ The following values cannot be invented or committed:
 
 - Expose authenticated REST v1 run APIs.
 - Wire the runtime entrypoint to PostgreSQL, OpenCode and installed scanner CLIs.
-- Execute abuse acceptance and close the threat-control matrix.
+- Publish normalized CI artifacts and prove a negative fixture blocks CI.
 - Approve backup owner, external destination, retention, cadence and disposal.
 - Run clean-host, provider, CI and multi-host acceptance.
 
