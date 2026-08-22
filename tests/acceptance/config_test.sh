@@ -78,12 +78,14 @@ for path in "${required[@]}"; do
   }
 done
 
-while IFS= read -r secret_file; do
-  test "$(stat -c '%a' "$secret_file")" = "600" || { echo "secret file must be mode 0600: $secret_file" >&2; exit 1; }
-done < <(find secrets -maxdepth 1 -type f -print)
+if [[ -d secrets ]]; then
+  while IFS= read -r secret_file; do
+    test "$(stat -c '%a' "$secret_file")" = "600" || { echo "secret file must be mode 0600: $secret_file" >&2; exit 1; }
+  done < <(find secrets -maxdepth 1 -type f -print)
+fi
 
-compose_json="$(docker compose --env-file versions.env config --format json)"
-docker compose --env-file versions.env config --quiet
+compose_json="$(bash scripts/compose-contract.sh --format json)"
+bash scripts/compose-contract.sh --quiet
 jq -e '.services.litellm.healthcheck.test | length > 0' <<<"$compose_json" >/dev/null
 jq -e '[.services.litellm.secrets[].source] | index("postgres_password") != null' <<<"$compose_json" >/dev/null
 jq -e '.services.workspace.depends_on.litellm.condition == "service_healthy"' <<<"$compose_json" >/dev/null
@@ -116,7 +118,7 @@ if jq -r '.services[].image // empty' <<<"$observability_json" | rg ':latest$'; 
 fi
 rm -f "$observability_env"
 
-remote_json="$(docker compose --env-file versions.env -f compose.yaml -f compose/remote.yaml config --format json)"
+remote_json="$(bash scripts/compose-contract.sh --overlay compose/remote.yaml --format json)"
 jq -e '.services["remote-gateway"].networks | has("agent-internal") and (has("data") | not)' <<<"$remote_json" >/dev/null
 jq -e '.services["remote-gateway"].read_only == true' <<<"$remote_json" >/dev/null
 jq -e '.services["remote-gateway"].cap_drop == ["ALL"]' <<<"$remote_json" >/dev/null
