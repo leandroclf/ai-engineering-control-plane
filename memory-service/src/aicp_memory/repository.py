@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import json
 
@@ -80,6 +80,8 @@ class PostgresMemoryRepository:
     ):
         from aicp_memory.domain.ledger import MemoryLedger
         MemoryLedger._reject_sensitive(summary, payload)
+        if expires_at is None and authority == "LLM_INFERENCE":
+            expires_at = datetime.now(timezone.utc) + timedelta(days=7)
         with self._connect() as connection, connection.cursor() as cursor:
             if idempotency_key:
                 existing = cursor.execute(
@@ -117,14 +119,18 @@ class PostgresMemoryRepository:
         return _memory(row)
 
     def promote(self, memory_id, target_scope, actor, authorized_scopes=None):
+        from aicp_memory.domain.ledger import MemoryPromotionPolicy
         if authorized_scopes is not None and target_scope not in authorized_scopes:
             raise AuthorizationError(f"scope not authorized: {target_scope}")
         with self._connect() as connection, connection.cursor() as cursor:
             current = cursor.execute(MEMORY_SELECT + " WHERE m.id = %s FOR UPDATE", (memory_id,)).fetchone()
             if not current or current["status"] != "CANDIDATE":
                 raise ValueError("only candidate memory can be promoted")
-            if current["kind"] == "POLICY" and current["authority"] == "LLM_INFERENCE":
-                raise ValueError("LLM inference cannot be promoted as policy")
+            if current["expires_at"] and current["expires_at"] <= datetime.now(timezone.utc):
+                cursor.execute("UPDATE memory.memories SET status='EXPIRED', updated_at=now() WHERE id=%s", (memory_id,))
+                self._event(cursor, memory_id, "EXPIRED", "system:expiry", "TTL_EXPIRED")
+                raise ValueError("expired candidate memory cannot be promoted")
+            MemoryPromotionPolicy.validate(_memory(current))
             scope_id = self._scope_id(cursor, target_scope)
             cursor.execute("UPDATE memory.memories SET scope_id=%s, status='ACTIVE', updated_at=now() WHERE id=%s", (scope_id, memory_id))
             self._event(cursor, memory_id, "PROMOTED", actor)
@@ -174,7 +180,7 @@ class PostgresMemoryRepository:
         with self._connect() as connection, connection.cursor() as cursor:
             rows = cursor.execute(
                 """UPDATE memory.memories SET status='EXPIRED', updated_at=now()
-                   WHERE status='ACTIVE' AND expires_at <= now() RETURNING id"""
+                   WHERE status IN ('CANDIDATE','ACTIVE') AND expires_at <= now() RETURNING id"""
             ).fetchall()
             for row in rows:
                 self._event(cursor, row["id"], "EXPIRED", "system:expiry", "TTL_EXPIRED")

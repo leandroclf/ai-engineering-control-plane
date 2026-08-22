@@ -177,14 +177,15 @@ class ContextService:
             for memory in self.repository.search_active(authorized_scopes)
         ]
         relevant_memories = [(memory, relevance) for memory, relevance in relevant_memories if relevance > 0]
-        memories = sorted(relevant_memories, key=lambda item: (-item[1], authority_rank.get(item[0].authority, 50), item[0].scope, item[0].canonical_key, -item[0].version))[:20]
+        scope_distance = {scope: index for index, scope in enumerate(authorized_scopes)}
+        memories = sorted(relevant_memories, key=lambda item: (-item[1], scope_distance.get(item[0].scope, len(scope_distance)), authority_rank.get(item[0].authority, 50), item[0].canonical_key, -item[0].version))[:20]
         for rank, (memory, relevance) in enumerate(memories, 1):
             candidates.append({
                 "id": f"memory:{memory.id}", "content": memory.summary,
                 "content_hash": sha256(memory.summary.encode()).hexdigest(),
                 "token_count": max(1, math.ceil(len(memory.summary) / 4)),
                 "reason": "scoped-relevant-authoritative-memory", "priority": 4, "score": .05 * (61 / (60 + rank)) + .03 * relevance, "category": "memory",
-                "scores": {"memory_authority_rank": authority_rank.get(memory.authority, 50), "memory_rank": rank, "memory_relevance": relevance},
+                "scores": {"memory_authority_rank": authority_rank.get(memory.authority, 50), "memory_scope_distance": scope_distance.get(memory.scope), "memory_rank": rank, "memory_relevance": relevance},
                 "provenance": {"memory_id": memory.id, "scope": memory.scope, "authority": memory.authority},
             })
         candidates.sort(key=lambda item: (item["priority"], -item["score"], item["id"]))

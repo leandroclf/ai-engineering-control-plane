@@ -163,6 +163,19 @@ class ContextServiceTest(unittest.TestCase):
         self.assertNotIn("memory:noise", memory_ids)
         self.assertEqual(result["metrics"]["memory_hits"], 1)
 
+    def test_memory_ranking_accounts_for_scope_distance_and_authority(self):
+        repository = FakeRepository()
+        repository.memories = [
+            SimpleNamespace(id="global", summary="payment settlement policy", canonical_key="payments", authority="HUMAN", scope="GLOBAL:all", version=1),
+            SimpleNamespace(id="repo", summary="payment retry policy", canonical_key="payments", authority="POLICY", scope="REPOSITORY:aicp", version=1),
+        ]
+        result = ContextService(repository, FakeEmbedder(), FakeGraph(), FakeTokenCounter()).compile({
+            "repository": "repo", "task_id": "task", "query": "payment policy", "budget": 40,
+        }, ["REPOSITORY:aicp", "GLOBAL:all"])
+        memories = [item for item in result["artifacts"] if item["id"].startswith("memory:")]
+        self.assertEqual([item["id"] for item in memories], ["memory:repo", "memory:global"])
+        self.assertEqual(memories[0]["scores"]["memory_scope_distance"], 0)
+
     def test_same_snapshot_produces_deterministic_context(self):
         service = ContextService(FakeRepository(), FakeEmbedder(), FakeGraph(), FakeTokenCounter())
         payload = {"repository": "repo", "task_id": "task", "query": "Service.run payment",

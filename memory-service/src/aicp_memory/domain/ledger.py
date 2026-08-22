@@ -1,5 +1,5 @@
 from dataclasses import asdict, dataclass, replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import re
 from uuid import uuid4
 
@@ -10,6 +10,17 @@ class AuthorizationError(PermissionError):
 
 class SensitiveDataError(ValueError):
     pass
+
+
+class MemoryPromotionPolicy:
+    MIN_LLM_CONFIDENCE = .80
+
+    @classmethod
+    def validate(cls, memory):
+        if memory.authority == "LLM_INFERENCE" and memory.kind == "POLICY":
+            raise ValueError("LLM inference cannot be promoted as policy")
+        if memory.authority == "LLM_INFERENCE" and (memory.confidence or 0) < cls.MIN_LLM_CONFIDENCE:
+            raise ValueError("LLM inference lacks promotion confidence")
 
 
 SECRET_PATTERNS = (
@@ -68,6 +79,8 @@ class MemoryLedger:
         if idempotency_key and idempotency_key in self._idempotency:
             return self.get(self._idempotency[idempotency_key])
         self._reject_sensitive(summary, payload)
+        if expires_at is None and authority == "LLM_INFERENCE":
+            expires_at = self._clock() + timedelta(days=7)
         memory = Memory(
             str(uuid4()), scope, canonical_key, summary, authority, source_hash,
             kind=kind, payload=payload or {}, confidence=confidence,
@@ -83,8 +96,7 @@ class MemoryLedger:
     def promote(self, memory_id, target_scope, actor, authorized_scopes=None):
         self._authorize(target_scope, authorized_scopes)
         current = self.get(memory_id)
-        if current.kind == "POLICY" and current.authority == "LLM_INFERENCE":
-            raise ValueError("LLM inference cannot be promoted as policy")
+        MemoryPromotionPolicy.validate(current)
         if current.status != "CANDIDATE":
             raise ValueError("only candidate memory can be promoted")
         promoted = replace(current, scope=target_scope, status="ACTIVE")
@@ -136,7 +148,7 @@ class MemoryLedger:
     def expire_due(self):
         now = self._clock()
         for memory_id, current in list(self._memories.items()):
-            if current.status == "ACTIVE" and current.expires_at and current.expires_at <= now:
+            if current.status in {"CANDIDATE", "ACTIVE"} and current.expires_at and current.expires_at <= now:
                 self._memories[memory_id] = replace(current, status="EXPIRED")
                 self._append(memory_id, "EXPIRED", "system:expiry", "TTL_EXPIRED")
 
