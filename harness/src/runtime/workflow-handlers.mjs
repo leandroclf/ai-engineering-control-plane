@@ -38,6 +38,11 @@ function agentPrompt({ task, state, context }) {
   ].join("\n\n");
 }
 
+function modelAlias(stateDefinition) {
+  if (stateDefinition.model) return stateDefinition.model;
+  return ({ architect: "architecture", implementer: "coding-strong", "security-reviewer": "security", "code-reviewer": "review" })[stateDefinition.agent] ?? "coding-strong";
+}
+
 function normalizeAgentEvidence(result) {
   return redactValue({
     summary: result.summary,
@@ -74,28 +79,35 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
       handlers[state] = async ({ run, task, context }) => {
         let reservation;
         try {
-          reservation = budgetAuthority ? await budgetAuthority.reserve({ taskId: task.id, runId: run.id, stage: state, contextBudget: context?.budget ?? 0, attempt: run.version }) : null;
+          const prompt = agentPrompt({ task, state, context });
+          const schema = agentSchema(Object.keys(stateDefinition.next));
+          reservation = budgetAuthority ? await budgetAuthority.reserve({
+            taskId: task.id, runId: run.id, stage: state, contextBudget: context?.budget ?? 0, attempt: run.version,
+            invocation: { alias: modelAlias(stateDefinition), prompt, contextTokenCount: context?.tokenCount ?? 0, schema, maxOutputTokens: stateDefinition.maxOutputTokens ?? 4096 },
+          }) : null;
           if (reservation?.idempotentReplay) throw Object.assign(new Error("invocation reservation is already active"), { name: "InvocationInProgressError" });
           const execution = await runAgent(controller, {
           directory: requireProject(task),
           agent: stateDefinition.agent,
-          prompt: agentPrompt({ task, state, context }),
-          schema: agentSchema(Object.keys(stateDefinition.next)),
+          prompt,
+          schema,
           maxOutputTokens: reservation ? Number(reservation.reserved_output_tokens) : undefined,
           });
-          if (reservation) await budgetAuthority.commit({ reservationId: reservation.id, actualUsage: execution.usage ?? {} });
+          const settlement = reservation ? await budgetAuthority.commit({ reservationId: reservation.id, actualUsage: execution.usage ?? {} }) : null;
+          if (settlement?.drift?.exceeded) throw Object.assign(new Error("BUDGET_RESERVATION_DRIFT"), { name: "BudgetReservationDriftError", drift: settlement.drift });
           return {
           outcome: execution.structured.outcome,
           evidence: {
             ...normalizeAgentEvidence(execution.structured),
             ...(execution.usage ? { usage: execution.usage } : {}),
+            ...(reservation ? { budget: { reservationId: reservation.id, reservedInputTokens: Number(reservation.reserved_input_tokens), reservedOutputTokens: Number(reservation.reserved_output_tokens), reservedCostUsd: Number(reservation.reserved_cost_usd), actual: execution.usage ?? {}, drift: settlement?.drift ?? null } } : {}),
           },
           };
         } catch (error) {
           if (reservation) await budgetAuthority.release({ reservationId: reservation.id });
-          if (error.name === "BudgetExceededError") {
+          if (["BudgetExceededError", "PricingUnknownError", "BudgetReservationDriftError"].includes(error.name)) {
             const outcomes = Object.keys(stateDefinition.next);
-            return { outcome: outcomes.find((value) => ["blocked", "exhausted", "failed", "error"].includes(value)) ?? outcomes.at(-1), evidence: { reason: "BUDGET_EXCEEDED", limit: error.limit } };
+            return { outcome: outcomes.find((value) => ["blocked", "exhausted", "failed", "error"].includes(value)) ?? outcomes.at(-1), evidence: { reason: error.name === "PricingUnknownError" ? "PRICING_UNKNOWN" : error.name === "BudgetReservationDriftError" ? "BUDGET_RESERVATION_DRIFT" : "BUDGET_EXCEEDED", limit: error.limit, ...(error.drift ? { drift: error.drift } : {}) } };
           }
           throw error;
         }
@@ -133,33 +145,38 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
         const gates = repairEvidence(stages);
         let reservation;
         try {
-          reservation = budgetAuthority ? await budgetAuthority.reserve({ taskId: task.id, runId: run.id, stage: state, attempt: run.version }) : null;
-          if (reservation?.idempotentReplay) throw Object.assign(new Error("invocation reservation is already active"), { name: "InvocationInProgressError" });
-          const execution = await runAgent(controller, {
-          directory: requireProject(task),
-          agent: "implementer",
-          prompt: [
+          const prompt = [
             "Perform a targeted repair for the failed governed gates below.",
             `Task: ${task?.metadata?.query ?? "Repair the blocking findings."}`,
             `Gate evidence: ${JSON.stringify(gates)}`,
             "Change only what is necessary. Do not commit, push, access secrets, or leave the project directory.",
             "Return progress only when project files changed; otherwise return exhausted.",
-          ].join("\n\n"),
-          schema: agentSchema(Object.keys(stateDefinition.next)),
+          ].join("\n\n");
+          const schema = agentSchema(Object.keys(stateDefinition.next));
+          reservation = budgetAuthority ? await budgetAuthority.reserve({ taskId: task.id, runId: run.id, stage: state, attempt: run.version,
+            invocation: { alias: stateDefinition.model ?? "coding-strong", prompt, schema, maxOutputTokens: stateDefinition.maxOutputTokens ?? 4096 } }) : null;
+          if (reservation?.idempotentReplay) throw Object.assign(new Error("invocation reservation is already active"), { name: "InvocationInProgressError" });
+          const execution = await runAgent(controller, {
+          directory: requireProject(task),
+          agent: "implementer",
+          prompt,
+          schema,
           maxOutputTokens: reservation ? Number(reservation.reserved_output_tokens) : undefined,
           });
-          if (reservation) await budgetAuthority.commit({ reservationId: reservation.id, actualUsage: execution.usage ?? {} });
+          const settlement = reservation ? await budgetAuthority.commit({ reservationId: reservation.id, actualUsage: execution.usage ?? {} }) : null;
+          if (settlement?.drift?.exceeded) throw Object.assign(new Error("BUDGET_RESERVATION_DRIFT"), { name: "BudgetReservationDriftError", drift: settlement.drift });
           return {
           outcome: execution.structured.outcome,
           evidence: {
             ...normalizeAgentEvidence(execution.structured),
             ...(execution.usage ? { usage: execution.usage } : {}),
+            ...(reservation ? { budget: { reservationId: reservation.id, reservedInputTokens: Number(reservation.reserved_input_tokens), reservedOutputTokens: Number(reservation.reserved_output_tokens), reservedCostUsd: Number(reservation.reserved_cost_usd), actual: execution.usage ?? {}, drift: settlement?.drift ?? null } } : {}),
             iterations: iterations + 1,
           },
           };
         } catch (error) {
           if (reservation) await budgetAuthority.release({ reservationId: reservation.id });
-          if (error.name === "BudgetExceededError") return { outcome: "exhausted", evidence: { reason: "BUDGET_EXCEEDED", limit: error.limit, iterations } };
+          if (["BudgetExceededError", "PricingUnknownError", "BudgetReservationDriftError"].includes(error.name)) return { outcome: "exhausted", evidence: { reason: error.name === "PricingUnknownError" ? "PRICING_UNKNOWN" : error.name === "BudgetReservationDriftError" ? "BUDGET_RESERVATION_DRIFT" : "BUDGET_EXCEEDED", limit: error.limit, iterations } };
           throw error;
         }
       };

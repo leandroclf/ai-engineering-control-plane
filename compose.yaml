@@ -2,7 +2,7 @@ name: aicp
 
 services:
   otel-collector:
-    image: ${OTEL_COLLECTOR_IMAGE:-otel/opentelemetry-collector-contrib:0.157.0}
+    image: ${OTEL_COLLECTOR_IMAGE:-otel/opentelemetry-collector-contrib:0.157.0@sha256:f2f01157055a9b2aab9df7118e1f1c9abf345e99b23bc7a2bc791db374a7d0f6}
     restart: unless-stopped
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     volumes:
@@ -11,7 +11,7 @@ services:
     networks: [agent-internal]
 
   postgres:
-    image: ${POSTGRES_IMAGE:-postgres:16}
+    image: ${POSTGRES_IMAGE:-postgres:16@sha256:e17e86066e5ef83e0952a9347f5c792b7ece00972e2aa787a6986f471b3dd3d5}
     restart: unless-stopped
     environment:
       POSTGRES_USER: aicp
@@ -29,7 +29,7 @@ services:
     networks: [data]
 
   redis:
-    image: ${REDIS_IMAGE:-redis:7.2.4}
+    image: ${REDIS_IMAGE:-redis:7.2.4@sha256:5a93f6b2e391b78e8bd3f9e7e1e1e06aeb5295043b4703fb88392835cec924a0}
     restart: unless-stopped
     command: ["sh", "-ec", "exec redis-server --requirepass \"$$(cat /run/secrets/redis_password)\" --save '' --appendonly no"]
     secrets: [redis_password]
@@ -41,7 +41,7 @@ services:
     networks: [data]
 
   neo4j:
-    image: ${NEO4J_IMAGE:-neo4j:2026.07.1}
+    image: ${NEO4J_IMAGE:-neo4j:2026.07.1@sha256:0ddfa71c8f0bfe0d780d74fb66b985de4767bbd274bab70c0806cb3a6deec101}
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/aicp/entrypoint.sh"]
     command: ["neo4j"]
@@ -62,7 +62,7 @@ services:
     networks: [data]
 
   litellm:
-    image: ${LITELLM_IMAGE:-docker.litellm.ai/berriai/litellm-database:latest}
+    image: ${LITELLM_IMAGE:-ghcr.io/berriai/litellm:v1.93.0@sha256:a1745e629abfb17d434426ff48b115f54f4f4c4a0f5af241de569e93c63c411e}
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/aicp/entrypoint.sh"]
     environment:
@@ -93,6 +93,9 @@ services:
     build:
       context: .
       dockerfile: docker/memory-service/Dockerfile
+      args: { PYTHON_IMAGE: "${PYTHON_IMAGE:-python:3.13-slim@sha256:ffb752e139c0a19692a43af8d8523b274222dd68eebad5d583b45c2201c6e30a}" }
+      sbom: true
+      provenance: mode=max
     restart: unless-stopped
     environment:
       PORT: 8080
@@ -134,6 +137,9 @@ services:
       dockerfile: docker/workspace/Dockerfile
       args:
         OPENCODE_VERSION: ${OPENCODE_VERSION:-1.18.21}
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm@sha256:0557ac14e0d45d02ed563067b82856ca5e7aa3437fa28d98d4350ea9c3d9494a}
+      sbom: true
+      provenance: mode=max
     stdin_open: true
     tty: true
     working_dir: /workspace
@@ -172,6 +178,9 @@ services:
         OPENCODE_VERSION: ${OPENCODE_VERSION:-1.18.21}
         DEV_UID: ${LOCAL_UID:-1000}
         DEV_GID: ${LOCAL_GID:-1000}
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm@sha256:0557ac14e0d45d02ed563067b82856ca5e7aa3437fa28d98d4350ea9c3d9494a}
+      sbom: true
+      provenance: mode=max
     restart: unless-stopped
     environment:
       HARNESS_PORT: 8081
@@ -182,6 +191,8 @@ services:
       MEMORY_SERVICE_URL: http://memory-service:8080
       MEMORY_SERVICE_TOKEN_FILE: /run/secrets/memory_service_token
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      SEMGREP_SEND_METRICS: "off"
+      SEMGREP_ENABLE_VERSION_CHECK: "0"
     secrets: [postgres_password, harness_service_token, litellm_api_key, memory_service_token]
     volumes:
       - ${ACTIVE_PROJECT_DIR:-./projects/site-lf-solucoes}:/workspace/project
@@ -198,6 +209,7 @@ services:
       - /tmp:size=512m,mode=1777
       - /home/dev/.cache:size=512m,uid=1000,gid=1000
       - /home/dev/.local/state:size=128m,uid=1000,gid=1000
+      - /home/dev/.semgrep:size=32m,uid=1000,gid=1000
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
     pids_limit: 512
@@ -210,7 +222,7 @@ services:
     networks: [agent-internal, data]
 
   control-gateway:
-    image: ${CONTROL_GATEWAY_IMAGE:-nginx:1.31.4-alpine3.24}
+    image: ${CONTROL_GATEWAY_IMAGE:-nginx:1.31.4-alpine3.24@sha256:db35bfc6b2951e7f8a72db5db120288c127ffaeeb4a6d4b95a26fead017d5913}
     restart: unless-stopped
     user: "101:101"
     read_only: true

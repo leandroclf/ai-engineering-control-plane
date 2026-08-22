@@ -122,7 +122,10 @@ test("harness context provider compiles only task scopes allowed by stage policy
   const provider = new GovernedContextProvider({
     contextClient: { compile: async (payload) => {
       calls.push(payload);
-      return { context_id: "ctx_1", token_count: 6, budget: payload.budget, artifacts: [
+      return { context_id: "ctx_1", schema_version: 2, token_count: 6, budget: payload.budget, requested_budget: payload.budget,
+        retrieval_policy_version: payload.retrieval_policy_version, packing_policy_version: payload.packing_policy_version,
+        embedding_model: "text-embedding-3-small", token_count_model: "gpt-5", tokenizer_version: payload.tokenizer_version,
+        index_snapshot: "commit-1", graph_snapshot: "graph-1", envelope: { model_window: payload.model_window }, metrics: { selected_tokens: 6 }, artifacts: [
         { id: "exact", content: "allowed", reason: "exact-symbol", provenance: { path: "app.js" } },
       ] };
     } },
@@ -141,6 +144,13 @@ test("harness context provider compiles only task scopes allowed by stage policy
   assert.deepEqual(calls[0].scopes, ["PROJECT:A"]);
   assert.equal(calls[0].budget, 20);
   assert.equal(calls[0].task_id, "task-1:implement");
+  assert.deepEqual(result.metadata, {
+    schemaVersion: 2, requestedBudget: 20, retrievalPolicyVersion: "hybrid-rrf-v1", packingPolicyVersion: "context-v2",
+    embeddingModel: "text-embedding-3-small", tokenCountModel: "gpt-5", tokenizerVersion: "1",
+    indexSnapshot: "commit-1", graphSnapshot: "graph-1",
+  });
+  assert.deepEqual(result.envelope, { model_window: 128000 });
+  assert.deepEqual(result.metrics, { selected_tokens: 6 });
 });
 
 test("context API client loads persistent Git state and sends sync delta", async () => {

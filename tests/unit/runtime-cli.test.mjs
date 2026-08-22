@@ -54,6 +54,7 @@ test("harness HTTP server authenticates and delegates a bounded start request", 
   assert.equal((await response.json()).run.id, "run-1");
   assert.deepEqual(calls[0], {
     idempotencyKey: "issue-1",
+    constraints: {},
     metadata: {
       projectDirectory: "/workspace/projects/site",
       query: "Improve",

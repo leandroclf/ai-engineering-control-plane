@@ -46,9 +46,28 @@ test("reservation lifecycle is idempotent and reconciles actual usage", async ()
     await store.consumeIteration(taskId, null);
     await store.consumeIteration(taskId, null);
     await assert.rejects(store.consumeIteration(taskId, null), (error) => error.name === "BudgetExceededError");
+    await store.reserve({ taskId, stage: "implement", estimatedUsage: { calls: 1, inputTokens: 5 }, idempotencyKey: `${key}:active-at-cancel` });
     await store.cancel(taskId);
+    assert.equal((await store.get(taskId)).reserved.calls, 0);
     await assert.rejects(store.reserve({ taskId, stage: "implement", estimatedUsage: { calls: 1 }, idempotencyKey: `${key}:cancelled` }), (error) => error.name === "BudgetExceededError");
     assert.ok((await store.events(taskId)).length >= 8);
+    await pool.query("DELETE FROM control.tasks WHERE id=$1", [taskId]);
+  } finally { await pool.end(); }
+});
+
+test("actual usage above reservation is committed and emits blocking drift evidence", async () => {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 2 });
+  const key = `budget-drift-${Date.now()}-${Math.random()}`;
+  try {
+    const task = await pool.query("INSERT INTO control.tasks(idempotency_key,workflow_version) VALUES($1,1) RETURNING id", [key]);
+    const taskId = task.rows[0].id;
+    const store = new PostgresBudgetStore(pool);
+    await store.ensure(taskId, { maxCalls: 2, maxInputTokens: 1000, maxOutputTokens: 1000, maxCostUsd: 5, maxIterations: 1 });
+    const reservation = await store.reserve({ taskId, stage: "implement", estimatedUsage: { calls: 1, inputTokens: 10, outputTokens: 5, costUsd: 0.1 }, idempotencyKey: `${key}:drift` });
+    const settlement = await store.commit(reservation.id, { inputTokens: 20, outputTokens: 6, costUsd: 0.2 });
+    assert.equal(settlement.drift.exceeded, true);
+    assert.equal(settlement.drift.inputRatio, 2);
+    assert.ok((await store.events(taskId)).some((event) => event.eventType === "BUDGET_RESERVATION_DRIFT"));
     await pool.query("DELETE FROM control.tasks WHERE id=$1", [taskId]);
   } finally { await pool.end(); }
 });

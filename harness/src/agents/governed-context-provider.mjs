@@ -17,12 +17,35 @@ export class GovernedContextProvider {
       exact_symbols: metadata.exactSymbols ?? [],
       scopes,
       budget: policy.budget,
+      model_window: policy.modelWindow ?? 128000,
+      output_reserve: policy.outputReserve ?? 4096,
+      system_reserve: policy.systemReserve ?? 2048,
+      tool_schema_reserve: policy.toolSchemaReserve ?? 1024,
+      safety_reserve: policy.safetyReserve ?? 2048,
+      retrieval_policy_version: policy.retrievalPolicyVersion ?? "hybrid-rrf-v1",
+      packing_policy_version: policy.packingPolicyVersion ?? "context-v2",
+      tokenizer_version: policy.tokenizerVersion ?? "1",
+      commit: metadata.commit,
+      changed_paths: metadata.changedPaths ?? [],
     });
     return {
       contextId: result.context_id,
       tokenCount: result.token_count,
       budget: result.budget,
       artifacts: result.artifacts,
+      envelope: result.envelope,
+      metrics: result.metrics,
+      metadata: {
+        schemaVersion: result.schema_version,
+        requestedBudget: result.requested_budget,
+        retrievalPolicyVersion: result.retrieval_policy_version,
+        packingPolicyVersion: result.packing_policy_version,
+        embeddingModel: result.embedding_model,
+        tokenCountModel: result.token_count_model,
+        tokenizerVersion: result.tokenizer_version,
+        indexSnapshot: result.index_snapshot,
+        graphSnapshot: result.graph_snapshot,
+      },
     };
   }
 }

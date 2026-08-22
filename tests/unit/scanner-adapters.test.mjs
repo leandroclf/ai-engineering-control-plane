@@ -61,3 +61,17 @@ test("official scanner adapters normalize Semgrep Gitleaks and Trivy reports", (
   assert.equal(gitleaks.findings[0].message.includes("value"), false);
   assert.deepEqual([semgrep.findings[0].category, gitleaks.findings[0].category, trivy.findings[0].category], ["sast", "secret", "dependency"]);
 });
+
+test("Trivy adapter treats secret results as blocking findings without retaining secret material", () => {
+  const trivy = createTrivyAdapter().fromExecution({
+    kind: "completed", exitCode: 0, stderr: "",
+    stdout: JSON.stringify({ Results: [{ Target: ".env", Secrets: [{ RuleID: "api-key", Severity: "CRITICAL", Title: "API key", StartLine: 7, Match: "sensitive" }] }] }),
+  });
+
+  assert.equal(trivy.status, "findings");
+  assert.deepEqual(
+    (({ tool, ruleId, severity, category, message, path, line }) => ({ tool, ruleId, severity, category, message, path, line }))(trivy.findings[0]),
+    { tool: "trivy", ruleId: "api-key", severity: "critical", category: "secret", message: "API key", path: ".env", line: 7 },
+  );
+  assert.equal(JSON.stringify(trivy.findings).includes("sensitive"), false);
+});

@@ -5,6 +5,7 @@ import pg from "pg";
 
 import { ContextApiClient } from "../../../context/client/context-api-client.mjs";
 import { BudgetAuthority } from "../budget/budget-authority.mjs";
+import { InvocationEstimator, RoutingPricingCatalog } from "../budget/invocation-estimator.mjs";
 import { PostgresBudgetStore } from "../budget/postgres-budget-store.mjs";
 import { ProcessRunner } from "../adapters/process-runner.mjs";
 import { GovernedContextProvider } from "../agents/governed-context-provider.mjs";
@@ -31,6 +32,7 @@ export async function createProductionRuntime({ environment = process.env } = {}
     "utf8",
   ));
   const gateConfiguration = JSON.parse(await readFile(environment.HARNESS_GATES_PATH ?? "harness/config/gates.yaml", "utf8"));
+  const routingConfiguration = JSON.parse(await readFile(environment.HARNESS_MODEL_ROUTING_PATH ?? "harness/config/model-routing.json", "utf8"));
   const database = new Pool({
     connectionString: required(environment, "DATABASE_URL"),
     max: Number(environment.HARNESS_DATABASE_POOL_SIZE ?? 5),
@@ -45,23 +47,28 @@ export async function createProductionRuntime({ environment = process.env } = {}
       timeout: Number(environment.OPENCODE_START_TIMEOUT_MS ?? 30_000),
     });
     const store = new PostgresRunStore(database);
-    const budgetAuthority = new BudgetAuthority({ store: new PostgresBudgetStore(database), reservation: {
-      maxOutputTokens: Number(environment.HARNESS_RESERVATION_OUTPUT_TOKENS ?? 4096),
-      maxCostUsd: Number(environment.HARNESS_RESERVATION_COST_USD ?? 1),
-    } });
+    const budgetAuthority = new BudgetAuthority({
+      store: new PostgresBudgetStore(database),
+      estimator: new InvocationEstimator({
+        pricingCatalog: new RoutingPricingCatalog(routingConfiguration.aliases),
+        safetyMargin: Number(environment.HARNESS_RESERVATION_SAFETY_MARGIN ?? 1.2),
+      }),
+      reservation: { maxOutputTokens: Number(environment.HARNESS_RESERVATION_OUTPUT_TOKENS ?? 4096) },
+    });
+    const processRunner = new ProcessRunner();
     const projectAdapter = new ProjectAdapter();
     const workspaceAttestor = new WorkspaceAttestor({ projectRoot: environment.PROJECTS_ROOT ?? "/workspace", environment });
     const gateRegistry = new GateRegistry({ definitions: gateConfiguration.gates })
       .register("project", new ProjectGateProvider())
-      .register("semgrep", new ScannerGateProvider("semgrep"))
-      .register("gitleaks", new ScannerGateProvider("gitleaks"))
-      .register("trivy", new ScannerGateProvider("trivy"));
+      .register("semgrep", new ScannerGateProvider("semgrep", { runner: processRunner }))
+      .register("gitleaks", new ScannerGateProvider("gitleaks", { runner: processRunner }))
+      .register("trivy", new ScannerGateProvider("trivy", { runner: processRunner }));
     const handlers = createWorkflowHandlers({
       definition,
       store,
       controller: new OpenCodeController(opencode.client),
       projectAdapter,
-      gateRunner: new ProjectGateRunner({ runner: new ProcessRunner() }),
+      gateRunner: new ProjectGateRunner({ runner: processRunner }),
       gateRegistry,
       budgetAuthority,
     });
@@ -77,6 +84,27 @@ export async function createProductionRuntime({ environment = process.env } = {}
       }),
       telemetry: new OtlpHttpTelemetry({ endpoint: environment.OTEL_EXPORTER_OTLP_ENDPOINT }),
       budgetAuthority,
+      metadata: {
+        versions: { workflow: `${definition.name}-v${definition.version}`, policy: "policy-v1", context: "context-v2" },
+        policies: [{ name: "control-plane", version: "policy-v1" }, { name: "workspace", version: "workspace-v1" }],
+        models: Object.entries(routingConfiguration.aliases).map(([alias, route]) => ({ alias, deployments: route.deployments.map(({ model }) => model) })),
+      },
+      readiness: async () => {
+        const checks = { postgres: "ok", memory: "ok", litellm: "ok", opencode: "ok", workflow: "ok", gateRegistry: "ok" };
+        try { await database.query("SELECT 1"); } catch { checks.postgres = "error"; }
+        const scannerProbes = await Promise.all(["semgrep", "gitleaks", "trivy"].map((tool) => processRunner.run(tool, ["--version"], { timeoutMs: 5000 })));
+        if (scannerProbes.some((probe) => probe.kind !== "completed" || probe.exitCode !== 0)) checks.gateRegistry = "error";
+        const litellmRoot = environment.LITELLM_URL ?? environment.LITELLM_BASE_URL?.replace(/\/v1\/?$/, "");
+        for (const [name, url] of [["memory", environment.MEMORY_SERVICE_URL ? `${environment.MEMORY_SERVICE_URL}/ready` : null], ["litellm", litellmRoot ? `${litellmRoot}/health/readiness` : null]]) {
+          if (!url) { checks[name] = "unconfigured"; continue; }
+          try { if (!(await fetch(url, { signal: AbortSignal.timeout(2000) })).ok) checks[name] = "error"; } catch { checks[name] = "error"; }
+        }
+        return { status: Object.values(checks).some((value) => value === "error") ? "not_ready" : "ready", checks, versions: { workflow: `${definition.name}-v${definition.version}`, policy: "policy-v1", context: "context-v2" } };
+      },
+      capabilities: async ({ project }) => {
+        if (!project) return { items: Object.keys(projectAdapter.adapters).sort().map((adapter) => ({ adapter })) };
+        return projectAdapter.detect(project);
+      },
       preflight: async (task) => {
         const project = task.metadata.projectDirectory;
         await workspaceAttestor.attest(project);

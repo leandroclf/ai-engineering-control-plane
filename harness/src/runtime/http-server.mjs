@@ -1,16 +1,13 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 
 import { resolveProjectDirectory } from "../cli/runtime-arguments.mjs";
+import { ControlPlaneAuthorizer } from "../security/identity-authority.mjs";
 
-function digest(value) {
-  return createHash("sha256").update(String(value ?? "")).digest();
-}
-
-function authorized(request, token) {
-  const supplied = request.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
-  return Boolean(token && supplied && timingSafeEqual(digest(supplied), digest(token)));
-}
+export const API_OPERATIONS = Object.freeze([
+  "health", "readiness", "createRun", "listRuns", "getRun", "listRunStages", "resumeRun", "cancelRun", "getRunAudit", "getRunGates", "getRunFindings",
+  "getTask", "getTaskBudget", "listBudgetEvents", "cancelTaskBudget", "listCapabilities", "listWorkflows", "listPolicies", "listModels", "getContext",
+]);
 
 function send(response, status, body) {
   response.writeHead(status, { "Content-Type": "application/json", "Cache-Control": "no-store" });
@@ -26,12 +23,16 @@ async function jsonBody(request, limit = 1_048_576) {
   return body ? JSON.parse(body) : {};
 }
 
-function startRequest(body, projectsRoot) {
-  if (!body.project || !body.query || !body.idempotencyKey) {
+function startRequest(body, projectsRoot, idempotencyHeader = null) {
+  const idempotencyKey = idempotencyHeader || body.idempotencyKey;
+  if (!body.project || !body.query || !idempotencyKey) {
     throw new TypeError("project, query and idempotencyKey are required");
   }
+  const constraints = body.constraints ?? {};
+  for (const [name, value] of Object.entries(constraints)) if (!["maxCostUsd", "maxCalls", "maxInputTokens", "maxOutputTokens", "maxIterations"].includes(name) || !Number.isFinite(value) || value < 0) throw new TypeError(`invalid constraint: ${name}`);
   return {
-    idempotencyKey: body.idempotencyKey,
+    idempotencyKey,
+    constraints,
     metadata: {
       projectDirectory: resolveProjectDirectory(projectsRoot, body.project),
       query: body.query,
@@ -42,46 +43,75 @@ function startRequest(body, projectsRoot) {
   };
 }
 
-export function createHarnessServer({ runtime, token, projectsRoot = "/workspace/projects" }) {
-  if (!token) throw new TypeError("HARNESS_SERVICE_TOKEN is required");
+export function createHarnessServer({ runtime, token, authorizer = null, projectsRoot = "/workspace/projects" }) {
+  const identityAuthority = authorizer ?? new ControlPlaneAuthorizer({ staticToken: token });
+  if (!authorizer && !token) throw new TypeError("HARNESS_SERVICE_TOKEN is required");
   return createServer(async (request, response) => {
+    const requestId = request.headers["x-request-id"] || `req_${randomUUID()}`;
     try {
-      if (request.method === "GET" && request.url === "/health") {
+      const url = new URL(request.url, "http://aicp.local");
+      if (request.method === "GET" && url.pathname === "/health") {
         send(response, 200, { status: "ok" });
         return;
       }
-      if (!authorized(request, token)) {
-        send(response, 401, { error: "UNAUTHORIZED" });
+      if (request.method === "GET" && url.pathname === "/ready") {
+        const readiness = await runtime.ready();
+        send(response, readiness.status === "ready" ? 200 : 503, readiness);
         return;
       }
-      if (request.method === "POST" && request.url === "/v1/runs") {
-        send(response, 201, await runtime.start(startRequest(await jsonBody(request), projectsRoot)));
+      let principal;
+      try { principal = await identityAuthority.authenticate(request); } catch {
+        send(response, 401, { error: { code: "UNAUTHORIZED", message: "Authentication is required.", retryable: false, requestId, details: {} } });
         return;
       }
-      const resume = request.method === "POST" && request.url?.match(/^\/v1\/runs\/([^/]+):resume$/);
+      principal.require(request.method === "GET" ? (url.pathname.startsWith("/v1/tasks") ? "tasks:read" : url.pathname.startsWith("/v1/runs") ? "runs:read" : "platform:read") : url.pathname.includes("budget") ? "budgets:write" : "runs:write");
+      if (request.method === "POST" && url.pathname === "/v1/runs") {
+        send(response, 201, await runtime.start(startRequest(await jsonBody(request), projectsRoot, request.headers["idempotency-key"])));
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/v1/runs") { send(response, 200, await runtime.listRuns({ status: url.searchParams.get("status"), taskId: url.searchParams.get("taskId"), limit: url.searchParams.get("limit"), offset: url.searchParams.get("offset") })); return; }
+      if (request.method === "GET" && url.pathname === "/v1/capabilities") { const project = url.searchParams.get("project"); send(response, 200, await runtime.capabilities({ project: project ? resolveProjectDirectory(projectsRoot, project) : null })); return; }
+      if (request.method === "GET" && url.pathname === "/v1/workflows") { send(response, 200, runtime.workflows()); return; }
+      if (request.method === "GET" && url.pathname === "/v1/policies") { send(response, 200, runtime.policies()); return; }
+      if (request.method === "GET" && url.pathname === "/v1/models") { send(response, 200, runtime.models()); return; }
+      const storedContext = request.method === "GET" && url.pathname.match(/^\/v1\/contexts\/([^/]+)$/);
+      if (storedContext) { send(response, 200, await runtime.getContext(decodeURIComponent(storedContext[1]))); return; }
+      const resume = request.method === "POST" && url.pathname.match(/^\/v1\/runs\/([^/]+):resume$/);
       if (resume) {
         send(response, 200, await runtime.resume(decodeURIComponent(resume[1])));
         return;
       }
-      const getRun = request.method === "GET" && request.url?.match(/^\/v1\/runs\/([^/:?]+)$/);
+      const getRun = request.method === "GET" && url.pathname.match(/^\/v1\/runs\/([^/:?]+)$/);
       if (getRun) { send(response, 200, await runtime.getRun(decodeURIComponent(getRun[1]))); return; }
-      const stages = request.method === "GET" && request.url?.match(/^\/v1\/runs\/([^/]+)\/stages$/);
+      const stages = request.method === "GET" && url.pathname.match(/^\/v1\/runs\/([^/]+)\/stages$/);
       if (stages) { send(response, 200, (await runtime.getRun(decodeURIComponent(stages[1]))).stages); return; }
-      const cancelRun = request.method === "POST" && request.url?.match(/^\/v1\/runs\/([^/]+):cancel$/);
+      const cancelRun = request.method === "POST" && url.pathname.match(/^\/v1\/runs\/([^/]+):cancel$/);
       if (cancelRun) { send(response, 200, await runtime.cancelRun(decodeURIComponent(cancelRun[1]))); return; }
-      const budget = request.method === "GET" && request.url?.match(/^\/v1\/tasks\/([^/]+)\/budget$/);
+      const audit = request.method === "GET" && url.pathname.match(/^\/v1\/runs\/([^/]+)\/audit$/);
+      if (audit) { send(response, 200, await runtime.getAudit(decodeURIComponent(audit[1]))); return; }
+      const gates = request.method === "GET" && url.pathname.match(/^\/v1\/runs\/([^/]+)\/gates$/);
+      if (gates) { send(response, 200, await runtime.getGates(decodeURIComponent(gates[1]))); return; }
+      const findings = request.method === "GET" && url.pathname.match(/^\/v1\/runs\/([^/]+)\/findings$/);
+      if (findings) { send(response, 200, await runtime.getFindings(decodeURIComponent(findings[1]))); return; }
+      const task = request.method === "GET" && url.pathname.match(/^\/v1\/tasks\/([^/]+)$/);
+      if (task) { send(response, 200, await runtime.getTask(decodeURIComponent(task[1]))); return; }
+      const budget = request.method === "GET" && url.pathname.match(/^\/v1\/tasks\/([^/]+)\/budget$/);
       if (budget) { send(response, 200, await runtime.getBudget(decodeURIComponent(budget[1]))); return; }
-      const budgetEvents = request.method === "GET" && request.url?.match(/^\/v1\/tasks\/([^/]+)\/budget\/events$/);
+      const budgetEvents = request.method === "GET" && url.pathname.match(/^\/v1\/tasks\/([^/]+)\/budget\/events$/);
       if (budgetEvents) { send(response, 200, await runtime.getBudgetEvents(decodeURIComponent(budgetEvents[1]))); return; }
-      const cancelBudget = request.method === "POST" && request.url?.match(/^\/v1\/tasks\/([^/]+)\/budget:cancel$/);
+      const cancelBudget = request.method === "POST" && url.pathname.match(/^\/v1\/tasks\/([^/]+)\/budget:cancel$/);
       if (cancelBudget) { send(response, 200, await runtime.cancelBudget(decodeURIComponent(cancelBudget[1]))); return; }
-      send(response, 404, { error: "NOT_FOUND" });
+      send(response, 404, { error: { code: "NOT_FOUND", message: "The requested resource was not found.", retryable: false, requestId, details: {} } });
     } catch (error) {
       const clientError = error instanceof TypeError || error instanceof RangeError || error instanceof SyntaxError;
-      send(response, clientError ? 400 : 500, {
-        error: clientError ? "INVALID_REQUEST" : "RUNTIME_FAILURE",
-        ...(clientError ? { message: error.message } : {}),
-      });
+      const unavailable = error.name === "GateResolutionError" || error.name === "PricingUnknownError";
+      const forbidden = error.name === "AuthorizationError";
+      const conflict = error.name === "IdempotencyConflictError";
+      const notFound = /^unknown (?:run|task|context|task budget)/.test(error.message);
+      send(response, clientError ? 400 : forbidden ? 403 : notFound ? 404 : conflict ? 409 : unavailable ? 422 : 500, { error: {
+        code: clientError ? "INVALID_REQUEST" : forbidden ? "FORBIDDEN" : notFound ? "NOT_FOUND" : conflict ? "IDEMPOTENCY_CONFLICT" : unavailable ? error.code ?? error.name : "RUNTIME_FAILURE",
+        message: clientError || unavailable ? error.message : "The control plane could not complete the request.", retryable: false, requestId, details: {},
+      } });
     }
   });
 }

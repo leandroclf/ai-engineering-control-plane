@@ -29,6 +29,9 @@ export class WorkflowExecutor {
         contextTokenCount: context.tokenCount,
         contextBudget: context.budget,
         contextArtifacts: context.artifacts.map(({ id, reason, provenance }) => ({ id, reason, provenance })),
+        contextEnvelope: context.envelope,
+        contextMetrics: context.metrics,
+        contextMetadata: context.metadata,
       } : {};
       if (typeof result === "object" && result?.evidence) evidence.handler = structuredClone(result.evidence);
       if (this.telemetry) {
@@ -39,7 +42,9 @@ export class WorkflowExecutor {
           outcome,
           ...(this.telemetry.acceptsTiming ? { startedAt, finishedAt: new Date() } : {}),
           ...(result?.evidence?.usage ? { usage: result.evidence.usage } : {}),
+          ...(result?.evidence?.budget ? { budget: result.evidence.budget } : {}),
           ...(context?.contextId ? { contextId: context.contextId } : {}),
+          ...(context?.metrics ? { contextMetrics: context.metrics } : {}),
         });
       }
       run = await this.store.transition(run.id, {

@@ -13,18 +13,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run test:architecture
+      - run: npm run validate:supply-chain
 
   contracts:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: npm
@@ -40,7 +41,7 @@ jobs:
           docker compose build memory-service workspace harness
       - name: Upload normalized contract evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: aicp-contract-evidence
           path: |
@@ -55,7 +56,7 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16@sha256:e17e86066e5ef83e0952a9347f5c792b7ece00972e2aa787a6986f471b3dd3d5
         env: { POSTGRES_USER: aicp, POSTGRES_PASSWORD: integration, POSTGRES_DB: aicp_memory }
         ports: ["5432:5432"]
         options: >-
@@ -65,8 +66,8 @@ jobs:
       DATABASE_URL: postgresql://aicp:integration@127.0.0.1:5432/aicp_memory
       PGPASSWORD: integration
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: for migration in memory-service/migrations/*.sql; do psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"; done
@@ -76,8 +77,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: npm
@@ -90,19 +91,19 @@ jobs:
           raw="$PWD/.aicp/ci/raw"
 
           docker run --rm -v "$PWD:/src:ro" -v "$raw:/reports" -w /src \
-            semgrep/semgrep:1.174.0 \
+            semgrep/semgrep:1.174.0@sha256:f1f7b71861c7b28b6e0f661225a2c4f58a484f5d0f182465c6d6b3b22f972ade \
             semgrep scan --config security/semgrep/rules/aicp-security.yaml \
             --exclude tests/fixtures --json --output /reports/semgrep.json .
           echo $? > .aicp/ci/raw/semgrep.exit
 
           docker run --rm -v "$PWD:/repo:ro" -v "$raw:/reports" \
-            ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
             detect --source=/repo --redact --report-format=json \
             --report-path=/reports/gitleaks.json --exit-code=0
           echo $? > .aicp/ci/raw/gitleaks.exit
 
           docker run --rm -v "$PWD:/repo:ro" -v "$raw:/reports" \
-            aquasec/trivy:0.74.0 \
+            aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969 \
             fs --format json --scanners vuln,misconfig,secret --severity HIGH,CRITICAL \
             --skip-dirs /repo/tests/fixtures --skip-dirs /repo/projects \
             --exit-code 0 --output /reports/trivy.json /repo
@@ -112,7 +113,7 @@ jobs:
         run: node harness/src/cli/evaluate-scanner-reports.mjs
       - name: Upload scanner evidence
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: aicp-scanner-evidence
           path: .aicp/ci
@@ -123,8 +124,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run evaluate:baseline

@@ -22,4 +22,8 @@ test("OTLP telemetry correlates stage metadata and excludes sensitive payloads",
   assert.match(encoded, /run-1/);
   assert.match(encoded, /verify/);
   assert.doesNotMatch(encoded, /private prompt|private source|sk-secret/);
+  const spans = payloads[0][1].resourceSpans[0].scopeSpans[0].spans;
+  assert.deepEqual(spans.map((span) => span.name), ["task", "run", "stage.verify", "context.retrieve"]);
+  assert.equal(spans[1].parentSpanId, spans[0].spanId);
+  assert.equal(spans[2].parentSpanId, spans[1].spanId);
 });

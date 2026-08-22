@@ -100,7 +100,8 @@ test("workflow executor delivers governed context and persists redacted provenan
     assert.equal(loadedTask.id, task.id);
     assert.equal(state, "verify");
     assert.equal(policy.budget, 100);
-    return { contextId: "ctx_1", tokenCount: 8, budget: 100, artifacts: [
+    return { contextId: "ctx_1", tokenCount: 8, budget: 100,
+      envelope: { modelWindow: 1000 }, metrics: { selected_tokens: 8 }, metadata: { schemaVersion: 2, retrievalPolicyVersion: "retrieval-v2" }, artifacts: [
       { id: "chunk-1", content: "must not persist", reason: "exact-symbol", provenance: { path: "app.js" } },
     ] };
   } };
@@ -119,9 +120,11 @@ test("workflow executor delivers governed context and persists redacted provenan
     { id: "chunk-1", reason: "exact-symbol", provenance: { path: "app.js" } },
   ]);
   assert.equal(JSON.stringify(stage.evidence).includes("must not persist"), false);
+  assert.deepEqual(stage.evidence.contextMetadata, { schemaVersion: 2, retrievalPolicyVersion: "retrieval-v2" });
+  assert.deepEqual(stage.evidence.contextMetrics, { selected_tokens: 8 });
   assert.equal(stage.evidence.telemetryExported, true);
   assert.deepEqual(telemetryCalls[0], {
-    taskId: task.id, runId: run.id, stage: "verify", outcome: "pass", contextId: "ctx_1",
+    taskId: task.id, runId: run.id, stage: "verify", outcome: "pass", contextId: "ctx_1", contextMetrics: { selected_tokens: 8 },
   });
 });
 

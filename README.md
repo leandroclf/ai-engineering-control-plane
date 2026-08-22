@@ -4,10 +4,11 @@ Governed, reproducible engineering environment for bounded AI-assisted work.
 
 ## Current status
 
-Foundation and deterministic Engineering Harness validated locally. The
-environment includes PostgreSQL-backed LiteLLM, a limited workspace virtual
-key, live OpenAI smoke tests, transactional workflow state, bounded repair and
-blocking project gates. The full OpenSpec change remains in progress.
+Pre-v1 Control Plane evolved to the v1 review contract. The environment includes
+model-aware transactional budget envelopes, typed capability probes and
+polyglot profiles, immutable OCI supply-chain references, operational API,
+Context Compiler v2, bounded graph retrieval, memory reconciliation, hierarchical
+OTel traces and RBAC/workload contracts. Human and CI review remain final authority.
 
 ## Prerequisites
 
@@ -81,6 +82,11 @@ environment. For manual Compose recreation, always pass
 `docker compose --env-file .env.runtime ...`; the bootstrap does this by
 exporting the same values without exposing the file to agent containers.
 
+Operational endpoints include `/ready`, filtered `GET /v1/runs`, run audit,
+gates/findings, task/budget ledgers, capabilities, workflows, policies, model
+aliases and redacted context provenance. The synchronized contract is
+`docs/api/control-plane-v1.openapi.yaml`; errors use a request-correlated envelope.
+
 Optional Langfuse observability runs as an independent low-scale profile:
 
 ```bash
@@ -97,11 +103,14 @@ Reproduce the initial evaluation observation and dashboard contracts with:
 
 ```bash
 npm run evaluate:baseline
+npm run validate:benchmark
 ```
 
 The generated `.aicp/evaluations/baseline.report.json` covers cost per accepted
 task, first-pass rate, repair loops, deterministic retrieval, context reuse and
 model fallback. These values are a fixture baseline, not invented SLOs.
+The paired benchmark catalog defines E01–E20 with three repetitions and explicit
+quality/security acceptance; it does not claim improvements before real runs exist.
 
 Open the workspace:
 
@@ -115,6 +124,8 @@ opencode
 
 ```bash
 npm run validate
+npm run validate:supply-chain
+npm run test:architecture
 ```
 
 The controlled vulnerable project is expected to return a non-zero status and
@@ -164,7 +175,8 @@ local-only and ignored by Git.
 - Harness owns workflow state, gates, budgets and termination.
 - LiteLLM isolates providers and aliases.
 - PostgreSQL is canonical; Neo4j and Redis are derived/ephemeral.
-- Context Compiler selects evidence within a token budget.
+- Context Compiler v2 fuses exact, Git, lexical, vector, bounded graph and
+  authority-ordered memory evidence inside a model-aware token envelope.
 - CI and human review retain final authority.
 
 See [the OpenSpec change](openspec/changes/bootstrap-ai-engineering-control-plane/proposal.md),

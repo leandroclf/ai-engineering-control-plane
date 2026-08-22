@@ -17,6 +17,20 @@ before restarting. A required unavailable gate remains blocking.
 Preserve task/run IDs, finding fingerprint, diff fingerprint and gate artifacts.
 Do not increase budgets automatically. Route to human review.
 
+## Budget reservation drift
+
+Query `GET /v1/tasks/<task-id>/budget/events` and locate
+`BUDGET_RESERVATION_DRIFT`. Preserve reserved/actual ratios and model alias,
+stop remaining task work, and correct pricing/routing/token overhead before
+resume. Never increase or reset the persisted budget to hide an overshoot.
+
+## Capability preflight failure
+
+Use `GET /v1/capabilities?project=<name>` and inspect each module's status and
+probe evidence. `MISCONFIGURED` required capabilities block before any model
+call. Install/configure the declared project tool or deliberately update the
+project policy; do not replace a required gate with a guessed conventional command.
+
 ## Suspected secret exposure
 
 Stop affected workflow, revoke/rotate the credential at its authority, preserve
@@ -61,6 +75,9 @@ Run `./scripts/context-smoke.sh [repository-id] [query] [exact-symbol] [budget]`
 to verify gateway token counting, authorized compilation and sanitized Harness
 stage evidence. Use `/v1/context:impact` to inspect local import dependents of a
 path before planning a change.
+Graph context traversal is capped at two hops. Source changes reconcile matching
+memory refs and append `memory.reconciliation_events`; stale entries must not be
+reactivated without new evidence.
 
 ## Telemetry degradation
 

@@ -10,6 +10,8 @@ function mapRun(row) {
     updatedAt: row.updated_at,
   };
 }
+function number(value) { return Number(value ?? 0); }
+function canonical(value) { if (Array.isArray(value)) return value.map(canonical); if (value && typeof value === "object") return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])])); return value; }
 function statusFor(to, terminal) { return !terminal ? "running" : to === "failed" ? "failed" : to === "human-review" ? "blocked" : "completed"; }
 
 export class PostgresRunStore {
@@ -33,11 +35,14 @@ export class PostgresRunStore {
       `INSERT INTO control.tasks (idempotency_key, workflow_version, metadata)
        VALUES ($1, $2, $3::jsonb)
        ON CONFLICT (idempotency_key) DO UPDATE SET idempotency_key = EXCLUDED.idempotency_key
-       RETURNING id, idempotency_key, workflow_version, metadata, created_at`,
+       RETURNING id, idempotency_key, workflow_version, metadata, created_at, (xmax <> 0) AS idempotent_replay`,
       [idempotencyKey, workflowVersion, JSON.stringify(metadata)],
     );
     const row = result.rows[0];
-    return { id: row.id, idempotencyKey: row.idempotency_key, workflowVersion: row.workflow_version, metadata: row.metadata, createdAt: row.created_at };
+    if (Number(row.workflow_version) !== Number(workflowVersion) || JSON.stringify(canonical(row.metadata)) !== JSON.stringify(canonical(metadata))) {
+      throw Object.assign(new Error("idempotency key already identifies a different task request"), { name: "IdempotencyConflictError", code: "IDEMPOTENCY_CONFLICT" });
+    }
+    return { id: row.id, idempotencyKey: row.idempotency_key, workflowVersion: row.workflow_version, metadata: row.metadata, createdAt: row.created_at, idempotentReplay: row.idempotent_replay === true };
   }
 
   async createRun({ taskId, initialState, policyVersion }) {
@@ -65,6 +70,20 @@ export class PostgresRunStore {
     const result = await this.#query("SELECT * FROM control.runs WHERE id = $1", [runId]);
     if (!result.rows[0]) throw new Error(`unknown run: ${runId}`);
     return mapRun(result.rows[0]);
+  }
+  async getLatestRunForTask(taskId) {
+    const result = await this.#query("SELECT * FROM control.runs WHERE task_id=$1 ORDER BY created_at DESC,id DESC LIMIT 1", [taskId]);
+    return result.rows[0] ? mapRun(result.rows[0]) : null;
+  }
+
+  async listRuns({ status = null, taskId = null, limit = 50, offset = 0 } = {}) {
+    const boundedLimit = Math.min(200, Math.max(1, Number(limit) || 50));
+    const boundedOffset = Math.max(0, Number(offset) || 0);
+    const result = await this.#query(
+      `SELECT * FROM control.runs WHERE ($1::text IS NULL OR status=$1) AND ($2::uuid IS NULL OR task_id=$2)
+       ORDER BY created_at DESC,id DESC LIMIT $3 OFFSET $4`, [status, taskId, boundedLimit, boundedOffset],
+    );
+    return { items: result.rows.map(mapRun), limit: boundedLimit, offset: boundedOffset };
   }
 
   async transition(runId, { expectedVersion, outcome, to, terminal = false, evidence = {}, startedAt = new Date(), finishedAt = new Date() }) {
@@ -112,6 +131,21 @@ export class PostgresRunStore {
       [runId],
     );
     return result.rows;
+  }
+
+  async getContext(contextId) {
+    const result = await this.#query(
+      `SELECT run_id,sequence,evidence->>'contextId' AS context_id,evidence->'contextArtifacts' AS artifacts,
+              (evidence->>'contextTokenCount')::bigint AS token_count,(evidence->>'contextBudget')::bigint AS budget,
+              evidence->'contextEnvelope' AS envelope,evidence->'contextMetrics' AS metrics,
+              evidence->'contextMetadata' AS metadata,finished_at
+       FROM control.stages WHERE evidence->>'contextId'=$1 ORDER BY finished_at DESC LIMIT 1`, [contextId],
+    );
+    if (!result.rows[0]) throw new Error(`unknown context: ${contextId}`);
+    return { contextId: result.rows[0].context_id, runId: result.rows[0].run_id, sequence: result.rows[0].sequence,
+      tokenCount: number(result.rows[0].token_count), budget: number(result.rows[0].budget), artifacts: result.rows[0].artifacts ?? [],
+      envelope: result.rows[0].envelope ?? {}, metrics: result.rows[0].metrics ?? {}, metadata: result.rows[0].metadata ?? {},
+      compiledAt: result.rows[0].finished_at };
   }
 
   async cancelRun(runId) {

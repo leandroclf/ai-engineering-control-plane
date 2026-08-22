@@ -65,7 +65,7 @@ services:
     networks: [observability-data]
 
   langfuse-postgres:
-    image: postgres:17.6
+    image: ${LANGFUSE_POSTGRES_IMAGE}
     restart: unless-stopped
     environment:
       POSTGRES_USER: langfuse
@@ -82,7 +82,7 @@ services:
     networks: [observability-data]
 
   langfuse-clickhouse:
-    image: clickhouse/clickhouse-server:25.12
+    image: ${LANGFUSE_CLICKHOUSE_IMAGE}
     restart: unless-stopped
     user: "101:101"
     environment:
@@ -100,7 +100,7 @@ services:
     networks: [observability-data]
 
   langfuse-redis:
-    image: redis:7.4.5
+    image: ${LANGFUSE_REDIS_IMAGE}
     restart: unless-stopped
     command: ["sh", "-ec", "exec redis-server --requirepass '$$LANGFUSE_REDIS_PASSWORD' --maxmemory-policy noeviction"]
     environment: { LANGFUSE_REDIS_PASSWORD: "${LANGFUSE_REDIS_PASSWORD}" }
@@ -113,7 +113,7 @@ services:
     networks: [observability-data]
 
   langfuse-minio:
-    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    image: ${LANGFUSE_MINIO_IMAGE}
     restart: unless-stopped
     entrypoint: ["/bin/sh", "-ec"]
     command: ["mkdir -p /data/langfuse && exec minio server --address ':9000' --console-address ':9001' /data"]

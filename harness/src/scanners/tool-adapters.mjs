@@ -39,14 +39,15 @@ export function createTrivyAdapter() {
     parse: (document) => (document.Results ?? []).flatMap((result) => [
       ...(result.Vulnerabilities ?? []).map((finding) => ({ ...finding, target: result.Target, kind: "dependency" })),
       ...(result.Misconfigurations ?? []).map((finding) => ({ ...finding, target: result.Target, kind: "container" })),
+      ...(result.Secrets ?? []).map((finding) => ({ ...finding, target: result.Target, kind: "secret" })),
     ]),
     map: (finding) => ({
-      ruleId: finding.VulnerabilityID ?? finding.ID,
+      ruleId: finding.VulnerabilityID ?? finding.ID ?? finding.RuleID,
       severity: finding.Severity,
       category: finding.kind,
       message: finding.Title ?? finding.Message ?? finding.Description,
       path: finding.target,
-      line: finding.CauseMetadata?.StartLine ?? 1,
+      line: finding.CauseMetadata?.StartLine ?? finding.StartLine ?? 1,
     }),
   });
 }

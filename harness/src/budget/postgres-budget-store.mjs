@@ -85,9 +85,16 @@ export class PostgresBudgetStore {
           WHERE task_id=$1 AND status='ACTIVE' AND
           (used_calls>=max_calls OR used_input_tokens>=max_input_tokens OR used_output_tokens>=max_output_tokens OR used_cost_usd>=max_cost_usd)`, [reservation.task_id]);
       }
+      const drift = state === "COMMITTED" ? {
+        exceeded: actual.inputTokens > number(reservation.reserved_input_tokens) || actual.outputTokens > number(reservation.reserved_output_tokens) || actual.costUsd > number(reservation.reserved_cost_usd),
+        inputRatio: number(reservation.reserved_input_tokens) ? actual.inputTokens / number(reservation.reserved_input_tokens) : actual.inputTokens ? Infinity : 0,
+        outputRatio: number(reservation.reserved_output_tokens) ? actual.outputTokens / number(reservation.reserved_output_tokens) : actual.outputTokens ? Infinity : 0,
+        costRatio: number(reservation.reserved_cost_usd) ? actual.costUsd / number(reservation.reserved_cost_usd) : actual.costUsd ? Infinity : 0,
+      } : null;
       const updated = await client.query(`UPDATE control.budget_reservations SET state=$2,actual_input_tokens=$3,actual_output_tokens=$4,actual_cost_usd=$5,committed_at=CASE WHEN $2='COMMITTED' THEN now() ELSE NULL END WHERE id=$1 RETURNING *`, [reservationId, state, actual.inputTokens, actual.outputTokens, actual.costUsd]);
       await client.query("INSERT INTO control.budget_events(task_id,run_id,reservation_id,event_type,payload) VALUES($1,$2,$3,$4,$5::jsonb)", [reservation.task_id, reservation.run_id, reservationId, state, JSON.stringify(actual)]);
-      return updated.rows[0];
+      if (drift?.exceeded) await client.query("INSERT INTO control.budget_events(task_id,run_id,reservation_id,event_type,payload) VALUES($1,$2,$3,'BUDGET_RESERVATION_DRIFT',$4::jsonb)", [reservation.task_id, reservation.run_id, reservationId, JSON.stringify({ reserved: { inputTokens: number(reservation.reserved_input_tokens), outputTokens: number(reservation.reserved_output_tokens), costUsd: number(reservation.reserved_cost_usd) }, actual, drift })]);
+      return { ...updated.rows[0], drift };
     });
   }
 
@@ -102,10 +109,18 @@ export class PostgresBudgetStore {
 
   async cancel(taskId) {
     await this.expireStale();
-    const result = await this.database.query("UPDATE control.task_budgets SET status='CANCELLED',version=version+1,updated_at=now() WHERE task_id=$1 RETURNING *", [taskId]);
-    if (!result.rows[0]) throw new Error(`unknown task budget: ${taskId}`);
-    await this.database.query("INSERT INTO control.budget_events(task_id,event_type,payload) VALUES($1,'CANCELLED','{}')", [taskId]);
-    return mapBudget(result.rows[0]);
+    return this.transact(async (client) => {
+      const locked = await client.query("SELECT * FROM control.task_budgets WHERE task_id=$1 FOR UPDATE", [taskId]);
+      if (!locked.rows[0]) throw new Error(`unknown task budget: ${taskId}`);
+      const active = await client.query("SELECT * FROM control.budget_reservations WHERE task_id=$1 AND state='RESERVED' FOR UPDATE", [taskId]);
+      for (const reservation of active.rows) {
+        await client.query("UPDATE control.budget_reservations SET state='RELEASED' WHERE id=$1", [reservation.id]);
+        await client.query("INSERT INTO control.budget_events(task_id,run_id,reservation_id,event_type,payload) VALUES($1,$2,$3,'RELEASED','{}')", [taskId, reservation.run_id, reservation.id]);
+      }
+      const result = await client.query("UPDATE control.task_budgets SET status='CANCELLED',reserved_calls=0,reserved_input_tokens=0,reserved_output_tokens=0,reserved_cost_usd=0,version=version+1,updated_at=now() WHERE task_id=$1 RETURNING *", [taskId]);
+      await client.query("INSERT INTO control.budget_events(task_id,event_type,payload) VALUES($1,'CANCELLED','{}')", [taskId]);
+      return mapBudget(result.rows[0]);
+    });
   }
 
   async consumeIteration(taskId, runId) {

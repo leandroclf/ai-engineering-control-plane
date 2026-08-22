@@ -32,8 +32,9 @@ test("project adapter supports Gradle Maven Python and Go manifests", async () =
     await writeFile(join(project, manifest), "\n");
     const profile = await new ProjectAdapter().detect(project);
     assert.equal(profile.kind, kind);
-    assert.ok(profile.capabilities.build.command.length > 0);
-    assert.ok(profile.capabilities["unit-tests"].command.length > 0);
+    assert.ok(profile.capabilities.build);
+    assert.ok(profile.capabilities["unit-tests"]);
+    assert.ok(["AVAILABLE", "MISCONFIGURED", "UNSUPPORTED"].includes(profile.capabilities["unit-tests"].status));
   }
 });
 

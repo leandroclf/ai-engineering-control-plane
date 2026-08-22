@@ -20,8 +20,14 @@ export class GateRegistry {
 export class ProjectGateProvider {
   async resolve({ definition, profile }) {
     const capability = profile.capabilities?.[definition.capability];
-    if (!capability?.command) return null;
-    return capability;
+    if (!capability) return null;
+    const required = definition.required ?? capability.required ?? false;
+    if (capability.status && capability.status !== "AVAILABLE") {
+      if (required) throw new GateResolutionError("REQUIRED_GATE_UNAVAILABLE", `${definition.capability}:${capability.status}`);
+      return { ...capability, required: false, command: null, executions: [] };
+    }
+    if (!capability.command && !capability.executions?.length) return required ? null : { ...capability, required: false };
+    return { ...capability, required };
   }
 }
 
@@ -31,6 +37,14 @@ const SCANNERS = {
   trivy: () => ["trivy", "fs", "--format", "json", "--severity", "HIGH,CRITICAL", "."],
 };
 export class ScannerGateProvider {
-  constructor(name) { this.name = name; }
-  async resolve({ definition }) { return { command: SCANNERS[this.name]({ mode: definition.mode }), required: true, scanner: this.name, mode: definition.mode }; }
+  constructor(name, { runner = null, probeTimeoutMs = 5000 } = {}) { this.name = name; this.runner = runner; this.probeTimeoutMs = probeTimeoutMs; }
+  async resolve({ definition }) {
+    const command = SCANNERS[this.name]({ mode: definition.mode });
+    if (this.runner) {
+      const probe = await this.runner.run(command[0], ["--version"], { timeoutMs: this.probeTimeoutMs });
+      if (probe.kind !== "completed" || probe.exitCode !== 0) throw new GateResolutionError("REQUIRED_GATE_UNAVAILABLE", `${this.name}:MISCONFIGURED`);
+      return { command, required: true, scanner: this.name, mode: definition.mode, status: "AVAILABLE", evidence: { source: "scanner-version-probe", exitCode: probe.exitCode } };
+    }
+    return { command, required: true, scanner: this.name, mode: definition.mode, status: "DECLARED", evidence: { source: "scanner-registry" } };
+  }
 }
