@@ -43,7 +43,7 @@ export class DockerWorkerManager extends WorkerManager {
       await this.docker.remove(containerId); this.identityService.revoke(spec.identityToken); throw new Error("WORKER_ATTESTATION_FAILED");
     }
     const profileAttestation = await this.profiles.attest(spec.profile, { exec: (command) => this.docker.exec(containerId, command) });
-    const handle = Object.freeze({ runId: spec.runId, workerId: containerId, profile: spec.profile, image: profile.image, attestation: Object.freeze({ ...attestation, profileAttestation }) });
+    const handle = Object.freeze({ runId: spec.runId, workerId: containerId, profile: spec.profile, image: profile.image, imageDigest: inspected.Image, attestation: Object.freeze({ ...attestation, profileAttestation }) });
     this.workers.set(spec.runId, { handle, identityToken: spec.identityToken });
     return handle;
   }
@@ -58,7 +58,8 @@ export class DockerWorkerManager extends WorkerManager {
   async collectEvidence(runId) {
     const worker = this.workers.get(runId);
     if (!worker) throw new Error(`WORKER_NOT_FOUND:${runId}`);
-    const diff = await this.docker.diff(worker.handle.workerId);
+    const repositoryDiff = await this.docker.exec(worker.handle.workerId, ["sh", "-lc", "git -C /workspace/project status --porcelain=v1 && git -C /workspace/project diff --binary --no-ext-diff"]);
+    const diff = repositoryDiff.exitCode === 0 ? repositoryDiff : await this.docker.diff(worker.handle.workerId);
     return Object.freeze({ runId, workerId: worker.handle.workerId, diffHash: createHash("sha256").update(diff.stdout ?? "").digest("hex"), changedEntries: String(diff.stdout ?? "").trim() ? String(diff.stdout).trim().split("\n").length : 0 });
   }
 

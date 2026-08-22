@@ -1,13 +1,15 @@
 import { WorkflowExecutor } from "../workflow/executor.mjs";
 
 export class GovernedRuntime {
-  constructor({ definition, store, handlers, contextProvider = null, telemetry = null, budgetAuthority = null, preflight = null, readiness = null, capabilities = null, metadata = {} }) {
+  constructor({ definition, store, handlers, contextProvider = null, telemetry = null, budgetAuthority = null, preflight = null, readiness = null, capabilities = null, workerManager = null, workerProfile = null, metadata = {} }) {
     this.definition = definition;
     this.store = store;
     this.budgetAuthority = budgetAuthority;
     this.preflight = preflight;
     this.readiness = readiness;
     this.capabilityProvider = capabilities;
+    this.workerManager = workerManager;
+    this.workerProfile = workerProfile;
     this.metadata = metadata;
     this.executor = new WorkflowExecutor({ definition, store, handlers, contextProvider, telemetry });
   }
@@ -33,14 +35,14 @@ export class GovernedRuntime {
       initialState: this.definition.initial,
       policyVersion: this.definition.version,
     });
-    const run = await this.executor.execute(created.id);
-    return { task, run, stages: await this.store.listStages(run.id), links: this.#links(run.id) };
+    return this.#executeWithWorker(created, task);
   }
 
   async resume(runId) {
     if (this.budgetAuthority) await this.budgetAuthority.reconcile();
-    const run = await this.executor.execute(runId);
-    return { run, stages: await this.store.listStages(run.id) };
+    const pending = await this.store.getRun(runId);
+    const task = await this.store.getTask(pending.taskId);
+    return this.#executeWithWorker(pending, task, false);
   }
 
   async getRun(runId) { const run = await this.store.getRun(runId); return { run, stages: await this.store.listStages(runId) }; }
@@ -63,9 +65,23 @@ export class GovernedRuntime {
   policies() { return { items: this.metadata.policies ?? [] }; }
   models() { return { items: this.metadata.models ?? [] }; }
   getContext(contextId) { return this.store.getContext(contextId); }
-  async cancelRun(runId) { const run = await this.store.cancelRun(runId); if (this.budgetAuthority) await this.budgetAuthority.cancel(run.taskId); return { run, stages: await this.store.listStages(runId) }; }
+  async cancelRun(runId) { const run = await this.store.cancelRun(runId); if (this.workerManager) await this.workerManager.destroy(runId); if (this.budgetAuthority) await this.budgetAuthority.cancel(run.taskId); return { run, stages: await this.store.listStages(runId) }; }
   getBudget(taskId) { if (!this.budgetAuthority) throw new Error("budget authority unavailable"); return this.budgetAuthority.get(taskId); }
   getBudgetEvents(taskId) { if (!this.budgetAuthority) throw new Error("budget authority unavailable"); return this.budgetAuthority.events(taskId); }
   cancelBudget(taskId) { if (!this.budgetAuthority) throw new Error("budget authority unavailable"); return this.budgetAuthority.cancel(taskId); }
+  async #executeWithWorker(pending, task, includeTask = true) {
+    let worker = null; let workerEvidence = null;
+    try {
+      if (this.workerManager) {
+        const profile = await this.workerProfile(task.metadata.projectDirectory);
+        worker = await this.workerManager.create({ runId: pending.id, projectDirectory: task.metadata.projectDirectory, profile, environment: {} });
+      }
+      const run = await this.executor.execute(pending.id);
+      if (worker) workerEvidence = await this.workerManager.collectEvidence(run.id);
+      return { ...(includeTask ? { task } : {}), run, stages: await this.store.listStages(run.id), ...(includeTask ? { links: this.#links(run.id) } : {}), ...(worker ? { worker: { ...worker, evidence: workerEvidence } } : {}) };
+    } finally {
+      if (worker) await this.workerManager.destroy(pending.id);
+    }
+  }
   #links(runId) { return { self: `/v1/runs/${runId}`, stages: `/v1/runs/${runId}/stages`, audit: `/v1/runs/${runId}/audit`, gates: `/v1/runs/${runId}/gates`, findings: `/v1/runs/${runId}/findings` }; }
 }

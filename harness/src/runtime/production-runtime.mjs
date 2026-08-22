@@ -17,6 +17,8 @@ import { OtlpHttpTelemetry } from "../telemetry/otlp-http-telemetry.mjs";
 import { RoutingPolicy } from "../routing/routing-policy.mjs";
 import { ScannerBundleAttestor } from "../scanners/scanner-bundle-attestor.mjs";
 import { WorkspaceAttestor } from "../security/workspace-attestation.mjs";
+import { HttpWorkerManager } from "../workers/http-worker-manager.mjs";
+import { WorkerProfileRegistry } from "../workers/worker-profile-registry.mjs";
 import { PostgresRunStore } from "../workflow/postgres-run-store.mjs";
 import { GovernedRuntime } from "./governed-runtime.mjs";
 import { createWorkflowHandlers } from "./workflow-handlers.mjs";
@@ -36,6 +38,9 @@ export async function createProductionRuntime({ environment = process.env } = {}
   const gateConfiguration = JSON.parse(await readFile(environment.HARNESS_GATES_PATH ?? "harness/config/gates.yaml", "utf8"));
   const routingConfiguration = JSON.parse(await readFile(environment.HARNESS_MODEL_ROUTING_PATH ?? "harness/config/model-routing.json", "utf8"));
   const scannerBundle = JSON.parse(await readFile(environment.HARNESS_SCANNER_BUNDLE_PATH ?? "security/scanner-bundle.json", "utf8"));
+  const workerProfiles = new WorkerProfileRegistry(JSON.parse(await readFile(environment.WORKER_PROFILES_PATH ?? "harness/config/worker-profiles.json", "utf8")));
+  const ephemeral = environment.AICP_EXECUTION_MODE === "ephemeral";
+  const workerManager = ephemeral ? new HttpWorkerManager({ baseUrl: required(environment, "WORKER_MANAGER_URL"), token: required(environment, "WORKER_MANAGER_TOKEN"), clientProjectRoot: environment.WORKER_CLIENT_PROJECT_ROOT ?? environment.PROJECTS_ROOT ?? "/workspace" }) : null;
   const database = new Pool({
     connectionString: required(environment, "DATABASE_URL"),
     max: Number(environment.HARNESS_DATABASE_POOL_SIZE ?? 5),
@@ -75,6 +80,12 @@ export async function createProductionRuntime({ environment = process.env } = {}
       gateRunner: new ProjectGateRunner({ runner: processRunner }),
       gateRegistry,
       budgetAuthority,
+      workerManager,
+      workerProfile: async (project) => {
+        const selected = workerProfiles.select(await projectAdapter.detect(project));
+        if (selected.length !== 1) throw new Error(`EPHEMERAL_PROFILE_AMBIGUOUS:${selected.join(",")}`);
+        return selected[0];
+      },
       routingPolicy: new RoutingPolicy(routingConfiguration, environment),
     });
     const runtime = new GovernedRuntime({
@@ -95,10 +106,11 @@ export async function createProductionRuntime({ environment = process.env } = {}
         models: Object.entries(routingConfiguration.aliases).map(([alias, route]) => ({ alias, capabilityClass: route.class, deployments: route.deployments.map(({ id, provider, modelEnv }) => ({ id, provider, configured: Boolean(environment[modelEnv]) })) })),
       },
       readiness: async () => {
-        const checks = { postgres: "ok", memory: "ok", litellm: "ok", opencode: "ok", workflow: "ok", gateRegistry: "ok" };
+        const checks = { postgres: "ok", memory: "ok", litellm: "ok", opencode: "ok", workflow: "ok", gateRegistry: "ok", workerManager: ephemeral ? "ok" : "local-long-lived" };
         try { await database.query("SELECT 1"); } catch { checks.postgres = "error"; }
         const scannerProbes = await Promise.all(["semgrep", "gitleaks", "trivy"].map((tool) => processRunner.run(tool, ["--version"], { timeoutMs: 5000 })));
         if (scannerProbes.some((probe) => probe.kind !== "completed" || probe.exitCode !== 0)) checks.gateRegistry = "error";
+        if (workerManager) { try { await workerManager.ready(); } catch { checks.workerManager = "error"; } }
         const litellmRoot = environment.LITELLM_URL ?? environment.LITELLM_BASE_URL?.replace(/\/v1\/?$/, "");
         for (const [name, url] of [["memory", environment.MEMORY_SERVICE_URL ? `${environment.MEMORY_SERVICE_URL}/ready` : null], ["litellm", litellmRoot ? `${litellmRoot}/health/readiness` : null]]) {
           if (!url) { checks[name] = "unconfigured"; continue; }

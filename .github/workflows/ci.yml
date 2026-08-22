@@ -169,6 +169,10 @@ jobs:
         run: docker compose --env-file versions.env config --quiet
       - name: Build owned images for downstream scanning
         run: docker compose --env-file versions.env build memory-service workspace harness
+      - name: Build and attest ephemeral worker profiles
+        run: bash scripts/build-worker-images.sh
+      - name: Exercise deployment-side worker lifecycle
+        run: AICP_DOCKER_TEST=1 node --test tests/integration/worker-docker.integration.mjs tests/integration/worker-manager-http.integration.mjs
       - name: Generate owned image SBOMs and vulnerability evidence
         run: npm run scan:owned-images
       - name: Upload owned image evidence
