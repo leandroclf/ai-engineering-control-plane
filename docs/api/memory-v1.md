@@ -21,6 +21,7 @@ an actor, allowed actions and an exact set of scopes configured by
 | `POST` | `/v1/index/repositories/{repo}:sync` | Apply an incremental Git/index delta |
 | `POST` | `/v1/index/repositories/{repo}:rebuild` | Rebuild canonical index rows and the graph projection |
 | `POST` | `/v1/context:compile` | Compile an authorized, budgeted context package |
+| `POST` | `/v1/context:impact` | Traverse authorized local import dependents |
 
 ## Create
 
@@ -59,9 +60,14 @@ identity remains unchanged.
 
 Context compilation accepts `repository`, `task_id`, `query`, optional
 `exact_symbols`, authorized `scopes` and a positive `budget`. The response
-contains a deterministic `context_id`, calculated token usage and selected
+contains a deterministic `context_id`, gateway-tokenized usage and selected
 artifacts with retrieval reason and provenance. Exact symbols are fetched
 before the lexical result limit; semantic similarity is a fallback.
+
+Impact traversal accepts `repository` and `path`, requires that repository's
+exact read scope and returns local files that depend directly or transitively on
+the target through Neo4j `IMPORTS` relationships. Local references are also
+persisted in PostgreSQL so projection state remains auditable.
 
 Operational dependency failures return `503` with
 `{"error":"DEPENDENCY_UNAVAILABLE"}` and do not expose upstream details.

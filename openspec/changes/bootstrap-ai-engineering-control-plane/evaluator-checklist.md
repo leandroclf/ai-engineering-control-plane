@@ -35,7 +35,7 @@
 - [x] Invalidation/supersession/expiry gera evento auditável.
 - [x] Raw secret é rejeitado ou redigido antes da persistência.
 - [x] Reindex no-op processa zero arquivos.
-- [ ] Rename/delete atualiza projeções sem órfãos relevantes.
+- [x] Rename/delete atualiza projeções sem órfãos relevantes.
 - [x] Neo4j é reconstruído de Git + estado canônico.
 - [x] Exact-symbol precede fallback semântico.
 - [x] ContextPackage respeita o budget calculado e explica seleção.

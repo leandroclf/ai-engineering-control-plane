@@ -54,3 +54,8 @@ Use `--rebuild` after graph loss or a projection schema change:
 PostgreSQL is canonical, Neo4j is reconstructible and Redis is not required for
 the rebuild. A failed graph projection returns `503` and does not advance the
 incremental index state, so retrying the same operation remains safe.
+
+Run `./scripts/context-smoke.sh [repository-id] [query] [exact-symbol] [budget]`
+to verify gateway token counting, authorized compilation and sanitized Harness
+stage evidence. Use `/v1/context:impact` to inspect local import dependents of a
+path before planning a change.

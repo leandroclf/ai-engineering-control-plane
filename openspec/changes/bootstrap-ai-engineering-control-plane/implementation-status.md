@@ -4,22 +4,23 @@ Updated: 2026-08-21
 
 ## Current verdict
 
-`CONTEXT_RUNTIME_PARTIAL`
+`CONTEXT_MEMORY_READY`
 
 The repository now contains an executable Foundation, deterministic Engineering
 Harness, persistent scoped Memory API and an authenticated Context runtime.
-Git deltas, JavaScript symbols/chunks and versioned embeddings persist in
-PostgreSQL; Neo4j is rebuilt as a derived projection; retrieval is exact-first,
-lexical/vector fallback and budgeted. It MUST NOT yet be classified as
-`READY_FOR_HUMAN_REVIEW` for the full OpenSpec change. Reference/impact graph
-traversal, exact model token counting, executor integration, telemetry backend,
-restore drill and multi-host acceptance remain open.
+Git deltas, JavaScript symbols/chunks/references and versioned embeddings persist
+in PostgreSQL; Neo4j is rebuilt as a derived projection; retrieval is
+exact-first with lexical/vector fallback and gateway token counting. Harness
+stages receive policy-scoped packages and persist sanitized provenance. It MUST
+NOT yet be classified as `READY_FOR_HUMAN_REVIEW` for the full OpenSpec change.
+Runtime agent wiring, telemetry backend, restore drill and multi-host acceptance
+remain open.
 
 ## Verified evidence
 
 | Capability | Evidence | Result |
 |---|---|---|
-| Local contracts | `npm run validate` | PASS: 32 Node tests, 16 Python tests, configuration and Harness acceptance |
+| Local contracts | `npm run validate` | PASS: 33 Node tests, 20 Python tests, configuration and Harness acceptance |
 | Workspace image | `docker compose build workspace` | PASS |
 | Memory image | `docker compose build memory-service` | PASS |
 | OpenCode baseline | `docker run --rm aicp-workspace opencode --version` | PASS: `1.18.21` |
@@ -51,9 +52,12 @@ restore drill and multi-host acceptance remain open.
 | Embedding route | live LiteLLM `embeddings` alias | PASS: 1,536 dimensions through limited virtual key |
 | Persistent real index | `site-lf-solucoes` at `2199053` | PASS: 7 files, 128 symbols/chunks |
 | Incremental no-op | second `scripts/index.sh` run | PASS: zero parsed, changed or embedded artifacts |
-| Context compile | exact `bootDashboard`, budget 1,000 | PASS: exact-first, 526 calculated tokens, provenance retained |
+| Context compile | exact `GitIndexer`, budget 100 | PASS: exact-first, 98 gateway-counted tokens, provenance retained |
 | Projection recovery | graph deletion, Redis stopped, `--rebuild` | PASS: repository/file/symbol/chunk counts restored |
 | Dependency consistency | graph failure regression tests | PASS: index state does not advance; sanitized `503` returned |
+| Reference graph | Control Plane corpus | PASS: 99 references persisted and local `IMPORTS` projected |
+| Impact traversal | `incremental-index.mjs` | PASS: four direct/transitive dependents returned |
+| Harness context delivery | `scripts/context-smoke.sh` | PASS: package delivered and raw content omitted from stage evidence |
 
 ## Implemented artifacts
 
@@ -74,6 +78,8 @@ restore drill and multi-host acceptance remain open.
 - Authenticated index/context REST API and host client/CLI.
 - Persistent Git index state, JavaScript parser, chunk embeddings and hybrid retrieval.
 - Neo4j constraints, graph delta projection and reconstructible rebuild.
+- Gateway token counter, impact traversal and stage-specific Context policies.
+- Harness Context provider with sanitized atomic stage evidence.
 - OTel collector redaction baseline.
 - GitHub clean-checkout contract pipeline.
 - Threat model, runbook, memory model, compatibility and ADR documentation.
@@ -99,9 +105,6 @@ The following values cannot be invented or committed:
 
 - Expose authenticated REST v1 run APIs.
 - Wire the runtime entrypoint to PostgreSQL, OpenCode and installed scanner CLIs.
-- Project references and implement deterministic impact traversal in Neo4j.
-- Replace calculated chunk token estimates with exact model token counting.
-- Wire the Context API package and provenance into the Harness executor.
 - Instrument services and validate a real telemetry backend.
 - Execute encrypted backup/restore drill.
 - Run clean-host, provider, CI and multi-host acceptance.
@@ -116,6 +119,6 @@ The Foundation and Harness can be revalidated at any time with:
 npm run validate
 ```
 
-The next required evidence completes Context and Memory: reference/impact graph
-traversal, exact token counting and runtime delivery of the authorized context
-package to each Harness stage.
+The next required evidence is runtime integration and observability: wire real
+OpenCode/scanner handlers to persistent runs, propagate correlation identifiers
+and validate a telemetry backend without source, prompt or secret leakage.

@@ -33,6 +33,7 @@ Validate an existing environment:
 ./scripts/doctor.sh
 ./scripts/smoke.sh
 ./scripts/memory-smoke.sh
+./scripts/context-smoke.sh
 ```
 
 Index a repository after granting its exact `REPOSITORY:<id>` scope:
@@ -44,6 +45,10 @@ Index a repository after granting its exact `REPOSITORY:<id>` scope:
 The first run parses changed JavaScript files and embeds stable symbol chunks;
 an unchanged second run parses and embeds zero artifacts. Add `--rebuild` to
 recreate PostgreSQL index rows and the Neo4j projection from Git.
+
+`context-smoke.sh` compiles through the authenticated API, delivers the package
+to a Harness stage and verifies that persisted stage evidence contains only the
+context ID, usage, retrieval reasons and provenance, never raw source content.
 
 Open the workspace:
 

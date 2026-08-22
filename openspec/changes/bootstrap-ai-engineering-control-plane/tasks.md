@@ -279,7 +279,7 @@ indicados.
   - Completion criteria: corpus fixture cobre syntax error, rename, delete e
     símbolos ambíguos.
 
-- [ ] 5.6 Implementar schema e projeção Neo4j
+- [x] 5.6 Implementar schema e projeção Neo4j
   - Objective: aplicar constraints/indexes e graph deltas reconstruíveis.
   - Likely files/components: `graph/cypher/`, `context/indexer/graph_index.*`.
   - Depends on: 5.5.
@@ -296,7 +296,7 @@ indicados.
   - Completion criteria: mudança do modelo invalida cache aplicável; dados
     inalterados não são re-embedded.
 
-- [ ] 5.8 Implementar Context Compiler e budget exato
+- [x] 5.8 Implementar Context Compiler e budget exato
   - Objective: resolver escopo, ranking determinístico-first, dedup, token count
     e package provenance.
   - Likely files/components: `context/compiler/`, context API.
@@ -305,7 +305,7 @@ indicados.
   - Completion criteria: exact symbol precede vector, package cabe no budget e
     resultado é determinístico para mesma chave.
 
-- [ ] 5.9 Integrar Context Compiler ao Harness
+- [x] 5.9 Integrar Context Compiler ao Harness
   - Objective: entregar apenas contexto de task/policy autorizado por estágio e
     registrar provenance/context ID.
   - Likely files/components: `harness/src/agents/`, `context/compiler/`.
