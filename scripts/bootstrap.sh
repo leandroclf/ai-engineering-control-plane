@@ -9,7 +9,7 @@ command -v openssl >/dev/null || { echo 'openssl not found' >&2; exit 1; }
 
 mkdir -p secrets state/postgres state/neo4j/data state/neo4j/logs state/cache state/opencode projects .aicp/otel
 chmod 700 secrets state
-for name in postgres_password redis_password; do
+for name in postgres_password redis_password backup_passphrase; do
   if test ! -s "secrets/$name"; then
     openssl rand -hex 32 > "secrets/$name"
     chmod 600 "secrets/$name"
