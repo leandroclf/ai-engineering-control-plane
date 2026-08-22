@@ -343,7 +343,7 @@ indicados.
   - Completion criteria: perfil sobe/para independentemente e política de
     backup cobre PostgreSQL, ClickHouse e blob storage.
 
-- [ ] 6.4 Criar dashboards e evaluation dataset inicial
+- [x] 6.4 Criar dashboards e evaluation dataset inicial
   - Objective: medir cost/accepted task, first-pass rate, loops, deterministic
     retrieval, context reuse e model fallback.
   - Likely files/components: `observability/dashboards/`, `tests/evaluations/`.

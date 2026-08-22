@@ -93,6 +93,16 @@ Optional Langfuse observability runs as an independent low-scale profile:
 See `observability/langfuse/README.md` for pinned provenance, upgrades and the
 separate PostgreSQL/ClickHouse/MinIO backup boundary.
 
+Reproduce the initial evaluation observation and dashboard contracts with:
+
+```bash
+npm run evaluate:baseline
+```
+
+The generated `.aicp/evaluations/baseline.report.json` covers cost per accepted
+task, first-pass rate, repair loops, deterministic retrieval, context reuse and
+model fallback. These values are a fixture baseline, not invented SLOs.
+
 Open the workspace:
 
 ```bash
