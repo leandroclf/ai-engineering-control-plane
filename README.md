@@ -61,6 +61,16 @@ For a real repository, point `--project` to a Node.js checkout containing a
 pre-check; official Semgrep, Gitleaks, Trivy, Snyk and Sonar JSON outputs are
 handled by the dedicated adapters when those tools are configured.
 
+Run native project gates detected from a Node.js manifest or supported static
+site scripts with:
+
+```bash
+npm run validate:project -- --project projects/<repository>
+```
+
+Project checkouts under `projects/` and generated reports under `.aicp/` are
+local-only and ignored by Git.
+
 ## Architecture
 
 - OpenCode executes bounded agent work.

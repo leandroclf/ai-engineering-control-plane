@@ -18,7 +18,7 @@ open.
 
 | Capability | Evidence | Result |
 |---|---|---|
-| Local contracts | `npm run validate` | PASS: 22 Node tests, 2 Python tests, configuration and Harness acceptance |
+| Local contracts | `npm run validate` | PASS: 24 Node tests, 2 Python tests, configuration and Harness acceptance |
 | Workspace image | `docker compose build workspace` | PASS |
 | Memory image | `docker compose build memory-service` | PASS |
 | OpenCode baseline | `docker run --rm aicp-workspace opencode --version` | PASS: `1.18.21` |
@@ -42,6 +42,7 @@ open.
 | Scanner adapters | normalized JSON contract tests | PASS: Semgrep, Gitleaks, Trivy; optional Snyk and Sonar modes |
 | Targeted repair | bounded repair unit tests | PASS: originating gate, regression, read-only review and no-progress stop |
 | Vulnerable project | `tests/acceptance/harness_test.sh` | PASS: test, secret, SQL injection, vulnerable dependency and Docker defects block |
+| Real project gates | `site-lf-solucoes` at `3389682` | BLOCKED as designed: 3 native gates pass, HTML performance budget fails |
 
 ## Implemented artifacts
 
@@ -56,6 +57,7 @@ open.
 - Command gate framework and Node.js project command detection.
 - Semgrep, Gitleaks, Trivy, Snyk and Sonar report adapters.
 - Redacted vulnerable-project auditor and acceptance fixture.
+- Generic Node.js/static-site project detection and governed gate runner.
 - PostgreSQL Memory Ledger and Control Plane migrations.
 - Neo4j constraints and full-text index definitions.
 - OTel collector redaction baseline.
