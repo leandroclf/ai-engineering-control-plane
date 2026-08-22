@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/finding.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "tool", "ruleId", "fingerprint", "severity", "category", "message", "status"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "tool": { "type": "string", "minLength": 1 },
+    "ruleId": { "type": "string", "minLength": 1 },
+    "fingerprint": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "severity": { "enum": ["info", "low", "medium", "high", "critical"] },
+    "category": { "type": "string" },
+    "message": { "type": "string" },
+    "path": { "type": ["string", "null"] },
+    "line": { "type": ["integer", "null"], "minimum": 1 },
+    "status": { "enum": ["open", "suppressed", "resolved"] }
+  }
+}

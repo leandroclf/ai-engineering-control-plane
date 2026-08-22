@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "budgets": {
+    "maxCalls": 14,
+    "maxInputTokens": 150000,
+    "maxOutputTokens": 30000,
+    "maxCostUsd": 10
+  },
+  "stopConditions": {
+    "repeatedFindingAndDiff": 2,
+    "repeatedToolCall": 2
+  },
+  "gates": {
+    "build": { "required": true },
+    "unit-tests": { "required": true },
+    "integration-tests": { "required": true },
+    "coverage": { "required": true, "minimum": 0.8 },
+    "gitleaks": { "required": true, "block": ["info", "low", "medium", "high", "critical"] },
+    "semgrep": { "required": true, "block": ["high", "critical"] },
+    "trivy": { "required": true, "block": ["high", "critical"] },
+    "snyk": { "required": false },
+    "sonar": { "required": false }
+  }
+}

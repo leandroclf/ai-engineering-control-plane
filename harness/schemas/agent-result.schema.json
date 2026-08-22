@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/agent-result.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "status", "summary", "artifacts"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "status": { "enum": ["success", "blocked", "failed"] },
+    "summary": { "type": "string", "minLength": 1 },
+    "artifacts": { "type": "array", "items": { "type": "string" } },
+    "openQuestions": { "type": "array", "items": { "type": "string" }, "default": [] }
+  }
+}

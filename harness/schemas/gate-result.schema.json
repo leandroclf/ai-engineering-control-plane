@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aicp.dev/schemas/gate-result.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "gate", "status", "startedAt", "finishedAt", "artifacts"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "gate": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["pass", "fail", "error", "skipped"] },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "finishedAt": { "type": "string", "format": "date-time" },
+    "artifacts": { "type": "array", "items": { "type": "string" } },
+    "reason": { "type": ["string", "null"] }
+  }
+}
