@@ -235,7 +235,7 @@ indicados.
 
 ## 5. Context e Memory
 
-- [ ] 5.1 Implementar migrations do Memory Ledger
+- [x] 5.1 Implementar migrations do Memory Ledger
   - Objective: criar scopes, current projection, source refs, append-only events
     e índices com invariantes.
   - Likely files/components: `memory-service/migrations/`.
@@ -244,7 +244,7 @@ indicados.
   - Completion criteria: constraints, concorrência de versão e rollback/
     forward-fix são testados.
 
-- [ ] 5.2 Implementar API de memória e autorização de escopo
+- [x] 5.2 Implementar API de memória e autorização de escopo
   - Objective: create/search/get/promote/invalidate/supersede com redaction,
     idempotência e actor identity.
   - Likely files/components: `memory-service/src/aicp_memory/api/`, domain,
@@ -254,7 +254,7 @@ indicados.
   - Completion criteria: isolamento entre projetos/agentes e operações não
     autorizadas têm testes negativos.
 
-- [ ] 5.3 Implementar expiração e invalidação por proveniência
+- [x] 5.3 Implementar expiração e invalidação por proveniência
   - Objective: aplicar source hash, supersession, TTL e policy/schema version.
   - Likely files/components: `memory-service/.../invalidation/`.
   - Depends on: 5.2.

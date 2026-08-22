@@ -4,15 +4,15 @@ Updated: 2026-08-21
 
 ## Current verdict
 
-`HARNESS_READY`
+`MEMORY_API_READY`
 
-The repository now contains an executable and tested Foundation plus the
-deterministic Engineering Harness core. It has transactional workflow storage,
-bounded execution, normalized scanner adapters, configurable command gates and
-a blocking vulnerable-project acceptance suite. It MUST NOT yet be classified
-as `READY_FOR_HUMAN_REVIEW` for the full OpenSpec change. Durable Memory API,
-GraphRAG, telemetry backend, restore drill and multi-host acceptance remain
-open.
+The repository now contains an executable Foundation, deterministic Engineering
+Harness and persistent scoped Memory API. Memory lifecycle operations are
+transactional in PostgreSQL, authorized by exact scope, idempotent and audited
+through an append-only ledger. It MUST NOT yet be classified as
+`READY_FOR_HUMAN_REVIEW` for the full OpenSpec change. Incremental symbol/vector
+indexing, GraphRAG, telemetry backend, restore drill and multi-host acceptance
+remain open.
 
 ## Verified evidence
 
@@ -43,6 +43,10 @@ open.
 | Targeted repair | bounded repair unit tests | PASS: originating gate, regression, read-only review and no-progress stop |
 | Vulnerable project | `tests/acceptance/harness_test.sh` | PASS: test, secret, SQL injection, vulnerable dependency and Docker defects block |
 | Real project gates | `site-lf-solucoes` at `3389682` | BLOCKED as designed: 3 native gates pass, HTML performance budget fails |
+| Reference project repair | `site-lf-solucoes` at `2199053` | PASS: all four detected native gates |
+| Memory REST lifecycle | `scripts/memory-smoke.sh` | PASS: idempotency, promotion, scoped search and cross-scope denial |
+| Memory persistence | container restart followed by authorized GET | PASS: active version 2 retained |
+| Append-only ledger | attempted SQL event mutation | PASS: database trigger blocked mutation |
 
 ## Implemented artifacts
 
@@ -59,6 +63,7 @@ open.
 - Redacted vulnerable-project auditor and acceptance fixture.
 - Generic Node.js/static-site project detection and governed gate runner.
 - PostgreSQL Memory Ledger and Control Plane migrations.
+- Authenticated Memory REST API and transactional Psycopg repository.
 - Neo4j constraints and full-text index definitions.
 - OTel collector redaction baseline.
 - GitHub clean-checkout contract pipeline.

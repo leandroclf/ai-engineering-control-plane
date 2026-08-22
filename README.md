@@ -32,6 +32,7 @@ Validate an existing environment:
 ```bash
 ./scripts/doctor.sh
 ./scripts/smoke.sh
+./scripts/memory-smoke.sh
 ```
 
 Open the workspace:
@@ -83,6 +84,10 @@ local-only and ignored by Git.
 See [the OpenSpec change](openspec/changes/bootstrap-ai-engineering-control-plane/proposal.md),
 [the detailed design](openspec/changes/bootstrap-ai-engineering-control-plane/design.md),
 [compatibility evidence](docs/compatibility.md) and [documentation index](docs/README.md).
+
+The authenticated Memory API contract is documented in
+[docs/api/memory-v1.md](docs/api/memory-v1.md). Configure exact local scope
+grants through `MEMORY_AUTHORIZED_SCOPES`; do not grant wildcard scopes.
 
 ## Security boundaries
 
