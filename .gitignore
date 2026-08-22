@@ -5,6 +5,7 @@ backups/
 litellm/generated/config.yaml
 .aicp/
 node_modules/
+projects/
 __pycache__/
 *.pyc
 .coverage
