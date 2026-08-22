@@ -12,7 +12,7 @@ test("threat matrix covers every required boundary with accountable evidence", a
   assert.deepEqual(new Set(result.boundaries), new Set([
     "host-workspace", "gateway", "apis", "repository-agent", "memory-scope", "supply-chain", "telemetry",
   ]));
-  assert.ok(result.openRisks.includes("THR-SUPPLY-CHAIN"));
+  assert.equal(matrix.threats.find((threat) => threat.id === "THR-SUPPLY-CHAIN").status, "mitigated");
 });
 
 test("threat matrix rejects missing owner evidence and residual risk", () => {

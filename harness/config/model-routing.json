@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "aliases": {
+    "coding-strong": { "deployments": [{ "model": "CODING_STRONG_MODEL", "inputPerMillion": 15, "outputPerMillion": 75 }] },
+    "coding-fast": { "deployments": [{ "model": "CODING_FAST_MODEL", "inputPerMillion": 5, "outputPerMillion": 25 }] },
+    "architecture": { "deployments": [{ "model": "ARCHITECTURE_MODEL", "inputPerMillion": 15, "outputPerMillion": 75 }] },
+    "security": { "deployments": [{ "model": "SECURITY_MODEL", "inputPerMillion": 15, "outputPerMillion": 75 }] },
+    "review": { "deployments": [{ "model": "REVIEW_MODEL", "inputPerMillion": 15, "outputPerMillion": 75 }] }
+  }
+}

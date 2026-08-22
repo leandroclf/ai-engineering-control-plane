@@ -7,6 +7,9 @@ trace_file=".aicp/otel/traces.json"
 test -f "$trace_file" || { echo 'telemetry trace file is unavailable' >&2; exit 1; }
 before="$(stat -c '%s' "$trace_file")"
 ./scripts/context-smoke.sh >/dev/null
+# Collector batches from Harness, Memory and LiteLLM independently. Wait for all
+# three flush cycles before slicing the append-only evidence file.
+sleep 3
 
 for _ in $(seq 1 20); do
   after="$(stat -c '%s' "$trace_file")"

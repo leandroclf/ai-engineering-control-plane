@@ -6,7 +6,9 @@ cd "$root"
 mkdir -p .aicp/ci
 npm run validate
 npm run test:architecture > .aicp/ci/architecture-contracts.json
+npm run validate:supply-chain > .aicp/ci/supply-chain.json
 npm run evaluate:baseline > .aicp/ci/evaluation.stdout.json
+npm run validate:benchmark > .aicp/ci/paired-benchmark.json
 
 for schema in harness/schemas/*.json; do
   jq -e 'has("$schema") and .type == "object" and (.required | length > 0)' "$schema" >/dev/null

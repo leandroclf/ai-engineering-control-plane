@@ -43,7 +43,8 @@ import { validateThreatMatrix } from "./security/threat-matrix.mjs";
 const matrix = JSON.parse(readFileSync("security/threat-control-matrix.json", "utf8"));
 const result = validateThreatMatrix(matrix);
 if (result.errors.length) throw new Error(result.errors.join("\n"));
-if (!result.openRisks.includes("THR-SUPPLY-CHAIN")) throw new Error("supply-chain residual risk must remain explicit until Foundation 3.5");
+const supplyChain = matrix.threats.find((threat) => threat.id === "THR-SUPPLY-CHAIN");
+if (supplyChain?.status !== "mitigated") throw new Error("supply-chain invariant must be mitigated");
 const report = {
   schemaVersion: 1,
   status: "pass",

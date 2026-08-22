@@ -78,6 +78,10 @@ for path in "${required[@]}"; do
   }
 done
 
+while IFS= read -r secret_file; do
+  test "$(stat -c '%a' "$secret_file")" = "600" || { echo "secret file must be mode 0600: $secret_file" >&2; exit 1; }
+done < <(find secrets -maxdepth 1 -type f -print)
+
 compose_json="$(docker compose --env-file versions.env config --format json)"
 docker compose --env-file versions.env config --quiet
 jq -e '.services.litellm.healthcheck.test | length > 0' <<<"$compose_json" >/dev/null

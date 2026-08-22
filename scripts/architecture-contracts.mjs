@@ -8,6 +8,8 @@ const opencode = JSON.parse(await read("opencode/opencode.json"));
 const compose = await read("compose.yaml");
 const handlers = await read("harness/src/runtime/workflow-handlers.mjs");
 const executor = await read("harness/src/workflow/executor.mjs");
+const openapi = await read("docs/api/control-plane-v1.openapi.yaml");
+const httpServer = await import("../harness/src/runtime/http-server.mjs");
 
 const requiredGates = [...new Set(Object.values(workflow.states).flatMap((state) => state.gates ?? []))];
 const missing = requiredGates.filter((name) => !gates.gates[name]);
@@ -18,6 +20,7 @@ if (!compose.includes("agent-internal:\n    internal: true")) throw new Error("a
 if (!compose.includes("read_only: true")) throw new Error("executor root filesystem must be read-only");
 if (!handlers.includes("budgetAuthority.reserve") || !handlers.includes("budgetAuthority.commit")) throw new Error("agents must be wrapped by budget authority");
 if (!executor.includes("this.workflow.transition")) throw new Error("Harness must own workflow transitions");
+for (const operation of httpServer.API_OPERATIONS) if (!openapi.includes(`operationId: ${operation}`)) throw new Error(`OpenAPI missing runtime operation: ${operation}`);
 for (const reviewer of ["architect", "code-reviewer", "security-reviewer"]) {
   const content = await read(`opencode/agents/${reviewer}.md`);
   if (!content.includes("edit: deny")) throw new Error(`${reviewer} must not edit`);

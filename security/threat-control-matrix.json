@@ -61,12 +61,12 @@
       "id": "THR-SUPPLY-CHAIN",
       "boundary": "supply-chain",
       "threat": "Mutable or compromised dependencies and images execute during bootstrap or CI.",
-      "mitigation": "Owned images build in CI and selected components are versioned; full digest/SBOM freeze is tracked by Foundation task 3.5.",
+      "mitigation": "Core, observability and scanner images are digest-pinned; Actions use commit SHAs; owned builds emit SBOM and provenance; CI rejects floating references.",
       "test": "tests/security/abuse_test.sh#supply-chain",
-      "evidence": "CI build contract and explicit open-risk assertion until release manifest and SBOM exist.",
+      "evidence": "versions.env, validate-supply-chain.mjs and BuildKit SBOM/provenance attestations in governed CI.",
       "owner": "Platform Release",
-      "status": "open",
-      "residualRisk": { "rating": "high", "rationale": "Several core third-party images are not yet digest-pinned and no release SBOM is published." }
+      "status": "mitigated",
+      "residualRisk": { "rating": "medium", "rationale": "Digest refreshes and upstream compromise still require signature, vulnerability and provenance review." }
     },
     {
       "id": "THR-TELEMETRY-LEAK",
