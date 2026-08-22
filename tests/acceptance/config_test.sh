@@ -41,6 +41,12 @@ required=(
   security/semgrep/rules/aicp-security.yaml
   observability/otel/collector.yaml
   observability/langfuse/README.md
+  observability/dashboards/workflow-quality.json
+  observability/dashboards/context-model-routing.json
+  observability/dashboards/README.md
+  observability/evaluation/metrics.mjs
+  observability/evaluation/run-baseline.mjs
+  tests/evaluations/baseline.dataset.json
   compose/observability.vendor.yaml
   scripts/configure-observability.sh
   scripts/observability.sh
@@ -145,6 +151,8 @@ rg -q 'aicp-fallback-smoke: \[coding-fast\]' litellm/config.template.yaml
 rg -q 'OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: no_content' compose.yaml
 rg -q 'check otel-collector' scripts/doctor.sh
 rg -q 'check harness' scripts/doctor.sh
+node observability/evaluation/run-baseline.mjs >/dev/null
+jq -e '.baseline.status == "observation" and (.dashboards | length) == 2' .aicp/evaluations/baseline.report.json >/dev/null
 rg -q '"embeddings"' scripts/provision-litellm-key.sh
 if rg -n 'CREATE CONSTRAINT symbol_identity' graph/cypher; then
   echo 'obsolete symbol-name uniqueness must not be recreated' >&2

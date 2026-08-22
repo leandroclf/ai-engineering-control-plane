@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "aicp-workflow-quality",
+  "title": "AICP Workflow Quality and Cost",
+  "baselineMode": "observation",
+  "panels": [
+    { "title": "Accepted task rate", "metric": "acceptedTaskRate", "unit": "ratio" },
+    { "title": "Cost per accepted task", "metric": "costPerAcceptedTaskUsd", "unit": "USD" },
+    { "title": "First-pass rate", "metric": "firstPassRate", "unit": "ratio" },
+    { "title": "Repair loops", "metric": "repairLoopCount", "unit": "count" },
+    { "title": "Repair loops per task", "metric": "repairLoopsPerTask", "unit": "ratio" }
+  ]
+}

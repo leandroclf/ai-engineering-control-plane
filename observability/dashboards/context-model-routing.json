@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "aicp-context-model-routing",
+  "title": "AICP Context and Model Routing",
+  "baselineMode": "observation",
+  "panels": [
+    { "title": "Deterministic retrieval", "metric": "deterministicRetrievalRate", "unit": "ratio" },
+    { "title": "Context artifact reuse", "metric": "contextArtifactReuseRate", "unit": "ratio" },
+    { "title": "Model fallback rate", "metric": "modelFallbackRate", "unit": "ratio" },
+    { "title": "Tasks evaluated", "metric": "taskCount", "unit": "count" }
+  ]
+}

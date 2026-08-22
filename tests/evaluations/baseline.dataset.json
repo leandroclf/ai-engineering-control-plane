@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "id": "aicp-initial-observation-v1",
+  "description": "Synthetic operational metadata only; no source, prompts or model outputs.",
+  "runs": [
+    {
+      "id": "run-accepted-first-pass",
+      "terminalState": "ready-for-human-review",
+      "stages": [
+        { "state": "discover", "usage": { "costUsd": 0.1 }, "contextArtifactIds": ["artifact-a", "artifact-b"] },
+        { "state": "plan", "usage": { "costUsd": 0.2 }, "contextArtifactIds": ["artifact-a", "artifact-c"] },
+        { "state": "implement", "usage": { "costUsd": 0.3 } },
+        { "state": "fast-verify", "outcome": "pass" },
+        { "state": "full-verify", "outcome": "pass" }
+      ]
+    },
+    {
+      "id": "run-accepted-after-repair",
+      "terminalState": "ready-for-human-review",
+      "stages": [
+        { "state": "discover", "usage": { "costUsd": 0.2 }, "contextArtifactIds": ["artifact-d", "artifact-e"] },
+        { "state": "plan", "usage": { "costUsd": 0.2 }, "contextArtifactIds": ["artifact-d", "artifact-f"] },
+        { "state": "implement", "usage": { "costUsd": 0.5 } },
+        { "state": "fast-verify", "outcome": "fail" },
+        { "state": "targeted-repair", "outcome": "progress", "usage": { "costUsd": 0.4 } },
+        { "state": "fast-verify", "outcome": "pass" }
+      ]
+    },
+    {
+      "id": "run-human-review",
+      "terminalState": "human-review",
+      "stages": [
+        { "state": "discover", "usage": { "costUsd": 0.1 }, "contextArtifactIds": ["artifact-g"] },
+        { "state": "plan", "outcome": "blocked" }
+      ]
+    }
+  ],
+  "contextCompilations": [
+    { "requestKey": "task-a:discover", "contextId": "ctx-a" },
+    { "requestKey": "task-a:discover", "contextId": "ctx-a" },
+    { "requestKey": "task-b:plan", "contextId": "ctx-b" },
+    { "requestKey": "task-b:plan", "contextId": "ctx-b" },
+    { "requestKey": "task-c:implement", "contextId": "ctx-c1" },
+    { "requestKey": "task-c:implement", "contextId": "ctx-c2" }
+  ],
+  "modelCalls": [
+    { "alias": "architecture", "attemptedFallbacks": 0 },
+    { "alias": "coding-strong", "attemptedFallbacks": 0 },
+    { "alias": "coding-fast", "attemptedFallbacks": 0 },
+    { "alias": "aicp-fallback-smoke", "attemptedFallbacks": 1 }
+  ],
+  "expectedBaseline": {
+    "status": "observation",
+    "capturedAt": "2026-08-22",
+    "metrics": {
+      "taskCount": 3,
+      "acceptedTaskCount": 2,
+      "acceptedTaskRate": 0.6666666666666666,
+      "costPerAcceptedTaskUsd": 0.95,
+      "firstPassRate": 0.5,
+      "repairLoopCount": 1,
+      "repairLoopsPerTask": 0.3333333333333333,
+      "deterministicRetrievalRate": 0.6666666666666666,
+      "contextArtifactReuseRate": 0.2222222222222222,
+      "modelFallbackRate": 0.25
+    }
+  }
+}
