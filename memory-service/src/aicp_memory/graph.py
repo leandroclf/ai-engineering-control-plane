@@ -1,5 +1,6 @@
 from base64 import b64encode
 import json
+import posixpath
 import urllib.error
 import urllib.request
 
@@ -51,6 +52,34 @@ class Neo4jGraphProjection:
                                    "content": chunk["content"], "symbol": chunk.get("symbol"),
                                    "content_hash": chunk["content_hash"]},
                 })
+        for source_file in payload.get("files", []):
+            for reference in source_file.get("references", []):
+                target = reference.get("target", "")
+                if not target.startswith("."):
+                    continue
+                target = posixpath.normpath(posixpath.join(posixpath.dirname(source_file["path"]), target))
+                if not posixpath.splitext(target)[1]:
+                    target += ".js"
+                statements.append({
+                    "statement": """MATCH (source:File {repository_id: $repository, path: $source})
+                    MATCH (target:File {repository_id: $repository, path: $target})
+                    MERGE (source)-[r:IMPORTS]->(target) SET r.line=$line""",
+                    "parameters": {"repository": repository, "source": source_file["path"],
+                                   "target": target, "line": reference.get("line")},
+                })
+        self._execute(statements)
+
+    def impact(self, repository, path):
+        result = self._execute([{
+            "statement": """MATCH (changed:File {repository_id: $repository, path: $path})
+            MATCH (changed)<-[:IMPORTS*1..5]-(dependent:File)
+            RETURN DISTINCT dependent.path ORDER BY dependent.path""",
+            "parameters": {"repository": repository, "path": path},
+        }])
+        data = result.get("results", [{}])[0].get("data", [])
+        return [item["row"][0] for item in data]
+
+    def _execute(self, statements):
         request = urllib.request.Request(
             self.endpoint, method="POST",
             headers={"Authorization": self.authorization, "Content-Type": "application/json"},
@@ -64,3 +93,4 @@ class Neo4jGraphProjection:
             raise RuntimeError(f"Neo4j projection HTTP {error.code}: {detail}") from error
         if result.get("errors"):
             raise RuntimeError(f"Neo4j projection failed: {result['errors']}")
+        return result

@@ -44,6 +44,17 @@ class FakeEmbedder:
         return [[1, 0] for _ in contents]
 
 
+class FakeTokenCounter:
+    model = "coding-fast"
+
+    def __init__(self):
+        self.calls = []
+
+    def count(self, content):
+        self.calls.append(content)
+        return {"run payment": 4, "other": 8}.get(content, 1)
+
+
 class FakeGraph:
     def __init__(self):
         self.deltas = []
@@ -75,7 +86,8 @@ class ContextServiceTest(unittest.TestCase):
         self.assertEqual(len(graph.deltas), 1)
 
     def test_compile_ranks_exact_before_vector_and_respects_budget(self):
-        service = ContextService(FakeRepository(), FakeEmbedder(), FakeGraph())
+        counter = FakeTokenCounter()
+        service = ContextService(FakeRepository(), FakeEmbedder(), FakeGraph(), counter)
 
         result = service.compile({
             "repository": "repo", "task_id": "task-1", "query": "Service.run payment",
@@ -87,6 +99,8 @@ class ContextServiceTest(unittest.TestCase):
         self.assertEqual(result["artifacts"][0]["reason"], "exact-symbol+lexical")
         self.assertTrue(result["context_id"].startswith("ctx_"))
         self.assertEqual(service.repository.queries, [("repo", "Service.run payment", ["service.run"])])
+        self.assertEqual(counter.calls, ["run payment", "other"])
+        self.assertEqual(result["token_count_model"], "coding-fast")
 
     def test_sync_does_not_advance_index_when_graph_projection_fails(self):
         repository = FakeRepository()

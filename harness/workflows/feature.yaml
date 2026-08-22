@@ -4,15 +4,15 @@
   "initial": "discover",
   "terminal": ["ready-for-human-review", "failed", "human-review"],
   "states": {
-    "discover": { "agent": "architect", "next": { "success": "plan", "failed": "failed" } },
-    "plan": { "agent": "architect", "next": { "approved": "implement", "blocked": "human-review" } },
-    "implement": { "agent": "implementer", "next": { "changed": "fast-verify", "blocked": "human-review" } },
+    "discover": { "agent": "architect", "context": { "budget": 12000, "scopeTypes": ["REPOSITORY", "PROJECT", "SOLUTION", "ORGANIZATION", "GLOBAL"] }, "next": { "success": "plan", "failed": "failed" } },
+    "plan": { "agent": "architect", "context": { "budget": 12000, "scopeTypes": ["REPOSITORY", "PROJECT", "SOLUTION", "ORGANIZATION", "GLOBAL"] }, "next": { "approved": "implement", "blocked": "human-review" } },
+    "implement": { "agent": "implementer", "context": { "budget": 16000, "scopeTypes": ["REPOSITORY", "PROJECT", "SOLUTION"] }, "next": { "changed": "fast-verify", "blocked": "human-review" } },
     "fast-verify": { "gates": ["build", "lint", "changed-tests", "secret-diff", "sast-diff"], "next": { "pass": "full-verify", "fail": "targeted-repair", "error": "human-review" } },
     "targeted-repair": { "maxIterations": 2, "next": { "progress": "fast-verify", "exhausted": "human-review" } },
     "full-verify": { "gates": ["unit-tests", "integration-tests", "coverage", "semgrep", "trivy", "gitleaks"], "next": { "pass": "security-review", "fail": "targeted-repair", "error": "human-review" } },
-    "security-review": { "agent": "security-reviewer", "next": { "pass": "code-review", "blocking": "targeted-repair" } },
-    "code-review": { "agent": "code-reviewer", "next": { "pass": "architecture-conformance", "blocking": "targeted-repair" } },
-    "architecture-conformance": { "agent": "architect", "next": { "pass": "ready-for-human-review", "blocking": "human-review" } },
+    "security-review": { "agent": "security-reviewer", "context": { "budget": 10000, "scopeTypes": ["REPOSITORY", "PROJECT", "SOLUTION"] }, "next": { "pass": "code-review", "blocking": "targeted-repair" } },
+    "code-review": { "agent": "code-reviewer", "context": { "budget": 10000, "scopeTypes": ["REPOSITORY", "PROJECT", "SOLUTION"] }, "next": { "pass": "architecture-conformance", "blocking": "targeted-repair" } },
+    "architecture-conformance": { "agent": "architect", "context": { "budget": 12000, "scopeTypes": ["REPOSITORY", "PROJECT", "SOLUTION", "ORGANIZATION", "GLOBAL"] }, "next": { "pass": "ready-for-human-review", "blocking": "human-review" } },
     "ready-for-human-review": {}, "failed": {}, "human-review": {}
   }
 }

@@ -39,13 +39,19 @@ export class InMemoryRunStore {
     return structuredClone(run);
   }
 
+  async getTask(taskId) {
+    const task = this.#tasks.get(taskId);
+    if (!task) throw new Error(`unknown task: ${taskId}`);
+    return structuredClone(task);
+  }
+
   async getRun(runId) {
     const run = this.#runs.get(runId);
     if (!run) throw new Error(`unknown run: ${runId}`);
     return structuredClone(run);
   }
 
-  async transition(runId, { expectedVersion, outcome, to, terminal = false }) {
+  async transition(runId, { expectedVersion, outcome, to, terminal = false, evidence = {} }) {
     const run = this.#runs.get(runId);
     if (!run) throw new Error(`unknown run: ${runId}`);
     if (run.version !== expectedVersion) throw new Error(`stale run version: expected ${expectedVersion}, actual ${run.version}`);
@@ -55,6 +61,7 @@ export class InMemoryRunStore {
       from: run.state,
       to,
       outcome,
+      evidence: structuredClone(evidence),
       startedAt: run.updatedAt,
       finishedAt: now,
     });

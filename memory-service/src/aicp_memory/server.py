@@ -8,6 +8,7 @@ from aicp_memory.context_service import ContextService
 from aicp_memory.embedding import LiteLLMEmbedder
 from aicp_memory.graph import Neo4jGraphProjection
 from aicp_memory.repository import PostgresMemoryRepository
+from aicp_memory.token_counter import LiteLLMTokenCounter
 
 
 def build_application():
@@ -22,7 +23,11 @@ def build_application():
         dimensions=int(os.environ.get("EMBEDDING_DIMENSIONS", "1536")),
     )
     graph = Neo4jGraphProjection(os.environ["NEO4J_HTTP_URL"], os.environ["NEO4J_AUTH"])
-    context = ContextService(repository, embedder, graph)
+    token_counter = LiteLLMTokenCounter(
+        os.environ["LITELLM_BASE_URL"], os.environ["LITELLM_API_KEY"],
+        model=os.environ.get("CONTEXT_TOKEN_MODEL", "coding-fast"),
+    )
+    context = ContextService(repository, embedder, graph, token_counter)
     return repository, MemoryApplication(repository, authorizer, context)
 
 

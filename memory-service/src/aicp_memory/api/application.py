@@ -29,6 +29,8 @@ class MemoryApplication:
                 return self._search(principal, parse_qs(parsed.query))
             if method == "POST" and parsed.path == "/v1/context:compile":
                 return self._compile_context(principal, payload)
+            if method == "POST" and parsed.path == "/v1/context:impact":
+                return self._impact_context(principal, payload)
             if parsed.path.startswith("/v1/index/repositories/"):
                 return self._index_route(method, parsed.path.removeprefix("/v1/index/repositories/"), principal, payload)
             if parsed.path.startswith("/v1/memories/"):
@@ -108,3 +110,8 @@ class MemoryApplication:
         for scope in scopes:
             principal.require("read", scope)
         return Response(200, self.context_service.compile(payload, scopes))
+
+    def _impact_context(self, principal, payload):
+        repository = payload["repository"]
+        principal.require("read", f"REPOSITORY:{repository}")
+        return Response(200, self.context_service.impact(repository, payload["path"]))

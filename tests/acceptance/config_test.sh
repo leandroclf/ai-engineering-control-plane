@@ -11,6 +11,7 @@ required=(
   scripts/bootstrap.sh
   scripts/doctor.sh
   scripts/smoke.sh
+  scripts/context-smoke.sh
   docker/workspace/Dockerfile
   litellm/config.template.yaml
   opencode/opencode.json
@@ -104,4 +105,7 @@ if rg -n 'CREATE CONSTRAINT symbol_identity' graph/cypher; then
   exit 1
 fi
 rg -q 'CREATE CONSTRAINT symbol_id' graph/cypher/003_symbol_identity.cypher
+jq -e '[.states | to_entries[] | select(.value.agent) | .value.context]
+  | length > 0 and all(.budget > 0 and (.scopeTypes | length > 0))' \
+  harness/workflows/feature.yaml >/dev/null
 echo '[PASS] local runtime configuration'

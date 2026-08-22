@@ -80,6 +80,43 @@ test("workflow executor resumes a run and persists declared transitions", async 
   assert.deepEqual((await store.listStages(run.id)).map((stage) => stage.outcome), ["pass"]);
 });
 
+test("workflow executor delivers governed context and persists redacted provenance", async () => {
+  const governedDefinition = {
+    ...definition,
+    states: { ...definition.states, verify: {
+      agent: "reviewer", context: { budget: 100, scopeTypes: ["PROJECT"] },
+      next: { pass: "ready", fail: "human-review" },
+    } },
+  };
+  const store = new InMemoryRunStore();
+  const task = await store.createTask({
+    idempotencyKey: "context-1", workflowVersion: 1,
+    metadata: { repository: "repo", query: "review change", scopes: ["PROJECT:A"] },
+  });
+  const run = await store.createRun({ taskId: task.id, initialState: "verify", policyVersion: 1 });
+  const contextProvider = { load: async ({ task: loadedTask, state, policy }) => {
+    assert.equal(loadedTask.id, task.id);
+    assert.equal(state, "verify");
+    assert.equal(policy.budget, 100);
+    return { contextId: "ctx_1", tokenCount: 8, budget: 100, artifacts: [
+      { id: "chunk-1", content: "must not persist", reason: "exact-symbol", provenance: { path: "app.js" } },
+    ] };
+  } };
+  const executor = new WorkflowExecutor({
+    definition: governedDefinition, store, contextProvider,
+    handlers: { verify: async ({ context }) => context.contextId === "ctx_1" ? "pass" : "fail" },
+  });
+
+  await executor.execute(run.id);
+
+  const [stage] = await store.listStages(run.id);
+  assert.equal(stage.evidence.contextId, "ctx_1");
+  assert.deepEqual(stage.evidence.contextArtifacts, [
+    { id: "chunk-1", reason: "exact-symbol", provenance: { path: "app.js" } },
+  ]);
+  assert.equal(JSON.stringify(stage.evidence).includes("must not persist"), false);
+});
+
 test("process runner distinguishes command findings, timeout and unavailable tool", async () => {
   const runner = new ProcessRunner();
   const failure = await runner.run(process.execPath, ["-e", "console.error('finding'); process.exit(1)"]);

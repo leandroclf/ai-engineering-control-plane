@@ -117,19 +117,30 @@ test("context package is deterministic budgeted and retains provenance", () => {
   assert.ok(first.artifacts.every((item) => item.reason && item.provenance));
 });
 
-test("harness context provider rejects unauthorized or stale memory", async () => {
+test("harness context provider compiles only task scopes allowed by stage policy", async () => {
+  const calls = [];
   const provider = new GovernedContextProvider({
-    memoryClient: { search: async () => [
-      { id: "active", scope: "PROJECT:A", status: "ACTIVE", summary: "allowed" },
-      { id: "stale", scope: "PROJECT:A", status: "SUPERSEDED", summary: "old" },
-      { id: "foreign", scope: "PROJECT:B", status: "ACTIVE", summary: "denied" },
-    ] },
+    contextClient: { compile: async (payload) => {
+      calls.push(payload);
+      return { context_id: "ctx_1", token_count: 6, budget: payload.budget, artifacts: [
+        { id: "exact", content: "allowed", reason: "exact-symbol", provenance: { path: "app.js" } },
+      ] };
+    } },
   });
 
-  const result = await provider.load({ taskId: "task-1", authorizedScopes: ["PROJECT:A"], budget: 20 });
+  const result = await provider.load({
+    task: { id: "task-1", metadata: {
+      repository: "repo", query: "Service.run", exactSymbols: ["Service.run"],
+      scopes: ["PROJECT:A", "ORGANIZATION:org"],
+    } },
+    state: "implement",
+    policy: { budget: 20, scopeTypes: ["PROJECT"] },
+  });
 
-  assert.deepEqual(result.artifacts.map((item) => item.id), ["memory:active"]);
-  assert.ok(result.contextId);
+  assert.equal(result.contextId, "ctx_1");
+  assert.deepEqual(calls[0].scopes, ["PROJECT:A"]);
+  assert.equal(calls[0].budget, 20);
+  assert.equal(calls[0].task_id, "task-1:implement");
 });
 
 test("context API client loads persistent Git state and sends sync delta", async () => {
@@ -137,15 +148,18 @@ test("context API client loads persistent Git state and sends sync delta", async
   const request = async (path, options = {}) => {
     calls.push([path, options]);
     if (!options.method) return { repository: "repo", files: [{ path: "app.js", oid: "1", parser_version: "js-1", schema_version: "1" }] };
+    if (path === "/v1/context:impact") return { repository: "repo", path: "lib.js", dependents: ["app.js"] };
     return { parsed: 1, embedded: 1 };
   };
   const client = new ContextApiClient({ baseUrl: "http://memory", token: "internal", request });
 
   const state = await client.indexState("repo");
   const result = await client.sync("repo", { files: [{ path: "app.js" }] });
+  const impact = await client.impact({ repository: "repo", path: "lib.js" });
 
   assert.equal(state.get("app.js").oid, "1");
   assert.deepEqual(result, { parsed: 1, embedded: 1 });
   assert.equal(calls[1][1].headers.Authorization, "Bearer internal");
   assert.equal(calls[1][1].method, "POST");
+  assert.deepEqual(impact.dependents, ["app.js"]);
 });

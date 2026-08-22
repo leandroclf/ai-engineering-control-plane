@@ -49,6 +49,17 @@ export class PostgresRunStore {
     return mapRun(result.rows[0]);
   }
 
+  async getTask(taskId) {
+    const result = await this.#query(
+      "SELECT id, idempotency_key, workflow_version, metadata, created_at FROM control.tasks WHERE id = $1",
+      [taskId],
+    );
+    const row = result.rows[0];
+    if (!row) throw new Error(`unknown task: ${taskId}`);
+    return { id: row.id, idempotencyKey: row.idempotency_key, workflowVersion: row.workflow_version,
+      metadata: row.metadata, createdAt: row.created_at };
+  }
+
   async getRun(runId) {
     const result = await this.#query("SELECT * FROM control.runs WHERE id = $1", [runId]);
     if (!result.rows[0]) throw new Error(`unknown run: ${runId}`);

@@ -200,11 +200,13 @@ class PostgresMemoryRepository:
             if rebuild:
                 cursor.execute("DELETE FROM memory.index_chunks WHERE repository_id=%s", (repository,))
                 cursor.execute("DELETE FROM memory.index_symbols WHERE repository_id=%s", (repository,))
+                cursor.execute("DELETE FROM memory.index_references WHERE repository_id=%s", (repository,))
                 cursor.execute("DELETE FROM memory.index_files WHERE repository_id=%s", (repository,))
             paths = sorted(set(payload.get("deleted", [])) | {item["path"] for item in payload.get("files", [])})
             if paths:
                 cursor.execute("DELETE FROM memory.index_chunks WHERE repository_id=%s AND path=ANY(%s)", (repository, paths))
                 cursor.execute("DELETE FROM memory.index_symbols WHERE repository_id=%s AND path=ANY(%s)", (repository, paths))
+                cursor.execute("DELETE FROM memory.index_references WHERE repository_id=%s AND path=ANY(%s)", (repository, paths))
                 cursor.execute("DELETE FROM memory.index_files WHERE repository_id=%s AND path=ANY(%s)", (repository, paths))
             for source_file in payload.get("files", []):
                 cursor.execute(
@@ -221,6 +223,14 @@ class PostgresMemoryRepository:
                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)""",
                         (repository, source_file["path"], symbol["qualifiedName"], symbol["kind"],
                          symbol["lineStart"], symbol["lineEnd"], source_file["oid"], payload["parser_version"], "{}"),
+                    )
+                for reference in source_file.get("references", []):
+                    cursor.execute(
+                        """INSERT INTO memory.index_references
+                           (repository_id,path,target,line,reference_kind)
+                           VALUES (%s,%s,%s,%s,%s)""",
+                        (repository, source_file["path"], reference["target"], reference["line"],
+                         reference.get("kind", "import")),
                     )
                 for chunk in source_file.get("chunks", []):
                     cursor.execute(

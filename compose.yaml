@@ -86,6 +86,7 @@ services:
       LITELLM_API_KEY: ${LITELLM_API_KEY:-}
       EMBEDDING_ALIAS: embeddings
       EMBEDDING_DIMENSIONS: 1536
+      CONTEXT_TOKEN_MODEL: coding-fast
       NEO4J_HTTP_URL: http://neo4j:7474
       NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/change-me-before-start}
     entrypoint: ["/bin/sh", "/aicp/entrypoint.sh"]

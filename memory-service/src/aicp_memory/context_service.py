@@ -14,13 +14,17 @@ def _cosine(left, right):
 
 
 class ContextService:
-    def __init__(self, repository, embedder, graph):
+    def __init__(self, repository, embedder, graph, token_counter=None):
         self.repository = repository
         self.embedder = embedder
         self.graph = graph
+        self.token_counter = token_counter
 
     def index_state(self, repository):
         return self.repository.index_state(repository)
+
+    def impact(self, repository, path):
+        return {"repository": repository, "path": path, "dependents": self.graph.impact(repository, path)}
 
     def sync(self, repository, payload, rebuild=False):
         embedded = 0
@@ -103,9 +107,10 @@ class ContextService:
             if content_hash in seen:
                 continue
             seen.add(content_hash)
-            tokens = candidate["token_count"]
+            tokens = self.token_counter.count(candidate["content"]) if self.token_counter else candidate["token_count"]
             if token_count + tokens > payload["budget"]:
                 continue
+            candidate = {**candidate, "token_count": tokens}
             selected.append(candidate)
             token_count += tokens
         identity = json.dumps({
@@ -120,4 +125,5 @@ class ContextService:
             "budget": payload["budget"],
             "artifacts": selected,
             "embedding_model": self.embedder.model,
+            "token_count_model": self.token_counter.model if self.token_counter else None,
         }

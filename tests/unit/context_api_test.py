@@ -22,6 +22,10 @@ class FakeContextService:
         self.calls.append(("compile", payload, authorized_scopes))
         return {"context_id": "ctx_1", "token_count": 4, "budget": payload["budget"], "artifacts": []}
 
+    def impact(self, repository, path):
+        self.calls.append(("impact", repository, path))
+        return {"repository": repository, "path": path, "dependents": ["app.js"]}
+
 
 class ContextApplicationTest(unittest.TestCase):
     def setUp(self):
@@ -75,3 +79,10 @@ class ContextApplicationTest(unittest.TestCase):
 
         self.assertEqual(response.status, 503)
         self.assertEqual(response.body, {"error": "DEPENDENCY_UNAVAILABLE"})
+
+    def test_impact_traversal_requires_exact_repository_scope(self):
+        response = self.request("POST", "/v1/context:impact", {"repository": "repo-a", "path": "lib.js"})
+        denied = self.request("POST", "/v1/context:impact", {"repository": "repo-b", "path": "lib.js"})
+
+        self.assertEqual(response.body["dependents"], ["app.js"])
+        self.assertEqual(denied.status, 403)

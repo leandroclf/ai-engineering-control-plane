@@ -31,6 +31,14 @@ export class ContextApiClient {
     });
   }
 
+  impact(payload) {
+    return this.request("/v1/context:impact", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  }
+
   async #fetch(path, options = {}) {
     const response = await fetch(this.baseUrl + path, {
       ...options,

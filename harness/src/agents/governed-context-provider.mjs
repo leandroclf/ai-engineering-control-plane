@@ -1,26 +1,28 @@
-import { createHash } from "node:crypto";
-
-import { compileContextPackage } from "../../../context/compiler/context-package.mjs";
-
 export class GovernedContextProvider {
-  constructor({ memoryClient }) {
-    this.memoryClient = memoryClient;
+  constructor({ contextClient }) {
+    if (!contextClient?.compile) throw new TypeError("context API client is required");
+    this.contextClient = contextClient;
   }
 
-  async load({ taskId, authorizedScopes, budget }) {
-    const allowed = new Set(authorizedScopes);
-    const memories = await this.memoryClient.search({ scopes: authorizedScopes });
-    const candidates = memories
-      .filter((memory) => memory.status === "ACTIVE" && allowed.has(memory.scope))
-      .map((memory) => ({
-        id: `memory:${memory.id}`,
-        priority: 4,
-        tokens: Math.max(1, Math.ceil(memory.summary.length / 4)),
-        contentHash: createHash("sha256").update(memory.summary).digest("hex"),
-        content: memory.summary,
-        reason: "scoped-memory",
-        provenance: { memoryId: memory.id, scope: memory.scope },
-      }));
-    return compileContextPackage({ taskId, candidates, budget });
+  async load({ task, state, policy }) {
+    const metadata = task.metadata ?? {};
+    if (!metadata.repository || !metadata.query) throw new TypeError("task context requires repository and query");
+    if (!Number.isInteger(policy?.budget) || policy.budget <= 0) throw new TypeError("stage context requires a positive budget");
+    const allowedTypes = new Set(policy.scopeTypes ?? []);
+    const scopes = (metadata.scopes ?? []).filter((scope) => allowedTypes.has(scope.split(":", 1)[0]));
+    const result = await this.contextClient.compile({
+      repository: metadata.repository,
+      task_id: `${task.id}:${state}`,
+      query: metadata.query,
+      exact_symbols: metadata.exactSymbols ?? [],
+      scopes,
+      budget: policy.budget,
+    });
+    return {
+      contextId: result.context_id,
+      tokenCount: result.token_count,
+      budget: result.budget,
+      artifacts: result.artifacts,
+    };
   }
 }
