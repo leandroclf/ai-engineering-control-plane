@@ -39,10 +39,12 @@ export class WorkflowExecutor {
           taskId: task?.id ?? run.taskId,
           runId: run.id,
           stage: run.state,
+          attempt: run.version,
           outcome,
           ...(this.telemetry.acceptsTiming ? { startedAt, finishedAt: new Date() } : {}),
           ...(result?.evidence?.usage ? { usage: result.evidence.usage } : {}),
           ...(result?.evidence?.budget ? { budget: result.evidence.budget } : {}),
+          ...(stateDefinition.agent ? { agent: stateDefinition.agent } : {}),
           ...(context?.contextId ? { contextId: context.contextId } : {}),
           ...(context?.metrics ? { contextMetrics: context.metrics } : {}),
         });

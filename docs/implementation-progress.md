@@ -21,6 +21,7 @@
 | `feat/graph-retrieval-v2` | IMPLEMENTED | hop real, multi-seed e relation allowlist PASS | Relações semânticas continuam limitadas às que possuem fonte determinística |
 | `feat/context-compiler-v3` | IMPLEMENTED | BM25, confiança determinística, vector condicional, memória relevante e packing token-aware | Threshold deve ser calibrado pelo benchmark pareado |
 | `feat/memory-relevance-and-retention` | IMPLEMENTED | relevance + scope distance + authority, TTL de inferência e source invalidation | Promoção derivada exige confiança e continua sujeita a ator autorizado |
+| `feat/otel-langfuse-trace-contract` | IMPLEMENTED | árvore run→stage→context/agent→gen_ai→provider attempt, redaction canary PASS | Conteúdo bruto permanece fora do contrato por padrão |
 
 ## Metrics
 

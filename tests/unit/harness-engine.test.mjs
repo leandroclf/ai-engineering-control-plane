@@ -124,7 +124,7 @@ test("workflow executor delivers governed context and persists redacted provenan
   assert.deepEqual(stage.evidence.contextMetrics, { selected_tokens: 8 });
   assert.equal(stage.evidence.telemetryExported, true);
   assert.deepEqual(telemetryCalls[0], {
-    taskId: task.id, runId: run.id, stage: "verify", outcome: "pass", contextId: "ctx_1", contextMetrics: { selected_tokens: 8 },
+    taskId: task.id, runId: run.id, stage: "verify", attempt: 1, outcome: "pass", agent: "reviewer", contextId: "ctx_1", contextMetrics: { selected_tokens: 8 },
   });
 });
 

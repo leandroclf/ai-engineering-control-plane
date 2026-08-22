@@ -110,7 +110,7 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
             ...normalizeAgentEvidence(execution.structured),
             ...(execution.usage ? { usage: execution.usage } : {}),
             ...(routing ? { routing } : {}),
-            ...(reservation ? { budget: { reservationId: reservation.id, reservedInputTokens: Number(reservation.reserved_input_tokens), reservedOutputTokens: Number(reservation.reserved_output_tokens), reservedCostUsd: Number(reservation.reserved_cost_usd), actual: execution.usage ?? {}, drift: settlement?.drift ?? null } } : {}),
+            ...(reservation ? { budget: { reservationId: reservation.id, logicalInvocationId: reservation.logical_invocation_id, reservedInputTokens: Number(reservation.reserved_input_tokens), reservedOutputTokens: Number(reservation.reserved_output_tokens), reservedCostUsd: Number(reservation.reserved_cost_usd), actual: execution.usage ?? {}, drift: settlement?.drift ?? null } } : {}),
           },
           };
         } catch (error) {
