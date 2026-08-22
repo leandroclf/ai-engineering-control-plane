@@ -154,7 +154,7 @@ indicados.
 
 ## 4. Engineering Harness
 
-- [ ] 4.1 Implementar persistência de task/run/stage
+- [x] 4.1 Implementar persistência de task/run/stage
   - Objective: criar lifecycle transacional, versões de workflow/policy e
     idempotência.
   - Likely files/components: `harness/src/workflow/`, migrations `control`.
@@ -162,7 +162,7 @@ indicados.
   - Validation: unit | integration.
   - Completion criteria: transições inválidas, replay e retomada têm testes.
 
-- [ ] 4.2 Implementar executor da máquina de estados
+- [x] 4.2 Implementar executor da máquina de estados
   - Objective: carregar workflow YAML, validar output e avançar somente por
     transições declaradas.
   - Likely files/components: `harness/src/workflow/`, `harness/workflows/`.
@@ -171,7 +171,7 @@ indicados.
   - Completion criteria: happy, blocked, failed e resume paths são
     determinísticos em testes sem LLM real.
 
-- [ ] 4.3 Implementar budgets e detecção de progresso
+- [x] 4.3 Implementar budgets e detecção de progresso
   - Objective: limitar calls, tokens, custo, iterações, tool repetition,
     finding e diff fingerprints.
   - Likely files/components: `harness/src/budget/`, `harness/policies/budgets.yaml`.
@@ -180,7 +180,7 @@ indicados.
   - Completion criteria: cada limite gera estado/reason esperado e impede nova
     chamada.
 
-- [ ] 4.4 Criar framework de adapters e findings normalizados
+- [x] 4.4 Criar framework de adapters e findings normalizados
   - Objective: padronizar execução, timeout, artifacts, errors e fingerprints.
   - Likely files/components: `harness/src/scanners/`, `harness/src/gates/`.
   - Depends on: 1.3, 4.2.
@@ -188,7 +188,7 @@ indicados.
   - Completion criteria: fixtures de formatos válidos/corrompidos produzem
     resultado normalizado estável.
 
-- [ ] 4.5 Implementar gates build/test/lint/coverage configuráveis
+- [x] 4.5 Implementar gates build/test/lint/coverage configuráveis
   - Objective: detectar comandos por projeto sem inventar sucesso quando não há
     comando obrigatório.
   - Likely files/components: `harness/src/gates/`, project adapter contracts.
@@ -197,7 +197,7 @@ indicados.
   - Completion criteria: sample projects suportados cobrem sucesso, falha,
     timeout e tool unavailable.
 
-- [ ] 4.6 Implementar adapters Semgrep, Gitleaks e Trivy
+- [x] 4.6 Implementar adapters Semgrep, Gitleaks e Trivy
   - Objective: fornecer baseline local gratuita para SAST, secrets, SCA/IaC.
   - Likely files/components: `harness/src/scanners/`, `security/semgrep/`.
   - Depends on: 4.4.
@@ -205,7 +205,7 @@ indicados.
   - Completion criteria: relatórios redigidos, fingerprints estáveis e exit
     codes distinguem finding de falha da ferramenta.
 
-- [ ] 4.7 Implementar adapters opcionais Snyk e Sonar
+- [x] 4.7 Implementar adapters opcionais Snyk e Sonar
   - Objective: integrar ferramentas cloud/licenciadas sem bloqueá-las no core
     quando política as marca opcionais.
   - Likely files/components: `harness/src/scanners/`, profiles/policies.
@@ -214,7 +214,7 @@ indicados.
   - Completion criteria: modos disabled/optional/required são distintos e
     ausência de evidência requerida bloqueia.
 
-- [ ] 4.8 Implementar targeted repair e revisões independentes
+- [x] 4.8 Implementar targeted repair e revisões independentes
   - Objective: compilar contexto do finding, reparar escopo mínimo, reexecutar
     scanner e regressão, depois revisores read-only.
   - Likely files/components: `harness/workflows/`, `harness/src/agents/`.
@@ -223,7 +223,7 @@ indicados.
   - Completion criteria: reparo pontual não reinicia fluxo completo; reviewers
     não editam; terminal segue specs.
 
-- [ ] 4.9 Criar vulnerable-project e acceptance suite do Harness
+- [x] 4.9 Criar vulnerable-project e acceptance suite do Harness
   - Objective: injetar teste falho, fake secret, dependência vulnerável, SQL
     injection e erro Docker.
   - Likely files/components: `tests/fixtures/vulnerable-project/`,

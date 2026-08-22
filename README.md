@@ -4,9 +4,10 @@ Governed, reproducible engineering environment for bounded AI-assisted work.
 
 ## Current status
 
-Foundation validated locally with PostgreSQL-backed LiteLLM, a limited workspace
-virtual key and live OpenAI smoke tests for `coding-fast` and `coding-strong`.
-The full OpenSpec change remains in progress.
+Foundation and deterministic Engineering Harness validated locally. The
+environment includes PostgreSQL-backed LiteLLM, a limited workspace virtual
+key, live OpenAI smoke tests, transactional workflow state, bounded repair and
+blocking project gates. The full OpenSpec change remains in progress.
 
 ## Prerequisites
 
@@ -46,6 +47,19 @@ opencode
 ```bash
 npm run validate
 ```
+
+The controlled vulnerable project is expected to return a non-zero status and
+emit a redacted JSON report:
+
+```bash
+node harness/src/cli/audit-project.mjs \
+  --project tests/fixtures/vulnerable-project
+```
+
+For a real repository, point `--project` to a Node.js checkout containing a
+`package.json`, lockfile and Dockerfile. The baseline auditor is a deterministic
+pre-check; official Semgrep, Gitleaks, Trivy, Snyk and Sonar JSON outputs are
+handled by the dedicated adapters when those tools are configured.
 
 ## Architecture
 
