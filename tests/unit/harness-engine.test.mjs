@@ -102,8 +102,10 @@ test("workflow executor delivers governed context and persists redacted provenan
       { id: "chunk-1", content: "must not persist", reason: "exact-symbol", provenance: { path: "app.js" } },
     ] };
   } };
+  const telemetryCalls = [];
   const executor = new WorkflowExecutor({
     definition: governedDefinition, store, contextProvider,
+    telemetry: { stage: async (metadata) => { telemetryCalls.push(metadata); return true; } },
     handlers: { verify: async ({ context }) => context.contextId === "ctx_1" ? "pass" : "fail" },
   });
 
@@ -115,6 +117,10 @@ test("workflow executor delivers governed context and persists redacted provenan
     { id: "chunk-1", reason: "exact-symbol", provenance: { path: "app.js" } },
   ]);
   assert.equal(JSON.stringify(stage.evidence).includes("must not persist"), false);
+  assert.equal(stage.evidence.telemetryExported, true);
+  assert.deepEqual(telemetryCalls[0], {
+    taskId: task.id, runId: run.id, stage: "verify", outcome: "pass", contextId: "ctx_1",
+  });
 });
 
 test("process runner distinguishes command findings, timeout and unavailable tool", async () => {

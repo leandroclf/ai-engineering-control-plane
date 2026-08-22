@@ -19,18 +19,26 @@ processors:
         action: delete
       - key: source.code
         action: delete
+      - key: http.request.body
+        action: delete
+      - key: db.statement
+        action: delete
 
 exporters:
   debug:
     verbosity: basic
+  file/traces:
+    path: /var/lib/otel/traces.json
+  file/metrics:
+    path: /var/lib/otel/metrics.json
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, attributes/redact, batch]
-      exporters: [debug]
+      exporters: [debug, file/traces]
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [debug]
+      exporters: [debug, file/metrics]

@@ -1,11 +1,12 @@
 import { Workflow } from "./workflow.mjs";
 
 export class WorkflowExecutor {
-  constructor({ definition, store, handlers, contextProvider = null }) {
+  constructor({ definition, store, handlers, contextProvider = null, telemetry = null }) {
     this.workflow = new Workflow(definition);
     this.store = store;
     this.handlers = handlers;
     this.contextProvider = contextProvider;
+    this.telemetry = telemetry;
   }
 
   async execute(runId) {
@@ -26,6 +27,15 @@ export class WorkflowExecutor {
         contextBudget: context.budget,
         contextArtifacts: context.artifacts.map(({ id, reason, provenance }) => ({ id, reason, provenance })),
       } : {};
+      if (this.telemetry) {
+        evidence.telemetryExported = await this.telemetry.stage({
+          taskId: task?.id ?? run.taskId,
+          runId: run.id,
+          stage: run.state,
+          outcome,
+          ...(context?.contextId ? { contextId: context.contextId } : {}),
+        });
+      }
       run = await this.store.transition(run.id, {
         expectedVersion: run.version,
         outcome,

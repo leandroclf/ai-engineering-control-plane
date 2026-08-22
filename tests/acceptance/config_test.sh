@@ -12,6 +12,7 @@ required=(
   scripts/doctor.sh
   scripts/smoke.sh
   scripts/context-smoke.sh
+  scripts/telemetry-smoke.sh
   docker/workspace/Dockerfile
   litellm/config.template.yaml
   opencode/opencode.json
@@ -99,6 +100,9 @@ test "$EMBEDDING_MODEL" = "openai/text-embedding-3-small"
 [[ "$MEMORY_SERVICE_TOKEN" != *change-me* ]]
 rg -q '^  database_url: os\.environ/DATABASE_URL$' litellm/config.template.yaml
 rg -q '^  - model_name: embeddings$' litellm/config.template.yaml
+rg -q '^  success_callback: \[otel\]$' litellm/config.template.yaml
+rg -q 'OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: no_content' compose.yaml
+rg -q 'check otel-collector' scripts/doctor.sh
 rg -q '"embeddings"' scripts/provision-litellm-key.sh
 if rg -n 'CREATE CONSTRAINT symbol_identity' graph/cypher; then
   echo 'obsolete symbol-name uniqueness must not be recreated' >&2

@@ -1,6 +1,16 @@
 name: aicp
 
 services:
+  otel-collector:
+    image: ${OTEL_COLLECTOR_IMAGE:-otel/opentelemetry-collector-contrib:0.157.0}
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./observability/otel/collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+      - ./.aicp/otel:/var/lib/otel
+    ports: ["127.0.0.1:4318:4318"]
+    networks: [frontend]
+
   postgres:
     image: ${POSTGRES_IMAGE:-postgres:16}
     restart: unless-stopped
@@ -56,6 +66,13 @@ services:
       - path: .env.runtime
         required: false
     entrypoint: ["/bin/sh", "/aicp/entrypoint.sh"]
+    environment:
+      LITELLM_OTEL_V2: "true"
+      OTEL_EXPORTER: otlp_http
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_SERVICE_NAME: aicp-litellm
+      OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: no_content
+      LITELLM_OTEL_INTEGRATION_ENABLE_METRICS: "true"
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     secrets: [postgres_password]
     volumes:
@@ -87,6 +104,7 @@ services:
       EMBEDDING_ALIAS: embeddings
       EMBEDDING_DIMENSIONS: 1536
       CONTEXT_TOKEN_MODEL: coding-fast
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       NEO4J_HTTP_URL: http://neo4j:7474
       NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/change-me-before-start}
     entrypoint: ["/bin/sh", "/aicp/entrypoint.sh"]
@@ -120,6 +138,7 @@ services:
       LITELLM_API_KEY: ${LITELLM_API_KEY:-}
       MEMORY_SERVICE_URL: http://memory-service:8080
       MEMORY_SERVICE_TOKEN: ${MEMORY_SERVICE_TOKEN:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     volumes:
       - ${PROJECTS_DIR:-./projects}:/workspace/projects
       - ./opencode:/home/dev/.config/opencode:ro

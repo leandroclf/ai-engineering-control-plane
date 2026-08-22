@@ -9,6 +9,7 @@ check() { local name="$1"; shift; if "$@" >/dev/null 2>&1; then printf '[PASS] %
 check docker docker version
 check compose docker compose version
 check config docker compose config --quiet
+check otel-collector sh -ec 'docker compose ps --status running --services | grep -qx otel-collector'
 check postgres docker compose exec -T postgres pg_isready -U aicp -d postgres
 check redis docker compose exec -T redis sh -ec 'redis-cli -a "$(cat /run/secrets/redis_password)" ping | grep -q PONG'
 check neo4j docker compose exec -T neo4j wget -q --spider http://localhost:7474

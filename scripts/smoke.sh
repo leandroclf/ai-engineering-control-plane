@@ -21,7 +21,8 @@ smoke_alias() {
   payload="$(jq -n --arg model "$alias" '{
     model: $model,
     messages: [{role: "user", content: "Reply with OK only."}],
-    max_completion_tokens: 16
+    max_completion_tokens: 16,
+    metadata: {aicp_task_id: ("smoke:" + $model)}
   }')"
   if ! response="$(curl -fsS http://127.0.0.1:4000/v1/chat/completions \
     -H "Authorization: Bearer ${LITELLM_API_KEY:?LITELLM_API_KEY is required}" \
