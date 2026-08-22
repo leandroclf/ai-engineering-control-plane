@@ -4,7 +4,7 @@ Updated: 2026-08-21
 
 ## Current verdict
 
-`OBSERVABILITY_CORE_READY`
+`HARNESS_RUNTIME_READY`
 
 The repository now contains an executable Foundation, deterministic Engineering
 Harness, persistent scoped Memory API and an authenticated Context runtime.
@@ -13,14 +13,15 @@ in PostgreSQL; Neo4j is rebuilt as a derived projection; retrieval is
 exact-first with lexical/vector fallback and gateway token counting. Harness
 stages receive policy-scoped packages and persist sanitized provenance. It MUST
 NOT yet be classified as `READY_FOR_HUMAN_REVIEW` for the full OpenSpec change.
-Runtime agent wiring, fallback fault injection, Langfuse deployment, backup
-governance and multi-host acceptance remain open.
+Gateway fallback fault injection, Langfuse deployment, suppression governance,
+backup governance and multi-host acceptance remain open.
 
 ## Verified evidence
 
 | Capability | Evidence | Result |
 |---|---|---|
-| Local contracts | `npm run validate` | PASS: 34 Node tests, 21 Python tests, configuration and Harness acceptance |
+| Local contracts | `npm run validate` | PASS: 44 Node tests, 21 Python tests, configuration and Harness acceptance |
+| Harness runtime | authenticated HTTP API and Compose health | PASS: persistent start/resume, OpenCode SDK, scoped Context, redacted evidence |
 | Workspace image | `docker compose build workspace` | PASS |
 | Memory image | `docker compose build memory-service` | PASS |
 | OpenCode baseline | `docker run --rm aicp-workspace opencode --version` | PASS: `1.18.21` |

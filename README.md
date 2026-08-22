@@ -56,6 +56,27 @@ cross-service task correlation plus rejection of prompt, source and credential
 fields. LiteLLM OTel v2 exports model aliases, resolved models, token usage and
 cost with message-content capture disabled.
 
+Start a governed workflow through the authenticated Harness API:
+
+```bash
+curl --fail --request POST http://127.0.0.1:18081/v1/runs \
+  --header "Authorization: Bearer $(cat secrets/harness_service_token)" \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "project": "<repository>",
+    "query": "Describe the bounded engineering change",
+    "idempotencyKey": "issue-or-request-id"
+  }'
+```
+
+Resume an interrupted run with `POST /v1/runs/<run-id>:resume`. The Harness
+persists every declared transition in PostgreSQL, starts OpenCode internally,
+delivers stage-scoped Context packages and records redacted agent/gate evidence.
+Provider credentials are not present in either the Harness or workspace
+environment. For manual Compose recreation, always pass
+`docker compose --env-file .env.runtime ...`; the bootstrap does this by
+exporting the same values without exposing the file to agent containers.
+
 Open the workspace:
 
 ```bash
