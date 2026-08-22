@@ -16,4 +16,4 @@ services:
     depends_on:
       memory-service: { condition: service_healthy }
       harness: { condition: service_healthy }
-    networks: [frontend]
+    networks: [agent-internal]

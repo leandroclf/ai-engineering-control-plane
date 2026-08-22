@@ -10,6 +10,7 @@ function mapRun(row) {
     updatedAt: row.updated_at,
   };
 }
+function statusFor(to, terminal) { return !terminal ? "running" : to === "failed" ? "failed" : to === "human-review" ? "blocked" : "completed"; }
 
 export class PostgresRunStore {
   constructor(database) {
@@ -66,7 +67,7 @@ export class PostgresRunStore {
     return mapRun(result.rows[0]);
   }
 
-  async transition(runId, { expectedVersion, outcome, to, terminal = false, evidence = {} }) {
+  async transition(runId, { expectedVersion, outcome, to, terminal = false, evidence = {}, startedAt = new Date(), finishedAt = new Date() }) {
     const client = await this.database.connect();
     try {
       await client.query("BEGIN");
@@ -83,16 +84,16 @@ export class PostgresRunStore {
          SET state = $3, status = $4, version = version + 1, updated_at = now()
          WHERE id = $1 AND version = $2
          RETURNING *`,
-        [runId, expectedVersion, to, terminal ? "completed" : "running"],
+        [runId, expectedVersion, to, statusFor(to, terminal)],
       );
       if (!updated.rows[0]) throw new Error(`stale run version: expected ${expectedVersion}`);
       await client.query(
         `INSERT INTO control.stages
            (run_id, sequence, state_from, state_to, outcome, evidence, started_at, finished_at)
-         SELECT $1, COALESCE(MAX(sequence), 0) + 1, $2, $3, $4, $5::jsonb, now(), now()
+         SELECT $1, COALESCE(MAX(sequence), 0) + 1, $2, $3, $4, $5::jsonb, $6, $7
          FROM control.stages WHERE run_id = $1
          RETURNING id`,
-        [runId, current.rows[0].state, to, outcome, JSON.stringify(evidence)],
+        [runId, current.rows[0].state, to, outcome, JSON.stringify(evidence), startedAt, finishedAt],
       );
       await client.query("COMMIT");
       return mapRun(updated.rows[0]);
@@ -111,5 +112,18 @@ export class PostgresRunStore {
       [runId],
     );
     return result.rows;
+  }
+
+  async cancelRun(runId) {
+    const result = await this.#query(
+      `UPDATE control.runs SET status='cancelled', version=version+1, updated_at=now()
+       WHERE id=$1 AND status='running' RETURNING *`, [runId],
+    );
+    if (!result.rows[0]) {
+      const current = await this.getRun(runId);
+      if (current.status === "cancelled") return current;
+      throw new Error(`run cannot be cancelled from status: ${current.status}`);
+    }
+    return mapRun(result.rows[0]);
   }
 }

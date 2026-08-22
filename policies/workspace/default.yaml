@@ -1,0 +1,14 @@
+version: workspace-v1
+filesystem:
+  project_only: true
+  root_read_only: true
+  writable: [/workspace/project, /tmp, /home/dev/.cache, /home/dev/.local/state]
+  forbidden: [/run/secrets, /var/run/docker.sock, /root]
+network:
+  public_egress: false
+  allowed_services: [litellm:4000, memory-service:8080, otel-collector:4318]
+process:
+  allow: [git, npm, node, python3, java, ./gradlew, mvn, go, semgrep, trivy, gitleaks]
+  deny_patterns: ["git push*", "git commit*", "docker*", "kubectl apply*", "terraform apply*"]
+secrets: { provider_credentials: deny, litellm_virtual_key: allow }
+limits: { pids: 512, memory: 4g, cpus: 4 }

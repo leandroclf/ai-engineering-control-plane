@@ -6,7 +6,9 @@ steps: 6
 permission:
   edit: deny
   bash: deny
-  webfetch: ask
+  webfetch: deny
+  websearch: deny
+  external_directory: deny
 ---
 
 Analise requisitos, componentes afetados, contratos, persistência, segurança,

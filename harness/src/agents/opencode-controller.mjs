@@ -10,7 +10,7 @@ export class OpenCodeController {
     return (await this.runDetailed({ directory, agent, prompt, schema })).structured;
   }
 
-  async runDetailed({ directory, agent, prompt, schema }) {
+  async runDetailed({ directory, agent, prompt, schema, maxOutputTokens }) {
     const created = await this.client.session.create({ query: { directory }, body: { title: `aicp:${agent}` } });
     const session = created.data ?? created;
     if (!session?.id) throw new Error("OpenCode did not return a session id");
@@ -20,6 +20,7 @@ export class OpenCodeController {
       query: { directory },
       body: {
         agent,
+        ...(maxOutputTokens ? { maxTokens: maxOutputTokens } : {}),
         format: { type: "json_schema", schema, retryCount: 1 },
         parts: [{ type: "text", text: prompt }],
       },

@@ -1,0 +1,16 @@
+{
+  "version": "gates-v1",
+  "gates": {
+    "build": { "provider": "project", "capability": "build" },
+    "lint": { "provider": "project", "capability": "lint" },
+    "changed-tests": { "provider": "project", "capability": "changed-tests" },
+    "unit-tests": { "provider": "project", "capability": "unit-tests" },
+    "integration-tests": { "provider": "project", "capability": "integration-tests" },
+    "coverage": { "provider": "project", "capability": "coverage" },
+    "secret-diff": { "provider": "gitleaks", "mode": "diff" },
+    "sast-diff": { "provider": "semgrep", "mode": "diff" },
+    "semgrep": { "provider": "semgrep", "mode": "full" },
+    "trivy": { "provider": "trivy", "mode": "full" },
+    "gitleaks": { "provider": "gitleaks", "mode": "full" }
+  }
+}

@@ -2,35 +2,29 @@ model_list:
   - model_name: coding-strong
     litellm_params:
       model: ${CODING_STRONG_MODEL}
-      api_key: os.environ/OPENAI_API_KEY
   - model_name: coding-fast
     litellm_params:
       model: ${CODING_FAST_MODEL}
-      api_key: os.environ/OPENAI_API_KEY
   - model_name: architecture
     litellm_params:
       model: ${ARCHITECTURE_MODEL}
-      api_key: os.environ/OPENAI_API_KEY
   - model_name: security
     litellm_params:
       model: ${SECURITY_MODEL}
-      api_key: os.environ/OPENAI_API_KEY
   - model_name: review
     litellm_params:
       model: ${REVIEW_MODEL}
-      api_key: os.environ/OPENAI_API_KEY
   - model_name: embeddings
     litellm_params:
       model: ${EMBEDDING_MODEL}
-      api_key: os.environ/OPENAI_API_KEY
   - model_name: aicp-fallback-smoke
     litellm_params:
       model: openai/aicp-intentional-fault
-      api_key: os.environ/OPENAI_API_KEY
 router_settings:
   routing_strategy: simple-shuffle
   num_retries: 1
   fallbacks:
+    - coding-strong: [coding-fast]
     - aicp-fallback-smoke: [coding-fast]
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY

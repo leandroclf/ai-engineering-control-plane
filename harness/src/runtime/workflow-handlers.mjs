@@ -65,26 +65,40 @@ function repairEvidence(stages) {
   return prior?.evidence?.handler?.gates ?? [];
 }
 
-export function createWorkflowHandlers({ definition, store = null, controller, projectAdapter, gateRunner }) {
+export function createWorkflowHandlers({ definition, store = null, controller, projectAdapter, gateRunner, gateRegistry = null, budgetAuthority = null }) {
   if (!definition?.states) throw new TypeError("workflow definition is required");
   const handlers = {};
   for (const [state, stateDefinition] of Object.entries(definition.states)) {
     if (definition.terminal.includes(state)) continue;
     if (stateDefinition.agent) {
-      handlers[state] = async ({ task, context }) => {
-        const execution = await runAgent(controller, {
+      handlers[state] = async ({ run, task, context }) => {
+        let reservation;
+        try {
+          reservation = budgetAuthority ? await budgetAuthority.reserve({ taskId: task.id, runId: run.id, stage: state, contextBudget: context?.budget ?? 0, attempt: run.version }) : null;
+          if (reservation?.idempotentReplay) throw Object.assign(new Error("invocation reservation is already active"), { name: "InvocationInProgressError" });
+          const execution = await runAgent(controller, {
           directory: requireProject(task),
           agent: stateDefinition.agent,
           prompt: agentPrompt({ task, state, context }),
           schema: agentSchema(Object.keys(stateDefinition.next)),
-        });
-        return {
+          maxOutputTokens: reservation ? Number(reservation.reserved_output_tokens) : undefined,
+          });
+          if (reservation) await budgetAuthority.commit({ reservationId: reservation.id, actualUsage: execution.usage ?? {} });
+          return {
           outcome: execution.structured.outcome,
           evidence: {
             ...normalizeAgentEvidence(execution.structured),
             ...(execution.usage ? { usage: execution.usage } : {}),
           },
-        };
+          };
+        } catch (error) {
+          if (reservation) await budgetAuthority.release({ reservationId: reservation.id });
+          if (error.name === "BudgetExceededError") {
+            const outcomes = Object.keys(stateDefinition.next);
+            return { outcome: outcomes.find((value) => ["blocked", "exhausted", "failed", "error"].includes(value)) ?? outcomes.at(-1), evidence: { reason: "BUDGET_EXCEEDED", limit: error.limit } };
+          }
+          throw error;
+        }
       };
       continue;
     }
@@ -92,7 +106,8 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
       handlers[state] = async ({ task }) => {
         const project = requireProject(task);
         const profile = await projectAdapter.detect(project);
-        const report = await gateRunner.run({ project, profile, gateNames: stateDefinition.gates });
+        const definitions = gateRegistry ? await gateRegistry.preflight({ names: stateDefinition.gates, project, profile }) : null;
+        const report = await gateRunner.run({ project, profile, gateNames: stateDefinition.gates, definitions });
         return { outcome: gateOutcome(report), evidence: redactValue({ projectKind: report.projectKind, gates: report.gates }) };
       };
       continue;
@@ -108,8 +123,19 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
             evidence: { reason: "ITERATION_BUDGET_EXHAUSTED", iterations },
           };
         }
+        if (budgetAuthority) {
+          try { await budgetAuthority.consumeIteration(task.id, run.id); }
+          catch (error) {
+            if (error.name === "BudgetExceededError") return { outcome: "exhausted", evidence: { reason: "ITERATION_BUDGET_EXHAUSTED", iterations } };
+            throw error;
+          }
+        }
         const gates = repairEvidence(stages);
-        const execution = await runAgent(controller, {
+        let reservation;
+        try {
+          reservation = budgetAuthority ? await budgetAuthority.reserve({ taskId: task.id, runId: run.id, stage: state, attempt: run.version }) : null;
+          if (reservation?.idempotentReplay) throw Object.assign(new Error("invocation reservation is already active"), { name: "InvocationInProgressError" });
+          const execution = await runAgent(controller, {
           directory: requireProject(task),
           agent: "implementer",
           prompt: [
@@ -120,15 +146,22 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
             "Return progress only when project files changed; otherwise return exhausted.",
           ].join("\n\n"),
           schema: agentSchema(Object.keys(stateDefinition.next)),
-        });
-        return {
+          maxOutputTokens: reservation ? Number(reservation.reserved_output_tokens) : undefined,
+          });
+          if (reservation) await budgetAuthority.commit({ reservationId: reservation.id, actualUsage: execution.usage ?? {} });
+          return {
           outcome: execution.structured.outcome,
           evidence: {
             ...normalizeAgentEvidence(execution.structured),
             ...(execution.usage ? { usage: execution.usage } : {}),
             iterations: iterations + 1,
           },
-        };
+          };
+        } catch (error) {
+          if (reservation) await budgetAuthority.release({ reservationId: reservation.id });
+          if (error.name === "BudgetExceededError") return { outcome: "exhausted", evidence: { reason: "BUDGET_EXCEEDED", limit: error.limit, iterations } };
+          throw error;
+        }
       };
       continue;
     }

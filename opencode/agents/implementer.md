@@ -6,11 +6,16 @@ steps: 12
 permission:
   edit: allow
   bash:
-    "*": ask
+    "*": deny
     "git status *": allow
     "git diff *": allow
+    "npm test *": allow
+    "npm run lint *": allow
     "git commit *": deny
     "git push *": deny
+  webfetch: deny
+  websearch: deny
+  external_directory: deny
 ---
 
 Implemente somente o plano e contexto fornecidos. Não remova testes para obter

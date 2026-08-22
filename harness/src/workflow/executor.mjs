@@ -13,6 +13,8 @@ export class WorkflowExecutor {
     let run = await this.store.getRun(runId);
     const task = this.contextProvider ? await this.store.getTask(run.taskId) : null;
     while (!this.workflow.isTerminal(run.state)) {
+      if (run.status === "cancelled") return run;
+      const startedAt = new Date();
       const handler = this.handlers[run.state];
       if (!handler) throw new Error(`missing handler for workflow state: ${run.state}`);
       const stateDefinition = this.workflow.definition.states[run.state];
@@ -35,6 +37,8 @@ export class WorkflowExecutor {
           runId: run.id,
           stage: run.state,
           outcome,
+          ...(this.telemetry.acceptsTiming ? { startedAt, finishedAt: new Date() } : {}),
+          ...(result?.evidence?.usage ? { usage: result.evidence.usage } : {}),
           ...(context?.contextId ? { contextId: context.contextId } : {}),
         });
       }
@@ -44,6 +48,8 @@ export class WorkflowExecutor {
         to: next,
         terminal: this.workflow.isTerminal(next),
         evidence,
+        startedAt,
+        finishedAt: new Date(),
       });
     }
     return run;

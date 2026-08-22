@@ -19,9 +19,15 @@
   },
   "model": "controlplane/coding-strong",
   "permission": {
+    "*": "deny",
     "read": { "*": "allow", "*.env": "deny", "*.env.*": "deny", "*.env.example": "allow" },
-    "bash": { "*": "ask", "git status *": "allow", "git diff *": "allow", "git log *": "allow", "git commit *": "deny", "git push *": "deny" },
+    "edit": "deny",
+    "bash": { "*": "deny", "git status *": "allow", "git diff *": "allow", "git log *": "allow", "git commit *": "deny", "git push *": "deny" },
     "external_directory": "deny",
-    "doom_loop": "ask"
+    "webfetch": "deny",
+    "websearch": "deny",
+    "task": "deny",
+    "skill": "deny",
+    "doom_loop": "deny"
   }
 }

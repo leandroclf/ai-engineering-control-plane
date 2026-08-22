@@ -63,6 +63,18 @@ export function createHarnessServer({ runtime, token, projectsRoot = "/workspace
         send(response, 200, await runtime.resume(decodeURIComponent(resume[1])));
         return;
       }
+      const getRun = request.method === "GET" && request.url?.match(/^\/v1\/runs\/([^/:?]+)$/);
+      if (getRun) { send(response, 200, await runtime.getRun(decodeURIComponent(getRun[1]))); return; }
+      const stages = request.method === "GET" && request.url?.match(/^\/v1\/runs\/([^/]+)\/stages$/);
+      if (stages) { send(response, 200, (await runtime.getRun(decodeURIComponent(stages[1]))).stages); return; }
+      const cancelRun = request.method === "POST" && request.url?.match(/^\/v1\/runs\/([^/]+):cancel$/);
+      if (cancelRun) { send(response, 200, await runtime.cancelRun(decodeURIComponent(cancelRun[1]))); return; }
+      const budget = request.method === "GET" && request.url?.match(/^\/v1\/tasks\/([^/]+)\/budget$/);
+      if (budget) { send(response, 200, await runtime.getBudget(decodeURIComponent(budget[1]))); return; }
+      const budgetEvents = request.method === "GET" && request.url?.match(/^\/v1\/tasks\/([^/]+)\/budget\/events$/);
+      if (budgetEvents) { send(response, 200, await runtime.getBudgetEvents(decodeURIComponent(budgetEvents[1]))); return; }
+      const cancelBudget = request.method === "POST" && request.url?.match(/^\/v1\/tasks\/([^/]+)\/budget:cancel$/);
+      if (cancelBudget) { send(response, 200, await runtime.cancelBudget(decodeURIComponent(cancelBudget[1]))); return; }
       send(response, 404, { error: "NOT_FOUND" });
     } catch (error) {
       const clientError = error instanceof TypeError || error instanceof RangeError || error instanceof SyntaxError;

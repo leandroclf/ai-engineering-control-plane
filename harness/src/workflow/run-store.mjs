@@ -51,7 +51,7 @@ export class InMemoryRunStore {
     return structuredClone(run);
   }
 
-  async transition(runId, { expectedVersion, outcome, to, terminal = false, evidence = {} }) {
+  async transition(runId, { expectedVersion, outcome, to, terminal = false, evidence = {}, startedAt, finishedAt }) {
     const run = this.#runs.get(runId);
     if (!run) throw new Error(`unknown run: ${runId}`);
     if (run.version !== expectedVersion) throw new Error(`stale run version: expected ${expectedVersion}, actual ${run.version}`);
@@ -62,11 +62,11 @@ export class InMemoryRunStore {
       to,
       outcome,
       evidence: structuredClone(evidence),
-      startedAt: run.updatedAt,
-      finishedAt: now,
+      startedAt: startedAt?.toISOString?.() ?? startedAt ?? run.updatedAt,
+      finishedAt: finishedAt?.toISOString?.() ?? finishedAt ?? now,
     });
     run.state = to;
-    run.status = terminal ? "completed" : "running";
+    run.status = !terminal ? "running" : to === "failed" ? "failed" : to === "human-review" ? "blocked" : "completed";
     run.version += 1;
     run.updatedAt = now;
     return structuredClone(run);
@@ -75,5 +75,15 @@ export class InMemoryRunStore {
   async listStages(runId) {
     if (!this.#stages.has(runId)) throw new Error(`unknown run: ${runId}`);
     return structuredClone(this.#stages.get(runId));
+  }
+
+  async cancelRun(runId) {
+    const run = this.#runs.get(runId);
+    if (!run) throw new Error(`unknown run: ${runId}`);
+    if (run.status !== "running" && run.status !== "cancelled") throw new Error(`run cannot be cancelled from status: ${run.status}`);
+    run.status = "cancelled";
+    run.version += 1;
+    run.updatedAt = new Date().toISOString();
+    return structuredClone(run);
   }
 }
