@@ -73,6 +73,16 @@ jobs:
       - run: for migration in memory-service/migrations/*.sql; do psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"; done
       - run: npm run test:integration
 
+  mock-provider-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run test:e2e:mock-gateway
+
   security-scanners:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -144,10 +154,20 @@ jobs:
 
   image-security:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Validate owned image build graph
         run: docker compose --env-file versions.env config --quiet
       - name: Build owned images for downstream scanning
         run: docker compose --env-file versions.env build memory-service workspace harness
+      - name: Generate owned image SBOMs and vulnerability evidence
+        run: npm run scan:owned-images
+      - name: Upload owned image evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: aicp-owned-image-evidence
+          path: .aicp/ci/images
+          if-no-files-found: error
+          retention-days: 14
