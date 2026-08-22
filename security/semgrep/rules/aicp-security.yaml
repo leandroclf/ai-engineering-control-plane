@@ -1,0 +1,24 @@
+rules:
+  - id: aicp.shell-command-interpolation
+    message: Untrusted input in a shell command can cross the host trust boundary.
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: exec($INPUT)
+          - pattern: execSync($INPUT)
+      - pattern-not: exec("...")
+      - pattern-not: execSync("...")
+    metadata:
+      category: security
+      cwe: CWE-78
+  - id: aicp.raw-secret-log
+    message: Do not log variables named as credentials or secrets.
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern-either:
+      - pattern: console.log($SECRET)
+      - pattern: console.error($SECRET)
+    metavariable-regex:
+      metavariable: $SECRET
+      regex: (?i).*(secret|password|token|api.?key).*

@@ -1,0 +1,29 @@
+name: governed-ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run validate
+      - run: docker compose --env-file versions.env config --quiet
+      - name: Build owned images
+        run: |
+          set -a
+          source versions.env
+          set +a
+          docker compose build memory-service workspace
