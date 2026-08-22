@@ -1,0 +1,37 @@
+# Operations runbook
+
+## Bootstrap fails before startup
+
+Run `docker version`, `docker compose version`, inspect `.env.runtime` for
+placeholder values and rerun `./scripts/render-config.sh`. Never paste the file
+or secret values into an issue.
+
+## Service is unhealthy
+
+Run `./scripts/doctor.sh`, then `docker compose ps` and service-specific logs.
+Classify configuration, dependency, migration, resource or application failure
+before restarting. A required unavailable gate remains blocking.
+
+## No-progress workflow
+
+Preserve task/run IDs, finding fingerprint, diff fingerprint and gate artifacts.
+Do not increase budgets automatically. Route to human review.
+
+## Suspected secret exposure
+
+Stop affected workflow, revoke/rotate the credential at its authority, preserve
+redacted evidence, scan Git history and determine whether provider logs or
+telemetry received the value.
+
+## Backup and restore
+
+Run `./scripts/backup.sh`, encrypt and move the resulting directory. Restore in
+a compatible isolated environment with `./scripts/restore.sh <directory>` and
+require doctor, scope-isolation and context checks. Neo4j is rebuilt; Redis is
+discarded.
+
+## Safe shutdown
+
+`docker compose stop` preserves state. `docker compose down` removes containers
+and networks but not bind-mounted canonical state. Do not use volume/data
+deletion commands without a separately approved destructive procedure.
