@@ -40,6 +40,10 @@ required=(
   opencode/skills/secure-change-review/SKILL.md
   security/semgrep/rules/aicp-security.yaml
   observability/otel/collector.yaml
+  observability/langfuse/README.md
+  compose/observability.vendor.yaml
+  scripts/configure-observability.sh
+  scripts/observability.sh
   .github/workflows/ci.yml
   docs/threat-model.md
   docs/runbook.md
@@ -61,6 +65,31 @@ jq -e '.services.workspace.depends_on.litellm.condition == "service_healthy"' <<
 jq -e '.services.harness.depends_on["memory-service"].condition == "service_healthy"' <<<"$compose_json" >/dev/null
 jq -e '.services.harness.healthcheck.test | length > 0' <<<"$compose_json" >/dev/null
 jq -e '[.services.harness.secrets[].source] | index("harness_service_token") != null' <<<"$compose_json" >/dev/null
+
+observability_env="$(mktemp)"
+cp versions.env "$observability_env"
+cat >> "$observability_env" <<'EOF'
+LANGFUSE_POSTGRES_PASSWORD=test-postgres
+LANGFUSE_CLICKHOUSE_PASSWORD=test-clickhouse
+LANGFUSE_REDIS_PASSWORD=test-redis
+LANGFUSE_MINIO_PASSWORD=test-minio-password
+LANGFUSE_SALT=test-salt
+LANGFUSE_ENCRYPTION_KEY=0000000000000000000000000000000000000000000000000000000000000000
+LANGFUSE_NEXTAUTH_SECRET=test-nextauth
+LANGFUSE_PUBLIC_KEY=pk-lf-test
+LANGFUSE_SECRET_KEY=sk-lf-test
+LANGFUSE_ADMIN_EMAIL=admin@example.invalid
+LANGFUSE_ADMIN_PASSWORD=test-admin-password
+EOF
+observability_json="$(docker compose --env-file "$observability_env" -f compose/observability.vendor.yaml config --format json)"
+jq -e '.networks["observability-data"].internal == true' <<<"$observability_json" >/dev/null
+jq -e '.services["langfuse-web"].ports[0].host_ip == "127.0.0.1"' <<<"$observability_json" >/dev/null
+jq -e '.services["langfuse-postgres"].ports == null and .services["langfuse-clickhouse"].ports == null' <<<"$observability_json" >/dev/null
+if jq -r '.services[].image // empty' <<<"$observability_json" | rg ':latest$'; then
+  echo 'observability images must not use latest tags' >&2
+  exit 1
+fi
+rm -f "$observability_env"
 jq -e '[.services.workspace.volumes[] | select(.target == "/home/dev/.local/share/opencode")][0].type == "volume"' <<<"$compose_json" >/dev/null
 jq -e '[.services.workspace.volumes[] | select(.target == "/home/dev/.local/state")][0].type == "volume"' <<<"$compose_json" >/dev/null
 
