@@ -17,6 +17,7 @@
 | `feat/scanner-bundle-offline-readiness` | IMPLEMENTED | hash/freshness unit test; Compose validado | Atualização da DB requer egress apenas no updater confiável |
 | `feat/worker-profile-registry` | IMPLEMENTED | seleção polyglot e probes positivos/negativos PASS | Builds das cinco imagens serão executados com o manager efêmero |
 | `feat/ephemeral-worker-manager` | IMPLEMENTED | lifecycle/cross-run/revocation unit + Docker smoke | Deployment do manager deve permanecer fora da trust boundary do agente |
+| `feat/polyglot-context-parsers` | IMPLEMENTED | JS/TS/Java/Python/Go symbol/import tests | Parsers sem dependências externas priorizam fatos sintáticos deliberadamente conservadores |
 
 ## Metrics
 
@@ -32,6 +33,7 @@
 | Scanners core usando configuração online automática | 2 | 0 |
 | Perfis de toolchain com capability attestation | 0 | 5 |
 | Implementações concretas de `WorkerManager` | 0 | 1 |
+| Linguagens no Parser Registry | 1 | 5 |
 | Protected `main` no GitHub | NOT_MEASURED | NOT_MEASURED |
 
 ## Open risks
