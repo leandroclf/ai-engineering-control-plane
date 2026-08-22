@@ -45,6 +45,11 @@ function normalizeAgentEvidence(result) {
   });
 }
 
+async function runAgent(controller, request) {
+  if (controller.runDetailed) return controller.runDetailed(request);
+  return { structured: await controller.run(request), usage: null };
+}
+
 function gateOutcome(report) {
   if (report.gates?.some((gate) => gate.status === "error")) return "error";
   return report.status === "pass" ? "pass" : "fail";
@@ -66,13 +71,19 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
     if (definition.terminal.includes(state)) continue;
     if (stateDefinition.agent) {
       handlers[state] = async ({ task, context }) => {
-        const result = await controller.run({
+        const execution = await runAgent(controller, {
           directory: requireProject(task),
           agent: stateDefinition.agent,
           prompt: agentPrompt({ task, state, context }),
           schema: agentSchema(Object.keys(stateDefinition.next)),
         });
-        return { outcome: result.outcome, evidence: normalizeAgentEvidence(result) };
+        return {
+          outcome: execution.structured.outcome,
+          evidence: {
+            ...normalizeAgentEvidence(execution.structured),
+            ...(execution.usage ? { usage: execution.usage } : {}),
+          },
+        };
       };
       continue;
     }
@@ -97,7 +108,7 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
           };
         }
         const gates = repairEvidence(stages);
-        const result = await controller.run({
+        const execution = await runAgent(controller, {
           directory: requireProject(task),
           agent: "implementer",
           prompt: [
@@ -109,7 +120,14 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
           ].join("\n\n"),
           schema: agentSchema(Object.keys(stateDefinition.next)),
         });
-        return { outcome: result.outcome, evidence: { ...normalizeAgentEvidence(result), iterations: iterations + 1 } };
+        return {
+          outcome: execution.structured.outcome,
+          evidence: {
+            ...normalizeAgentEvidence(execution.structured),
+            ...(execution.usage ? { usage: execution.usage } : {}),
+            iterations: iterations + 1,
+          },
+        };
       };
       continue;
     }

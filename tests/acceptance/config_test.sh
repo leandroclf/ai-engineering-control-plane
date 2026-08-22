@@ -13,6 +13,7 @@ required=(
   scripts/smoke.sh
   scripts/context-smoke.sh
   scripts/telemetry-smoke.sh
+  scripts/fallback-smoke.sh
   docker/workspace/Dockerfile
   docker/harness/Dockerfile
   docker/harness/entrypoint.sh
@@ -111,6 +112,7 @@ test "$EMBEDDING_MODEL" = "openai/text-embedding-3-small"
 rg -q '^  database_url: os\.environ/DATABASE_URL$' litellm/config.template.yaml
 rg -q '^  - model_name: embeddings$' litellm/config.template.yaml
 rg -q '^  success_callback: \[otel\]$' litellm/config.template.yaml
+rg -q 'aicp-fallback-smoke: \[coding-fast\]' litellm/config.template.yaml
 rg -q 'OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: no_content' compose.yaml
 rg -q 'check otel-collector' scripts/doctor.sh
 rg -q 'check harness' scripts/doctor.sh

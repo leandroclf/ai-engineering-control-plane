@@ -60,7 +60,11 @@ test("OpenCode controller creates a session and requests structured output", asy
   const client = {
     session: {
       create: async (options) => { calls.push(["create", options]); return { data: { id: "session-1" } }; },
-      prompt: async (options) => { calls.push(["prompt", options]); return { data: { structured: { status: "success" } } }; },
+      prompt: async (options) => { calls.push(["prompt", options]); return { data: {
+        structured: { status: "success" },
+        info: { modelID: "coding-fast", providerID: "controlplane", cost: 0.01,
+          tokens: { input: 10, output: 2, reasoning: 1, cache: { read: 3, write: 0 } } },
+      } }; },
     },
   };
   const { OpenCodeController } = await import("../../harness/src/agents/opencode-controller.mjs");
@@ -72,4 +76,10 @@ test("OpenCode controller creates a session and requests structured output", asy
   assert.deepEqual(result, { status: "success" });
   assert.equal(calls[1][1].body.format.type, "json_schema");
   assert.deepEqual(calls[1][1].body.format.schema, schema);
+
+  const detailed = await controller.runDetailed({ directory: "/workspace/project", agent: "architect", prompt: "Inspect", schema });
+  assert.deepEqual(detailed.usage, {
+    model: "coding-fast", provider: "controlplane", costUsd: 0.01,
+    inputTokens: 10, outputTokens: 2, reasoningTokens: 1, cacheReadTokens: 3, cacheWriteTokens: 0,
+  });
 });

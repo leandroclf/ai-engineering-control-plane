@@ -23,9 +23,15 @@ model_list:
     litellm_params:
       model: ${EMBEDDING_MODEL}
       api_key: os.environ/OPENAI_API_KEY
+  - model_name: aicp-fallback-smoke
+    litellm_params:
+      model: openai/aicp-intentional-fault
+      api_key: os.environ/OPENAI_API_KEY
 router_settings:
   routing_strategy: simple-shuffle
   num_retries: 1
+  fallbacks:
+    - aicp-fallback-smoke: [coding-fast]
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
   database_url: os.environ/DATABASE_URL

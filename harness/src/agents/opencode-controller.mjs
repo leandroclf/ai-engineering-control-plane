@@ -7,6 +7,10 @@ export class OpenCodeController {
   }
 
   async run({ directory, agent, prompt, schema }) {
+    return (await this.runDetailed({ directory, agent, prompt, schema })).structured;
+  }
+
+  async runDetailed({ directory, agent, prompt, schema }) {
     const created = await this.client.session.create({ query: { directory }, body: { title: `aicp:${agent}` } });
     const session = created.data ?? created;
     if (!session?.id) throw new Error("OpenCode did not return a session id");
@@ -23,6 +27,20 @@ export class OpenCodeController {
     const data = response.data ?? response;
     const structured = data.structured ?? data.info?.structured;
     if (structured === undefined) throw new Error("OpenCode response did not contain structured output");
-    return structured;
+    const info = data.info ?? {};
+    const tokens = info.tokens ?? {};
+    return {
+      structured,
+      usage: {
+        model: info.modelID ?? "unknown",
+        provider: info.providerID ?? "unknown",
+        costUsd: Number(info.cost ?? 0),
+        inputTokens: Number(tokens.input ?? 0),
+        outputTokens: Number(tokens.output ?? 0),
+        reasoningTokens: Number(tokens.reasoning ?? 0),
+        cacheReadTokens: Number(tokens.cache?.read ?? 0),
+        cacheWriteTokens: Number(tokens.cache?.write ?? 0),
+      },
+    };
   }
 }

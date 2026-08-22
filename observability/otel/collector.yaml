@@ -23,6 +23,12 @@ processors:
         action: delete
       - key: db.statement
         action: delete
+      - key: db.query.text
+        action: delete
+      - key: exception.stacktrace
+        action: delete
+      - key: litellm.provider.error.stack_trace
+        action: delete
 
 exporters:
   debug:
