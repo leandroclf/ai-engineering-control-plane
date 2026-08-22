@@ -4,6 +4,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 provider_port="${AICP_MOCK_PROVIDER_PORT:-4011}"
 gateway_port="${AICP_MOCK_GATEWAY_PORT:-4012}"
+gateway_token="test-only"
 container="aicp-mock-gateway-${$}"
 mkdir -p "$root/.aicp"
 temporary="$(mktemp -d "$root/.aicp/mock-gateway.XXXXXX")"
@@ -39,7 +40,7 @@ docker run -d --name "$container" --add-host host.docker.internal:host-gateway -
 
 ready=false
 for _ in $(seq 1 75); do
-  if curl --fail --silent -H 'Authorization: Bearer test-only' "http://127.0.0.1:${gateway_port}/health/readiness" >/dev/null 2>&1; then ready=true; break; fi
+  if curl --fail --silent -H "Authorization: Bearer ${gateway_token}" "http://127.0.0.1:${gateway_port}/health/readiness" >/dev/null 2>&1; then ready=true; break; fi
   if ! docker inspect -f '{{.State.Running}}' "$container" 2>/dev/null | grep -q true; then break; fi
   sleep 1
 done
