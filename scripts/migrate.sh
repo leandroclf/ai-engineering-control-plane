@@ -4,10 +4,12 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
-docker compose exec -T postgres psql \
-  --username aicp \
-  --dbname aicp_memory \
-  --set ON_ERROR_STOP=1 \
-  < memory-service/migrations/001_initial.sql
+for migration in memory-service/migrations/*.sql; do
+  docker compose exec -T postgres psql \
+    --username aicp \
+    --dbname aicp_memory \
+    --set ON_ERROR_STOP=1 \
+    < "$migration"
+done
 
 echo '[PASS] canonical database migrations'

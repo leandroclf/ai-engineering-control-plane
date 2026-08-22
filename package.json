@@ -6,7 +6,7 @@
   "scripts": {
     "test": "node --test tests/unit/*.test.mjs",
     "test:python": "PYTHONPATH=memory-service/src python3 -m unittest discover -s tests/unit -p '*_test.py'",
-    "test:acceptance": "bash tests/acceptance/config_test.sh",
+    "test:acceptance": "bash tests/acceptance/config_test.sh && bash tests/acceptance/harness_test.sh",
     "validate": "npm test && npm run test:python && npm run test:acceptance"
   },
   "engines": {

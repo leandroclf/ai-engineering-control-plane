@@ -9,7 +9,9 @@ export class BudgetExceededError extends Error {
 export class TaskBudget {
   constructor(limits) {
     this.limits = { ...limits };
-    this.usage = { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0 };
+    this.usage = { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, iterations: 0 };
+    this.lastToolCall = undefined;
+    this.repeatedToolCalls = 0;
   }
 
   consume({ inputTokens = 0, outputTokens = 0, costUsd = 0 }) {
@@ -32,5 +34,24 @@ export class TaskBudget {
     }
     this.usage = next;
     return { ...this.usage };
+  }
+
+  consumeIteration() {
+    const next = this.usage.iterations + 1;
+    if (this.limits.maxIterations !== undefined && next > this.limits.maxIterations) {
+      throw new BudgetExceededError("maxIterations");
+    }
+    this.usage.iterations = next;
+    return { ...this.usage };
+  }
+
+  consumeToolCall(fingerprint) {
+    const repeats = fingerprint === this.lastToolCall ? this.repeatedToolCalls + 1 : 1;
+    if (this.limits.maxRepeatedToolCalls !== undefined && repeats > this.limits.maxRepeatedToolCalls) {
+      throw new BudgetExceededError("maxRepeatedToolCalls");
+    }
+    this.lastToolCall = fingerprint;
+    this.repeatedToolCalls = repeats;
+    return { fingerprint, repeats };
   }
 }

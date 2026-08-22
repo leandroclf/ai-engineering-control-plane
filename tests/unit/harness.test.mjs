@@ -33,6 +33,17 @@ test("budget stops before a call that exceeds a hard limit", () => {
   );
 });
 
+test("budget limits repair iterations and repeated tool calls", () => {
+  const budget = new TaskBudget({ maxIterations: 1, maxRepeatedToolCalls: 2 });
+
+  budget.consumeIteration();
+  budget.consumeToolCall("read:app.js");
+  budget.consumeToolCall("read:app.js");
+
+  assert.throws(() => budget.consumeIteration(), (error) => error.limit === "maxIterations");
+  assert.throws(() => budget.consumeToolCall("read:app.js"), (error) => error.limit === "maxRepeatedToolCalls");
+});
+
 test("progress detector stops repeated finding and diff fingerprints", async () => {
   const { ProgressDetector } = await import("../../harness/src/workflow/progress-detector.mjs");
   const detector = new ProgressDetector({ repeatedThreshold: 2 });
