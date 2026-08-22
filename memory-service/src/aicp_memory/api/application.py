@@ -36,12 +36,12 @@ class MemoryApplication:
             if parsed.path.startswith("/v1/memories/"):
                 return self._memory_route(method, parsed.path.removeprefix("/v1/memories/"), principal, payload)
             return Response(404, {"error": "NOT_FOUND"})
-        except LookupError as error:
-            return Response(401, {"error": "UNAUTHENTICATED", "message": str(error)})
         except AuthorizationError as error:
             return Response(403, {"error": "FORBIDDEN", "message": str(error)})
         except (KeyError, ValueError, SensitiveDataError, json.JSONDecodeError) as error:
             return Response(400, {"error": "INVALID_REQUEST", "message": str(error)})
+        except LookupError as error:
+            return Response(401, {"error": "UNAUTHENTICATED", "message": str(error)})
         except RuntimeError:
             return Response(503, {"error": "DEPENDENCY_UNAVAILABLE"})
 

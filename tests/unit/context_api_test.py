@@ -72,6 +72,14 @@ class ContextApplicationTest(unittest.TestCase):
             "scopes": ["PROJECT:A"], "budget": 100,
         }, ["PROJECT:A"]), self.context.calls)
 
+    def test_context_compile_with_missing_repository_is_invalid_not_unauthenticated(self):
+        response = self.request("POST", "/v1/context:compile", {
+            "task_id": "task-invalid", "query": "Service.run", "scopes": [], "budget": 100,
+        })
+
+        self.assertEqual(response.status, 400)
+        self.assertEqual(response.body["error"], "INVALID_REQUEST")
+
     def test_dependency_failure_returns_structured_service_unavailable(self):
         self.context.sync = lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("secret upstream detail"))
 

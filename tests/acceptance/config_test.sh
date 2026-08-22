@@ -48,11 +48,17 @@ required=(
   observability/evaluation/run-baseline.mjs
   tests/evaluations/baseline.dataset.json
   compose/observability.vendor.yaml
+  compose/remote.yaml
+  remote/nginx.conf
   scripts/configure-observability.sh
+  scripts/configure-remote.sh
+  scripts/remote-smoke.sh
   scripts/observability.sh
   .github/workflows/ci.yml
   docs/threat-model.md
   docs/runbook.md
+  docs/adr/ADR-003-remote-identity-transport.md
+  docs/validation/remote-profile.md
   docs/memory-model.md
   security/README.md
   harness/src/cli/validate-suppressions.mjs
@@ -105,6 +111,17 @@ if jq -r '.services[].image // empty' <<<"$observability_json" | rg ':latest$'; 
   exit 1
 fi
 rm -f "$observability_env"
+
+remote_json="$(docker compose --env-file versions.env -f compose.yaml -f compose/remote.yaml config --format json)"
+jq -e '.services["remote-gateway"].networks | has("frontend") and (has("data") | not)' <<<"$remote_json" >/dev/null
+jq -e '.services["remote-gateway"].read_only == true' <<<"$remote_json" >/dev/null
+jq -e '.services["remote-gateway"].cap_drop == ["ALL"]' <<<"$remote_json" >/dev/null
+jq -e '.services["remote-gateway"].user != "0:0"' <<<"$remote_json" >/dev/null
+jq -e '.services.postgres.ports == null and .services.redis.ports == null and .services.neo4j.ports == null' <<<"$remote_json" >/dev/null
+jq -e --arg root "$root" '[.services["remote-gateway"].volumes[].source]
+  | index($root + "/remote/nginx.conf") != null and index($root + "/secrets/remote/server") != null' <<<"$remote_json" >/dev/null
+rg -q 'ssl_verify_client on' remote/nginx.conf
+rg -q 'proxy_pass http://memory-service:8080/' remote/nginx.conf
 jq -e '[.services.workspace.volumes[] | select(.target == "/home/dev/.local/share/opencode")][0].type == "volume"' <<<"$compose_json" >/dev/null
 jq -e '[.services.workspace.volumes[] | select(.target == "/home/dev/.local/state")][0].type == "volume"' <<<"$compose_json" >/dev/null
 

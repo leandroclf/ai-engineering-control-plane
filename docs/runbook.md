@@ -69,3 +69,28 @@ otel-collector`. Workflow execution remains functional if export fails, but the
 stage evidence records `telemetryExported=false`; this is degradation, not a
 successful telemetry result. Local OTLP evidence is written under ignored
 `.aicp/otel/` and excludes full prompts/source by default.
+
+## Remote profile and certificate rotation
+
+The remote profile exposes only the mTLS gateway. Keep the default loopback bind
+for local validation. In a remote environment, set `REMOTE_BIND_ADDRESS` to a
+private VPN interface and `REMOTE_SERVER_SAN` to the PKI-approved DNS/IP SAN;
+never bind the profile directly to a public interface.
+
+```bash
+export REMOTE_GATEWAY_UID="$(id -u)" REMOTE_GATEWAY_GID="$(id -g)"
+export REMOTE_BIND_ADDRESS=127.0.0.1
+./scripts/configure-remote.sh
+docker compose --env-file .env.runtime -f compose.yaml -f compose/remote.yaml \
+  up -d --no-deps remote-gateway
+./scripts/remote-smoke.sh
+```
+
+The local CA is a validation fixture. Production certificates MUST come from
+the approved PKI, with one client certificate per workload or user identity.
+Rotate certificates with `./scripts/configure-remote.sh --rotate`, distribute
+the new client bundle out of band, recreate `remote-gateway`, validate the new
+client, and revoke the old certificate. Rotate bearer tokens independently;
+mTLS authenticates the host while bearer grants authorize actions and exact
+scopes. PostgreSQL, Redis and Neo4j remain on the internal data network and no
+database volume may be copied or mounted by a client host.
