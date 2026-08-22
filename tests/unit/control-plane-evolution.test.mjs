@@ -13,6 +13,7 @@ import { reconcilePhysicalUsage } from "../../harness/src/budget/physical-usage.
 import { RoutingPolicy } from "../../harness/src/routing/routing-policy.mjs";
 import { ScannerBundleAttestor } from "../../harness/src/scanners/scanner-bundle-attestor.mjs";
 import { createHash } from "node:crypto";
+import { WorkerProfileRegistry } from "../../harness/src/workers/worker-profile-registry.mjs";
 
 test("invocation estimator reserves prompt schema output margin and worst eligible deployment", async () => {
   const estimator = new InvocationEstimator({ tokenizer: { count: async (value) => String(value).length }, fixedOverheadTokens: 10, safetyMargin: 1.2,
@@ -104,4 +105,16 @@ test("scanner bundle validates vendored rules and rejects stale Trivy data", asy
   } });
   assert.equal((await attestor.attest("semgrep")).offline, true);
   await assert.rejects(attestor.attest("trivy"), /SCANNER_BUNDLE_STALE/);
+});
+
+test("worker profile selection supports polyglot projects and availability requires runtime probes", async () => {
+  const registry = new WorkerProfileRegistry({ schemaVersion: 1, profiles: {
+    node: { projectKinds: ["node"], image: "node@sha256:test", dockerfile: "node/Dockerfile", probes: [["node", "--version"]] },
+    go: { projectKinds: ["go"], image: "go@sha256:test", dockerfile: "go/Dockerfile", probes: [["go", "version"]] },
+  } });
+  assert.deepEqual(registry.select({ kind: "composite", modules: [{ kind: "go" }, { kind: "node" }] }), ["go", "node"]);
+  const attestation = await registry.attest("node", { exec: async () => ({ exitCode: 0, stdout: "v22" }) });
+  assert.equal(attestation.status, "AVAILABLE");
+  assert.match(attestation.attestationId, /^[a-f0-9]{64}$/);
+  await assert.rejects(registry.attest("go", { exec: async () => ({ exitCode: 127 }) }), /WORKER_CAPABILITY_UNAVAILABLE/);
 });

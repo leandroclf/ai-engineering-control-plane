@@ -15,6 +15,7 @@
 | `feat/budget-physical-reconciliation` | IMPLEMENTED | 2 novos unit tests PASS; integração adicionada | E2E real depende de o gateway fornecer attempts com pricing conhecido |
 | `feat/model-catalog-routing-policy` | IMPLEMENTED | catálogo gerado + routing policy tests | Deployments secundários exigem configuração explícita de modelo, key e preço |
 | `feat/scanner-bundle-offline-readiness` | IMPLEMENTED | hash/freshness unit test; Compose validado | Atualização da DB requer egress apenas no updater confiável |
+| `feat/worker-profile-registry` | IMPLEMENTED | seleção polyglot e probes positivos/negativos PASS | Builds das cinco imagens serão executados com o manager efêmero |
 
 ## Metrics
 
@@ -28,6 +29,7 @@
 | Fontes editáveis de model/routing/pricing | 2 | 1 |
 | Fallback silencioso `strong → fast` | 1 | 0 |
 | Scanners core usando configuração online automática | 2 | 0 |
+| Perfis de toolchain com capability attestation | 0 | 5 |
 | Protected `main` no GitHub | NOT_MEASURED | NOT_MEASURED |
 
 ## Open risks
