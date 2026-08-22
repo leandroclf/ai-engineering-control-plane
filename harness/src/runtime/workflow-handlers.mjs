@@ -92,6 +92,7 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
           prompt,
           schema,
           maxOutputTokens: reservation ? Number(reservation.reserved_output_tokens) : undefined,
+          invocation: reservation ? { taskId: task.id, runId: run.id, stage, reservationId: reservation.id, logicalInvocationId: reservation.logical_invocation_id, modelAlias: reservation.model_alias } : null,
           });
           const settlement = reservation ? await budgetAuthority.commit({ reservationId: reservation.id, actualUsage: execution.usage ?? {} }) : null;
           if (settlement?.drift?.exceeded) throw Object.assign(new Error("BUDGET_RESERVATION_DRIFT"), { name: "BudgetReservationDriftError", drift: settlement.drift });
@@ -162,6 +163,7 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
           prompt,
           schema,
           maxOutputTokens: reservation ? Number(reservation.reserved_output_tokens) : undefined,
+          invocation: reservation ? { taskId: task.id, runId: run.id, stage: state, reservationId: reservation.id, logicalInvocationId: reservation.logical_invocation_id, modelAlias: reservation.model_alias } : null,
           });
           const settlement = reservation ? await budgetAuthority.commit({ reservationId: reservation.id, actualUsage: execution.usage ?? {} }) : null;
           if (settlement?.drift?.exceeded) throw Object.assign(new Error("BUDGET_RESERVATION_DRIFT"), { name: "BudgetReservationDriftError", drift: settlement.drift });

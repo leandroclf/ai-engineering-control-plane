@@ -12,7 +12,7 @@ export class BudgetAuthority {
     const estimatedUsage = invocation && this.estimator
       ? await this.estimator.estimate(invocation)
       : reservationUpperBound({ contextBudget, ...this.reservation });
-    return this.store.reserve({ taskId, runId, stage, estimatedUsage, idempotencyKey: `${taskId}:${runId}:${stage}:${attempt}`, invocationId: randomUUID() });
+    return this.store.reserve({ taskId, runId, stage, estimatedUsage, idempotencyKey: `${taskId}:${runId}:${stage}:${attempt}`, logicalInvocationId: randomUUID(), modelAlias: invocation?.alias ?? null });
   }
   commit({ reservationId, actualUsage }) { return this.store.commit(reservationId, actualUsage); }
   release({ reservationId }) { return this.store.release(reservationId); }

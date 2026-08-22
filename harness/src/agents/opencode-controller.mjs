@@ -10,7 +10,7 @@ export class OpenCodeController {
     return (await this.runDetailed({ directory, agent, prompt, schema })).structured;
   }
 
-  async runDetailed({ directory, agent, prompt, schema, maxOutputTokens }) {
+  async runDetailed({ directory, agent, prompt, schema, maxOutputTokens, invocation = null }) {
     const created = await this.client.session.create({ query: { directory }, body: { title: `aicp:${agent}` } });
     const session = created.data ?? created;
     if (!session?.id) throw new Error("OpenCode did not return a session id");
@@ -30,6 +30,7 @@ export class OpenCodeController {
     if (structured === undefined) throw new Error("OpenCode response did not contain structured output");
     const info = data.info ?? {};
     const tokens = info.tokens ?? {};
+    const rawAttempts = info.providerAttempts ?? info.attempts ?? [];
     return {
       structured,
       usage: {
@@ -41,6 +42,21 @@ export class OpenCodeController {
         reasoningTokens: Number(tokens.reasoning ?? 0),
         cacheReadTokens: Number(tokens.cache?.read ?? 0),
         cacheWriteTokens: Number(tokens.cache?.write ?? 0),
+        ...(invocation ? { invocation } : {}),
+        ...(rawAttempts.length ? { providerAttempts: rawAttempts.map((attempt, index) => ({
+          attempt: attempt.attempt ?? index + 1,
+          provider: attempt.provider ?? info.providerID,
+          model: attempt.model ?? info.modelID,
+          providerRequestId: attempt.providerRequestId ?? attempt.requestId,
+          pricingKnown: attempt.pricingKnown === true,
+          fallback: attempt.fallback === true || index > 0,
+          status: attempt.status,
+          inputTokens: attempt.inputTokens,
+          outputTokens: attempt.outputTokens,
+          cachedInputTokens: attempt.cachedInputTokens,
+          costUsd: attempt.costUsd,
+          durationMs: attempt.durationMs,
+        })) } : {}),
       },
     };
   }

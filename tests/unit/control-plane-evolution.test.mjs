@@ -9,6 +9,7 @@ import { GateRegistry, ProjectGateProvider } from "../../harness/src/gates/gate-
 import { ProjectAdapter } from "../../harness/src/gates/project-adapter.mjs";
 import { ControlPlaneAuthorizer } from "../../harness/src/security/identity-authority.mjs";
 import { EphemeralWorkerSpec, WorkloadIdentity } from "../../harness/src/runtime/ephemeral-worker-contract.mjs";
+import { reconcilePhysicalUsage } from "../../harness/src/budget/physical-usage.mjs";
 
 test("invocation estimator reserves prompt schema output margin and worst eligible deployment", async () => {
   const estimator = new InvocationEstimator({ tokenizer: { count: async (value) => String(value).length }, fixedOverheadTokens: 10, safetyMargin: 1.2,
@@ -46,4 +47,20 @@ test("static token RBAC remains compatible and worker contract rejects provider 
   assert.doesNotThrow(() => principal.require("runs:write"));
   const identity = new WorkloadIdentity({ runId: "run-1", litellmKeyRef: "secret:llm/run-1", memoryTokenRef: "secret:memory/run-1", expiresAt: new Date(Date.now() + 60_000) });
   assert.throws(() => new EphemeralWorkerSpec({ runId: "run-1", projectDirectory: "/workspace/project", identity, environment: { OPENAI_API_KEY: "forbidden" } }), /forbidden/);
+});
+
+test("physical provider attempts reconcile retry cost while logical calls remain one", () => {
+  const result = reconcilePhysicalUsage({}, [
+    { attempt: 1, provider: "openai", model: "strong-a", providerRequestId: "req-1", pricingKnown: true, status: "failed", inputTokens: 100, costUsd: 0.1, durationMs: 50 },
+    { attempt: 2, provider: "anthropic", model: "strong-b", providerRequestId: "req-2", pricingKnown: true, status: "succeeded", inputTokens: 120, outputTokens: 20, costUsd: 0.3, durationMs: 80 },
+  ]);
+  assert.deepEqual(result.actualUsage, { calls: 1, inputTokens: 220, outputTokens: 20, costUsd: 0.4, iterations: 0 });
+  assert.equal(result.physicalAttempts.length, 2);
+  assert.equal(result.fallbackCostDelta, 0.3);
+});
+
+test("physical reconciliation fails closed when a provider attempt has unknown pricing", () => {
+  assert.throws(() => reconcilePhysicalUsage({}, [
+    { provider: "unknown", model: "m", providerRequestId: "req", pricingKnown: false },
+  ]), (error) => error.name === "PricingUnknownError");
 });
