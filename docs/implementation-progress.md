@@ -18,6 +18,7 @@
 | `feat/worker-profile-registry` | IMPLEMENTED | seleção polyglot e probes positivos/negativos PASS | Builds das cinco imagens serão executados com o manager efêmero |
 | `feat/ephemeral-worker-manager` | IMPLEMENTED | lifecycle/cross-run/revocation unit + Docker smoke | Deployment do manager deve permanecer fora da trust boundary do agente |
 | `feat/polyglot-context-parsers` | IMPLEMENTED | JS/TS/Java/Python/Go symbol/import tests | Parsers sem dependências externas priorizam fatos sintáticos deliberadamente conservadores |
+| `feat/graph-retrieval-v2` | IMPLEMENTED | hop real, multi-seed e relation allowlist PASS | Relações semânticas continuam limitadas às que possuem fonte determinística |
 
 ## Metrics
 
@@ -34,6 +35,7 @@
 | Perfis de toolchain com capability attestation | 0 | 5 |
 | Implementações concretas de `WorkerManager` | 0 | 1 |
 | Linguagens no Parser Registry | 1 | 5 |
+| Graph distance constante/incorreta | 1 | 0 |
 | Protected `main` no GitHub | NOT_MEASURED | NOT_MEASURED |
 
 ## Open risks

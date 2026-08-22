@@ -96,7 +96,7 @@ class ContextService:
         vector_order = sorted(chunks, key=lambda chunk: (-_cosine(query_vector, chunk.get("embedding")), chunk["id"]))
         lexical_rank = {item["id"]: rank for rank, item in enumerate(lexical_order, 1)}
         vector_rank = {item["id"]: rank for rank, item in enumerate(vector_order, 1)}
-        graph_rows = self.graph.retrieve(payload["repository"], sorted(exact), max_hops=2) if hasattr(self.graph, "retrieve") else []
+        graph_rows = self.graph.retrieve(payload["repository"], sorted(exact), sorted(set(payload.get("changed_paths", []))), max_hops=2) if hasattr(self.graph, "retrieve") else []
         graph_distance = {item["path"]: item["distance"] for item in graph_rows}
         changed_paths = set(payload.get("changed_paths", []))
         for chunk in chunks:
