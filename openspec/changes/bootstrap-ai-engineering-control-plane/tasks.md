@@ -333,7 +333,7 @@ indicados.
   - Completion criteria: custo/tokens por task são calculáveis e fallback aparece
     no trace.
 
-- [ ] 6.3 Vendorizar deployment de observabilidade
+- [x] 6.3 Vendorizar deployment de observabilidade
   - Objective: pin de revisão oficial do Langfuse e dependências em perfil
     separado, com procedimento de atualização.
   - Likely files/components: `compose/observability.vendor.yaml`,

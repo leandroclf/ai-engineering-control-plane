@@ -81,6 +81,18 @@ environment. For manual Compose recreation, always pass
 `docker compose --env-file .env.runtime ...`; the bootstrap does this by
 exporting the same values without exposing the file to agent containers.
 
+Optional Langfuse observability runs as an independent low-scale profile:
+
+```bash
+./scripts/configure-observability.sh
+./scripts/observability.sh up
+# UI: http://127.0.0.1:3000
+./scripts/observability.sh down
+```
+
+See `observability/langfuse/README.md` for pinned provenance, upgrades and the
+separate PostgreSQL/ClickHouse/MinIO backup boundary.
+
 Open the workspace:
 
 ```bash
