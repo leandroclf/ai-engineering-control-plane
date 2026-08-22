@@ -17,8 +17,10 @@ test -f "$archive.sha256" || { echo 'external archive checksum is missing' >&2; 
 (cd "$(dirname "$archive")" && sha256sum --check "$(basename "$archive").sha256")
 staging="$(mktemp -d)"
 trap 'rm -rf "$staging"' EXIT
-gpg --batch --yes --pinentry-mode loopback --passphrase-file "$passphrase_file" --decrypt "$archive" | tar -I zstd -xf - -C "$staging"
-(cd "$staging" && sha256sum --check SHA256SUMS)
+source "$root/scripts/lib/backup-integrity.sh"
+verify_backup_integrity "$archive" "$passphrase_file" "$staging"
+backup_id="$(awk -F= '$1=="backup_id" {print $2}' "$staging/MANIFEST")"
+test -n "$backup_id" || { echo 'backup manifest lacks backup_id' >&2; exit 1; }
 
 set -a
 source .env.runtime
@@ -55,3 +57,17 @@ fi
 if test -n "$repository_id"; then
   ./scripts/context-smoke.sh "$repository_id"
 fi
+drill_id="$(node -e 'process.stdout.write(require("node:crypto").randomUUID())')"
+manifest_hash="$(sha256sum "$staging/MANIFEST" | cut -d' ' -f1)"
+size_bytes="$(wc -c < "$archive" | tr -d ' ')"
+docker compose exec -T postgres psql --username aicp --dbname aicp_memory -v ON_ERROR_STOP=1 \
+  -v drill_id="$drill_id" -v backup_id="$backup_id" -v graph_rebuilt="$([[ -n "$repository_id" ]] && echo true || echo false)" \
+  -v context_verified="$([[ -n "$repository_id" ]] && echo true || echo false)" -v manifest_hash="$manifest_hash" -v size_bytes="$size_bytes" >/dev/null <<'SQL'
+UPDATE operations.backup_runs SET status='SUCCESS', finished_at=coalesce(finished_at,now()),
+  manifest_hash=:'manifest_hash', encrypted=true, size_bytes=:'size_bytes'
+WHERE backup_id=:'backup_id';
+INSERT INTO operations.restore_drills
+  (drill_id,backup_id,started_at,finished_at,status,postgres_verified,graph_rebuilt,context_verified,smoke_run_verified)
+VALUES (:'drill_id', :'backup_id', now(), now(), 'SUCCESS', true, :'graph_rebuilt', :'context_verified', true);
+SQL
+echo "[PASS] recovery drill recorded: $drill_id"

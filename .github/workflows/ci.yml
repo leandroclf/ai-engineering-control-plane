@@ -83,6 +83,14 @@ jobs:
       - run: npm ci
       - run: npm run test:e2e:mock-gateway
 
+  recovery-drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - run: bash tests/integration/backup-tamper.integration.sh
+      - run: bash tests/integration/restore-clean-host.integration.sh
+
   security-scanners:
     runs-on: ubuntu-latest
     timeout-minutes: 20

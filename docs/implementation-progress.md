@@ -23,6 +23,7 @@
 | `feat/memory-relevance-and-retention` | IMPLEMENTED | relevance + scope distance + authority, TTL de inferência e source invalidation | Promoção derivada exige confiança e continua sujeita a ator autorizado |
 | `feat/otel-langfuse-trace-contract` | IMPLEMENTED | árvore run→stage→context/agent→gen_ai→provider attempt, redaction canary PASS | Conteúdo bruto permanece fora do contrato por padrão |
 | `feat/ci-e2e-supply-chain` | IMPLEMENTED_WITH_FINDINGS | LiteLLM real + provider mock PASS; Trivy image offline + CycloneDX implementados | Findings das imagens são evidência de risco e não são suprimidos automaticamente |
+| `feat/state-recovery-multihost` | IMPLEMENTED | checksum tamper fail-closed, restore clean-host e tabelas operacionais | Drill completo do ambiente ativo permanece uma operação deliberadamente não destrutiva em CI |
 
 ## Metrics
 
