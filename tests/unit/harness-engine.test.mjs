@@ -10,6 +10,8 @@ import { WorkflowExecutor } from "../../harness/src/workflow/executor.mjs";
 import { ProcessRunner } from "../../harness/src/adapters/process-runner.mjs";
 import { CommandGate } from "../../harness/src/gates/command-gate.mjs";
 import { NodeProjectAdapter } from "../../harness/src/gates/node-project-adapter.mjs";
+import { GovernedRuntime } from "../../harness/src/runtime/governed-runtime.mjs";
+import { createWorkflowHandlers } from "../../harness/src/runtime/workflow-handlers.mjs";
 
 const definition = {
   version: 1,
@@ -123,6 +125,132 @@ test("workflow executor delivers governed context and persists redacted provenan
   });
 });
 
+test("workflow executor persists bounded handler evidence", async () => {
+  const store = new InMemoryRunStore();
+  const task = await store.createTask({ idempotencyKey: "evidence-1", workflowVersion: 1 });
+  const run = await store.createRun({ taskId: task.id, initialState: "verify", policyVersion: 1 });
+  const executor = new WorkflowExecutor({
+    definition,
+    store,
+    handlers: { verify: async () => ({ outcome: "pass", evidence: { summary: "verified", artifacts: ["report.json"] } }) },
+  });
+
+  await executor.execute(run.id);
+
+  const [stage] = await store.listStages(run.id);
+  assert.deepEqual(stage.evidence.handler, { summary: "verified", artifacts: ["report.json"] });
+});
+
+test("governed runtime creates an idempotent task and executes a new run", async () => {
+  const store = new InMemoryRunStore();
+  const runtime = new GovernedRuntime({ definition, store, handlers: { verify: async () => "pass" } });
+
+  const first = await runtime.start({ idempotencyKey: "issue-77", metadata: { query: "verify" } });
+  const second = await runtime.start({ idempotencyKey: "issue-77", metadata: { query: "verify" } });
+
+  assert.equal(first.task.id, second.task.id);
+  assert.notEqual(first.run.id, second.run.id);
+  assert.equal(first.run.state, "ready");
+});
+
+test("workflow handlers constrain agent output to declared outcomes and governed context", async () => {
+  const calls = [];
+  const agentDefinition = {
+    version: 1,
+    initial: "discover",
+    terminal: ["ready", "failed"],
+    states: {
+      discover: { agent: "architect", next: { success: "ready", failed: "failed" } },
+      ready: {},
+      failed: {},
+    },
+  };
+  const handlers = createWorkflowHandlers({
+    definition: agentDefinition,
+    controller: { run: async (request) => { calls.push(request); return { outcome: "success", summary: "mapped", artifacts: [] }; } },
+    projectAdapter: { detect: async () => ({ kind: "fixture", gates: [] }) },
+    gateRunner: { run: async () => ({ status: "pass", gates: [] }) },
+  });
+
+  const result = await handlers.discover({
+    run: { id: "run-1" },
+    task: { metadata: { projectDirectory: "/workspace/projects/example", query: "Inspect architecture" } },
+    context: { contextId: "ctx-1", artifacts: [{ id: "a", content: "approved context", provenance: { path: "src/a.js" } }] },
+  });
+
+  assert.equal(result.outcome, "success");
+  assert.deepEqual(result.evidence, { summary: "mapped", artifacts: [] });
+  assert.deepEqual(calls[0].schema.properties.outcome.enum, ["success", "failed"]);
+  assert.match(calls[0].prompt, /approved context/);
+  assert.match(calls[0].prompt, /Inspect architecture/);
+});
+
+test("workflow gate handler executes only gates declared by the state", async () => {
+  const calls = [];
+  const gateDefinition = {
+    version: 1,
+    initial: "verify",
+    terminal: ["ready", "repair", "review"],
+    states: {
+      verify: { gates: ["build", "lint"], next: { pass: "ready", fail: "repair", error: "review" } },
+      ready: {}, repair: {}, review: {},
+    },
+  };
+  const handlers = createWorkflowHandlers({
+    definition: gateDefinition,
+    controller: { run: async () => ({}) },
+    projectAdapter: { detect: async () => ({ kind: "node", gates: [
+      { name: "build", command: ["npm", "run", "build"], required: true },
+      { name: "lint", command: ["npm", "run", "lint"], required: true },
+      { name: "unit-tests", command: ["npm", "test"], required: true },
+    ] }) },
+    gateRunner: { run: async (request) => { calls.push(request); return { status: "blocked", gates: [{ gate: "lint", status: "fail" }] }; } },
+  });
+
+  const result = await handlers.verify({ task: { metadata: { projectDirectory: "/workspace/projects/example" } } });
+
+  assert.equal(result.outcome, "fail");
+  assert.deepEqual(calls[0].gateNames, ["build", "lint"]);
+  assert.deepEqual(result.evidence.gates, [{ gate: "lint", status: "fail" }]);
+});
+
+test("targeted repair handler uses prior gate evidence and enforces persisted iteration limit", async () => {
+  const calls = [];
+  const repairDefinition = {
+    version: 1,
+    initial: "targeted-repair",
+    terminal: ["verify", "review"],
+    states: {
+      "targeted-repair": { maxIterations: 1, next: { progress: "verify", exhausted: "review" } },
+      verify: {}, review: {},
+    },
+  };
+  const store = {
+    listStages: async () => [{ state_from: "full-verify", evidence: { handler: { gates: [{ gate: "lint", status: "fail" }] } } }],
+  };
+  const handlers = createWorkflowHandlers({
+    definition: repairDefinition,
+    store,
+    controller: { run: async (request) => { calls.push(request); return { outcome: "progress", summary: "fixed lint", artifacts: ["src/a.js"] }; } },
+    projectAdapter: { detect: async () => ({ kind: "fixture", gates: [] }) },
+    gateRunner: { run: async () => ({ status: "pass", gates: [] }) },
+  });
+
+  const first = await handlers["targeted-repair"]({
+    run: { id: "run-1" },
+    task: { metadata: { projectDirectory: "/workspace/projects/example", query: "repair" } },
+  });
+  assert.equal(first.outcome, "progress");
+  assert.match(calls[0].prompt, /lint/);
+
+  store.listStages = async () => [{ state_from: "targeted-repair", evidence: {} }];
+  const exhausted = await handlers["targeted-repair"]({
+    run: { id: "run-1" },
+    task: { metadata: { projectDirectory: "/workspace/projects/example", query: "repair" } },
+  });
+  assert.deepEqual(exhausted, { outcome: "exhausted", evidence: { reason: "ITERATION_BUDGET_EXHAUSTED", iterations: 1 } });
+});
+
 test("process runner distinguishes command findings, timeout and unavailable tool", async () => {
   const runner = new ProcessRunner();
   const failure = await runner.run(process.execPath, ["-e", "console.error('finding'); process.exit(1)"]);
@@ -157,6 +285,20 @@ test("command gate records a bounded artifact instead of raw unbounded output", 
   assert.equal(result.status, "pass");
   assert.equal(result.evidence.stdout.length, 32);
   assert.equal(result.evidence.truncated, true);
+});
+
+test("command gate redacts credential-like output before persistence", async () => {
+  const gate = new CommandGate({ runner: new ProcessRunner() });
+  const result = await gate.evaluate({
+    name: "secret-diff",
+    required: true,
+    command: [process.execPath, "-e", "console.log('OPENAI_API_KEY=sk-example-secret-123456')"],
+    cwd: process.cwd(),
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.evidence.stdout.includes("sk-example-secret"), false);
+  assert.match(result.evidence.stdout, /\[REDACTED\]/);
 });
 
 test("node project adapter detects declared commands without inventing missing gates", async () => {

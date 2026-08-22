@@ -19,7 +19,8 @@ export class WorkflowExecutor {
       const context = this.contextProvider && stateDefinition.context
         ? await this.contextProvider.load({ task, state: run.state, policy: stateDefinition.context })
         : null;
-      const outcome = await handler({ run: structuredClone(run), state: run.state, context });
+      const result = await handler({ run: structuredClone(run), task: task ? structuredClone(task) : null, state: run.state, context });
+      const outcome = typeof result === "string" ? result : result?.outcome;
       const next = this.workflow.transition(run.state, outcome);
       const evidence = context ? {
         contextId: context.contextId,
@@ -27,6 +28,7 @@ export class WorkflowExecutor {
         contextBudget: context.budget,
         contextArtifacts: context.artifacts.map(({ id, reason, provenance }) => ({ id, reason, provenance })),
       } : {};
+      if (typeof result === "object" && result?.evidence) evidence.handler = structuredClone(result.evidence);
       if (this.telemetry) {
         evidence.telemetryExported = await this.telemetry.stage({
           taskId: task?.id ?? run.taskId,

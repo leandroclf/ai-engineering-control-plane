@@ -14,6 +14,8 @@ required=(
   scripts/context-smoke.sh
   scripts/telemetry-smoke.sh
   docker/workspace/Dockerfile
+  docker/harness/Dockerfile
+  docker/harness/entrypoint.sh
   litellm/config.template.yaml
   opencode/opencode.json
   harness/schemas/agent-result.schema.json
@@ -55,12 +57,20 @@ docker compose --env-file versions.env config --quiet
 jq -e '.services.litellm.healthcheck.test | length > 0' <<<"$compose_json" >/dev/null
 jq -e '[.services.litellm.secrets[].source] | index("postgres_password") != null' <<<"$compose_json" >/dev/null
 jq -e '.services.workspace.depends_on.litellm.condition == "service_healthy"' <<<"$compose_json" >/dev/null
+jq -e '.services.harness.depends_on["memory-service"].condition == "service_healthy"' <<<"$compose_json" >/dev/null
+jq -e '.services.harness.healthcheck.test | length > 0' <<<"$compose_json" >/dev/null
+jq -e '[.services.harness.secrets[].source] | index("harness_service_token") != null' <<<"$compose_json" >/dev/null
 jq -e '[.services.workspace.volumes[] | select(.target == "/home/dev/.local/share/opencode")][0].type == "volume"' <<<"$compose_json" >/dev/null
 jq -e '[.services.workspace.volumes[] | select(.target == "/home/dev/.local/state")][0].type == "volume"' <<<"$compose_json" >/dev/null
 
 workspace_environment="$(jq -r '.services.workspace.environment | keys[]' <<<"$compose_json")"
 if printf '%s\n' "$workspace_environment" | rg '^(OPENAI|ANTHROPIC|GEMINI)_' ; then
   echo 'provider credentials must not be present in the workspace environment' >&2
+  exit 1
+fi
+harness_environment="$(jq -r '.services.harness.environment | keys[]' <<<"$compose_json")"
+if printf '%s\n' "$harness_environment" | rg '^(OPENAI|ANTHROPIC|GEMINI)_' ; then
+  echo 'provider credentials must not be present in the harness environment' >&2
   exit 1
 fi
 
@@ -103,6 +113,7 @@ rg -q '^  - model_name: embeddings$' litellm/config.template.yaml
 rg -q '^  success_callback: \[otel\]$' litellm/config.template.yaml
 rg -q 'OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: no_content' compose.yaml
 rg -q 'check otel-collector' scripts/doctor.sh
+rg -q 'check harness' scripts/doctor.sh
 rg -q '"embeddings"' scripts/provision-litellm-key.sh
 if rg -n 'CREATE CONSTRAINT symbol_identity' graph/cypher; then
   echo 'obsolete symbol-name uniqueness must not be recreated' >&2

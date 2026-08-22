@@ -1,5 +1,7 @@
+import { redactText } from "../security/redact.mjs";
+
 function bounded(value, limit) {
-  return String(value ?? "").slice(0, limit);
+  return redactText(value).slice(0, limit);
 }
 
 export class CommandGate {

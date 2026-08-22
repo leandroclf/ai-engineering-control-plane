@@ -5,9 +5,12 @@ export class ProjectGateRunner {
     this.gate = new CommandGate({ runner, maxOutputBytes });
   }
 
-  async run({ project, profile }) {
+  async run({ project, profile, gateNames = null }) {
+    const selected = gateNames
+      ? gateNames.map((name) => profile.gates.find((gate) => gate.name === name) ?? { name, required: true, command: null })
+      : profile.gates;
     const gates = [];
-    for (const definition of profile.gates) {
+    for (const definition of selected) {
       gates.push(await this.gate.evaluate({
         name: definition.name,
         required: definition.required,

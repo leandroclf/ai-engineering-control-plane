@@ -26,4 +26,4 @@ jobs:
           set -a
           source versions.env
           set +a
-          docker compose build memory-service workspace
+          docker compose build memory-service workspace harness

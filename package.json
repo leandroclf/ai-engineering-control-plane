@@ -7,6 +7,7 @@
     "test": "node --test tests/unit/*.test.mjs",
     "test:python": "PYTHONPATH=memory-service/src python3 -m unittest discover -s tests/unit -p '*_test.py'",
     "test:acceptance": "bash tests/acceptance/config_test.sh && bash tests/acceptance/harness_test.sh && bash tests/acceptance/backup_contract_test.sh",
+    "harness": "node harness/src/cli/run-workflow.mjs",
     "validate:project": "node harness/src/cli/validate-project.mjs",
     "validate": "npm test && npm run test:python && npm run test:acceptance"
   },
@@ -14,6 +15,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@opencode-ai/sdk": "1.18.21"
+    "@opencode-ai/sdk": "1.18.21",
+    "pg": "8.16.3"
   }
 }

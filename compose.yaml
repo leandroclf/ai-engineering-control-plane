@@ -153,6 +153,43 @@ services:
       memory-service: { condition: service_healthy }
     networks: [frontend]
 
+  harness:
+    build:
+      context: .
+      dockerfile: docker/harness/Dockerfile
+      args:
+        OPENCODE_VERSION: ${OPENCODE_VERSION:-1.18.21}
+        DEV_UID: ${LOCAL_UID:-1000}
+        DEV_GID: ${LOCAL_GID:-1000}
+    restart: unless-stopped
+    environment:
+      HARNESS_PORT: 8081
+      PROJECTS_ROOT: /workspace/projects
+      OPENCODE_CONFIG_DIR: /home/dev/.config/opencode
+      LITELLM_BASE_URL: http://litellm:4000/v1
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-}
+      MEMORY_SERVICE_URL: http://memory-service:8080
+      MEMORY_SERVICE_TOKEN: ${MEMORY_SERVICE_TOKEN:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    secrets: [postgres_password, harness_service_token]
+    volumes:
+      - ${PROJECTS_DIR:-./projects}:/workspace/projects
+      - ./opencode:/home/dev/.config/opencode:ro
+    ports: ["127.0.0.1:${HARNESS_PORT:-18081}:8081"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8081/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    depends_on:
+      postgres: { condition: service_healthy }
+      litellm: { condition: service_healthy }
+      memory-service: { condition: service_healthy }
+    networks: [frontend, data]
+
 networks:
   frontend: {}
   data:
@@ -163,6 +200,8 @@ secrets:
     file: ./secrets/postgres_password
   redis_password:
     file: ./secrets/redis_password
+  harness_service_token:
+    file: ./secrets/harness_service_token
 
 volumes:
   opencode-state: {}

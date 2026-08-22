@@ -16,4 +16,5 @@ check neo4j docker compose exec -T neo4j wget -q --spider http://localhost:7474
 check litellm curl -fsS http://127.0.0.1:4000/health/readiness
 check memory docker compose exec -T memory-service python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"
 check opencode docker compose exec -T workspace opencode --version
+check harness curl -fsS http://127.0.0.1:${HARNESS_PORT:-18081}/health
 exit "$fail"

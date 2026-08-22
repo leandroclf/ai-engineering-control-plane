@@ -9,7 +9,7 @@ command -v openssl >/dev/null || { echo 'openssl not found' >&2; exit 1; }
 
 mkdir -p secrets state/postgres state/neo4j/data state/neo4j/logs state/cache state/opencode projects .aicp/otel
 chmod 700 secrets state
-for name in postgres_password redis_password backup_passphrase; do
+for name in postgres_password redis_password backup_passphrase harness_service_token; do
   if test ! -s "secrets/$name"; then
     openssl rand -hex 32 > "secrets/$name"
     chmod 600 "secrets/$name"
@@ -27,6 +27,8 @@ set -a
 source .env.runtime
 source versions.env
 set +a
+export LOCAL_UID="$(id -u)"
+export LOCAL_GID="$(id -g)"
 docker compose config --quiet
 docker compose build
 docker compose up -d --wait postgres redis neo4j otel-collector
@@ -36,7 +38,7 @@ docker compose up -d --wait litellm memory-service
 set -a
 source .env.runtime
 set +a
-docker compose up -d --no-deps --force-recreate workspace
+docker compose up -d --no-deps --force-recreate workspace harness
 ./scripts/doctor.sh
 ./scripts/smoke.sh
 ./scripts/telemetry-smoke.sh
