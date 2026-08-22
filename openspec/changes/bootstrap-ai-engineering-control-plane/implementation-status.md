@@ -20,7 +20,7 @@ open.
 
 | Capability | Evidence | Result |
 |---|---|---|
-| Local contracts | `npm run validate` | PASS: 44 Node tests, 21 Python tests, configuration and Harness acceptance |
+| Local contracts | `npm run validate` | PASS: 54 Node tests, 21 Python tests, security, configuration, Harness and backup acceptance |
 | Harness runtime | authenticated HTTP API and Compose health | PASS: persistent start/resume, OpenCode SDK, scoped Context, redacted evidence |
 | Workspace image | `docker compose build workspace` | PASS |
 | Memory image | `docker compose build memory-service` | PASS |
@@ -67,6 +67,8 @@ open.
 | Evaluation baseline | `npm run evaluate:baseline` | PASS: nine reproducible cost/quality/context/routing metrics and two dashboard contracts |
 | Suppression governance | `npm run validate:suppressions` plus unit contracts | PASS: exact identity, independent approval, expiry and fail-closed invalid policy |
 | Abuse matrix | `npm run test:security` | PASS: seven trust boundaries, eight threats, redacted report and explicit supply-chain open risk |
+| Clean-checkout CI | GitHub Actions run `32547307933` | PASS: contracts, owned image builds and required scanners |
+| CI evidence | artifacts `9468938991` and `9468931095` | PASS: normalized contract/scanner evidence retained for 14 days |
 | Collector baseline | OTel Collector contrib `0.157.0` | PASS: pinned image, OTLP HTTP and local redacted evidence |
 | Encrypted backup | `scripts/backup.sh` | PASS: AES256 archive, layered checksums, no plaintext dump at destination |
 | Restore drill | encrypted archive plus current Git | PASS: databases restored, graph rebuilt, doctor/Memory/Context accepted |
@@ -109,18 +111,16 @@ open.
 The following values cannot be invented or committed:
 
 - production LiteLLM immutable release pin replacing `latest`;
-- CI/registry credentials for publishing and full scanner execution;
+- registry credentials for future image publishing;
 - remote identity/TLS/VPN and secret-manager selection;
 - Langfuse endpoint/keys or approved alternative;
 - Snyk/Sonar licensing and data-transfer approval.
 
 ## Remaining engineering work
 
-- Expose authenticated REST v1 run APIs.
-- Wire the runtime entrypoint to PostgreSQL, OpenCode and installed scanner CLIs.
-- Publish normalized CI artifacts and prove a negative fixture blocks CI.
 - Approve backup owner, external destination, retention, cadence and disposal.
-- Run clean-host, provider, CI and multi-host acceptance.
+- Freeze supply-chain digests/SBOM and approve the Foundation release manifest.
+- Define remote identity/transport and run multi-host acceptance.
 
 ## Resume command
 
@@ -132,6 +132,6 @@ The Foundation and Harness can be revalidated at any time with:
 npm run validate
 ```
 
-The next required evidence is runtime integration and advanced operations: wire
-real OpenCode/scanner handlers, test model fallback, vendor Langfuse and execute
-an encrypted clean-environment restore drill.
+The next required evidence is advanced operations: approve backup governance,
+freeze the Foundation supply chain and validate authenticated remote state from
+a second host.

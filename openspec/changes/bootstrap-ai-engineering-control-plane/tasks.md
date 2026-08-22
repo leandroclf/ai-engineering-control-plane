@@ -370,7 +370,7 @@ indicados.
 
 ## 7. CI e multi-host
 
-- [ ] 7.1 Implementar CI em checkout limpo
+- [x] 7.1 Implementar CI em checkout limpo
   - Objective: reproduzir build, tests, scanners, schemas, Compose e acceptance
     aplicáveis sem confiar em artifacts locais.
   - Likely files/components: CI workflows, scripts compartilhados.
@@ -378,6 +378,9 @@ indicados.
   - Validation: integration | e2e | security.
   - Completion criteria: fixture bloqueia CI; artifact inclui gates/findings
     normalizados; permissões seguem menor privilégio.
+  - Evidence: GitHub Actions run `32547307933` passed `contracts` and
+    `security-scanners`; artifacts `aicp-contract-evidence` and
+    `aicp-scanner-evidence` were published with 14-day retention.
 
 - [x] 7.2 Implementar governança de suppressions
   - Objective: validar owner, approval, fingerprint, reason, ticket e expiry.

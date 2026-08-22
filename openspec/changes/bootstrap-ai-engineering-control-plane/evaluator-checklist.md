@@ -25,7 +25,7 @@
 - [ ] Budgets de calls, tokens, custo e iterações são aplicados.
 - [ ] Finding/diff repetido interrompe loop sem progresso.
 - [ ] Targeted repair reexecuta scanner original e regressão.
-- [ ] CI reconstrói evidências em checkout limpo.
+- [x] CI reconstrói evidências em checkout limpo.
 
 ## Context e memória
 
