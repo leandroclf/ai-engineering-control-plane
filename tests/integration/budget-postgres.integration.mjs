@@ -71,3 +71,27 @@ test("actual usage above reservation is committed and emits blocking drift evide
     await pool.query("DELETE FROM control.tasks WHERE id=$1", [taskId]);
   } finally { await pool.end(); }
 });
+
+test("physical retries are persisted and charged to one logical invocation", async () => {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 2 });
+  const key = `budget-physical-${Date.now()}-${Math.random()}`;
+  try {
+    const task = await pool.query("INSERT INTO control.tasks(idempotency_key,workflow_version) VALUES($1,1) RETURNING id", [key]);
+    const taskId = task.rows[0].id;
+    const store = new PostgresBudgetStore(pool);
+    await store.ensure(taskId, { maxCalls: 2, maxInputTokens: 1000, maxOutputTokens: 1000, maxCostUsd: 5, maxIterations: 1 });
+    const reservation = await store.reserve({ taskId, stage: "implement", modelAlias: "coding-strong", estimatedUsage: { calls: 1, inputTokens: 500, outputTokens: 200, costUsd: 2 }, idempotencyKey: `${key}:physical` });
+    await store.commit(reservation.id, { providerAttempts: [
+      { attempt: 1, provider: "openai", model: "strong-a", providerRequestId: `${key}:1`, pricingKnown: true, status: "failed", inputTokens: 100, costUsd: 0.1 },
+      { attempt: 2, provider: "anthropic", model: "strong-b", providerRequestId: `${key}:2`, pricingKnown: true, status: "succeeded", inputTokens: 120, outputTokens: 20, costUsd: 0.3 },
+    ] });
+    const budget = await store.get(taskId);
+    assert.equal(budget.used.calls, 1);
+    assert.equal(budget.used.physicalAttempts, 2);
+    assert.equal(budget.used.costUsd, 0.4);
+    const attempts = await pool.query("SELECT attempt,fallback FROM control.provider_attempts WHERE reservation_id=$1 ORDER BY attempt", [reservation.id]);
+    assert.deepEqual(attempts.rows, [{ attempt: 1, fallback: false }, { attempt: 2, fallback: true }]);
+    assert.ok((await store.events(taskId)).some((event) => event.eventType === "PHYSICAL_USAGE_RECONCILED"));
+    await pool.query("DELETE FROM control.tasks WHERE id=$1", [taskId]);
+  } finally { await pool.end(); }
+});

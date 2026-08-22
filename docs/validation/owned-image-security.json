@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-22T21:04:15Z",
+  "status": "scanned-with-findings",
+  "scanner": "Trivy 0.74.0",
+  "scannerExecution": "offline-after-governed-db-update",
+  "images": [
+    {"image":"aicp-harness:latest","imageId":"sha256:881a84d71c58d84c0571dda94f22c9ad278fa6cc6fd70b2366ad5d60c25f98ca","sbomComponents":1154,"high":406,"critical":33},
+    {"image":"aicp-memory-service:latest","imageId":"sha256:dc5d8867102a0f768c594d0416713dfa3019767abd3b9d801882a8382140eec2","sbomComponents":109,"high":52,"critical":3},
+    {"image":"aicp-workspace:latest","imageId":"sha256:ef9220d47e9fbf5a522d3603d8895149888bee970289f75caafb74e9ca64a0f8","sbomComponents":619,"high":376,"critical":33}
+  ],
+  "decision": "No finding was automatically suppressed. CRITICAL findings block V1_DEFENSIBLE pending remediation or independent human risk acceptance."
+}

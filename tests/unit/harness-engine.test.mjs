@@ -124,7 +124,7 @@ test("workflow executor delivers governed context and persists redacted provenan
   assert.deepEqual(stage.evidence.contextMetrics, { selected_tokens: 8 });
   assert.equal(stage.evidence.telemetryExported, true);
   assert.deepEqual(telemetryCalls[0], {
-    taskId: task.id, runId: run.id, stage: "verify", outcome: "pass", contextId: "ctx_1", contextMetrics: { selected_tokens: 8 },
+    taskId: task.id, runId: run.id, stage: "verify", attempt: 1, outcome: "pass", agent: "reviewer", contextId: "ctx_1", contextMetrics: { selected_tokens: 8 },
   });
 });
 
@@ -154,6 +154,31 @@ test("governed runtime creates an idempotent task and executes a new run", async
   assert.equal(first.task.id, second.task.id);
   assert.notEqual(first.run.id, second.run.id);
   assert.equal(first.run.state, "ready");
+});
+
+test("governed runtime creates and always destroys an ephemeral worker around execution", async () => {
+  const store = new InMemoryRunStore();
+  const calls = [];
+  const workerManager = {
+    create: async (spec) => { calls.push(["create", spec]); return { runId: spec.runId, workerId: "worker-1", attestation: { readOnlyRoot: true } }; },
+    collectEvidence: async (runId) => { calls.push(["evidence", runId]); return { runId, diffHash: "diff-1" }; },
+    destroy: async (runId) => { calls.push(["destroy", runId]); return true; },
+  };
+  const runtime = new GovernedRuntime({ definition, store, handlers: { verify: async () => "pass" }, workerManager, workerProfile: async () => "node22" });
+  const result = await runtime.start({ idempotencyKey: "ephemeral-runtime-1", metadata: { projectDirectory: "/workspace/project" } });
+  assert.equal(result.worker.evidence.diffHash, "diff-1");
+  assert.deepEqual(calls.map(([operation]) => operation), ["create", "evidence", "destroy"]);
+  assert.equal(calls[0][1].profile, "node22");
+  assert.equal(calls[2][1], result.run.id);
+});
+
+test("governed runtime destroys an ephemeral worker when workflow execution fails", async () => {
+  const store = new InMemoryRunStore();
+  const calls = [];
+  const workerManager = { create: async (spec) => { calls.push("create"); return { runId: spec.runId }; }, collectEvidence: async () => ({}), destroy: async () => { calls.push("destroy"); } };
+  const runtime = new GovernedRuntime({ definition, store, handlers: { verify: async () => { throw new Error("handler failed"); } }, workerManager, workerProfile: async () => "node22" });
+  await assert.rejects(runtime.start({ idempotencyKey: "ephemeral-runtime-failure", metadata: { projectDirectory: "/workspace/project" } }), /handler failed/);
+  assert.deepEqual(calls, ["create", "destroy"]);
 });
 
 test("workflow handlers constrain agent output to declared outcomes and governed context", async () => {

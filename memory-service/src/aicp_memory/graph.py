@@ -5,6 +5,8 @@ import posixpath
 import urllib.error
 import urllib.request
 
+RELATION_TYPES = {"IMPORTS", "CALLS", "IMPLEMENTS", "EXTENDS", "DEPENDS_ON", "TESTS", "GOVERNS", "AFFECTS"}
+
 
 class Neo4jGraphProjection:
     def __init__(self, endpoint, auth, opener=urllib.request.urlopen):
@@ -43,10 +45,12 @@ class Neo4jGraphProjection:
                 statements.append({
                     "statement": """MATCH (f:File {repository_id: $repository, path: $path})
                     MERGE (s:Symbol {id: $id}) SET s.repository_id=$repository,
-                    s.qualified_name=$name, s.kind=$kind, s.line_start=$line
+                    s.qualified_name=$name, s.kind=$kind, s.language=$language,
+                    s.semantic_container=$container, s.signature_hash=$signature_hash, s.line_start=$line
                     MERGE (f)-[:DECLARES]->(s)""",
                     "parameters": {"repository": repository, "path": source_file["path"], "id": symbol_id,
-                                   "name": symbol["qualifiedName"], "kind": symbol["kind"], "line": symbol["lineStart"]},
+                                   "name": symbol["qualifiedName"], "kind": symbol["kind"], "language": symbol.get("language", "javascript"),
+                                   "container": symbol.get("semanticContainer", source_file["path"]), "signature_hash": symbol.get("signatureHash", ""), "line": symbol["lineStart"]},
                 })
             for chunk in source_file.get("chunks", []):
                 statements.append({
@@ -61,18 +65,26 @@ class Neo4jGraphProjection:
         for source_file in payload.get("files", []):
             for reference in source_file.get("references", []):
                 target = reference.get("target", "")
-                if not target.startswith("."):
-                    continue
-                target = posixpath.normpath(posixpath.join(posixpath.dirname(source_file["path"]), target))
-                if not posixpath.splitext(target)[1]:
-                    target += ".js"
-                statements.append({
-                    "statement": """MATCH (source:File {repository_id: $repository, path: $source})
-                    MATCH (target:File {repository_id: $repository, path: $target})
-                    MERGE (source)-[r:IMPORTS]->(target) SET r.line=$line""",
-                    "parameters": {"repository": repository, "source": source_file["path"],
-                                   "target": target, "line": reference.get("line")},
-                })
+                relation = reference.get("type", "IMPORTS").upper()
+                if relation not in RELATION_TYPES:
+                    raise ValueError(f"unsupported graph relation: {relation}")
+                if relation == "IMPORTS" and target.startswith("."):
+                    normalized = posixpath.normpath(posixpath.join(posixpath.dirname(source_file["path"]), target))
+                    candidates = [normalized] if posixpath.splitext(normalized)[1] else [normalized + extension for extension in (".js", ".mjs", ".cjs", ".ts", ".tsx", ".py", ".go")]
+                    statements.append({
+                        "statement": """MATCH (source:File {repository_id: $repository, path: $source})
+                        MATCH (target:File {repository_id: $repository}) WHERE target.path IN $targets
+                        MERGE (source)-[r:IMPORTS]->(target) SET r.line=$line, r.deterministic=true""",
+                        "parameters": {"repository": repository, "source": source_file["path"], "targets": candidates, "line": reference.get("line")},
+                    })
+                elif relation == "IMPORTS":
+                    external_id = sha256(f"{repository}\0{target}".encode()).hexdigest()
+                    statements.append({
+                        "statement": """MATCH (source:File {repository_id: $repository, path: $source})
+                        MERGE (target:ExternalReference {id: $id}) SET target.repository_id=$repository, target.name=$target
+                        MERGE (source)-[r:IMPORTS]->(target) SET r.line=$line, r.deterministic=true""",
+                        "parameters": {"repository": repository, "source": source_file["path"], "id": external_id, "target": target, "line": reference.get("line")},
+                    })
         self._execute(statements)
 
     def impact(self, repository, path):
@@ -85,21 +97,26 @@ class Neo4jGraphProjection:
         data = result.get("results", [{}])[0].get("data", [])
         return [item["row"][0] for item in data]
 
-    def retrieve(self, repository, symbols, limit=25, max_hops=2):
-        if not symbols:
+    def retrieve(self, repository, symbols=None, paths=None, limit=25, max_hops=2):
+        symbols = symbols or []
+        paths = paths or []
+        if not symbols and not paths:
             return []
         if max_hops not in (1, 2):
             raise ValueError("graph traversal max_hops must be 1 or 2")
         relationship = ":IMPORTS*1..1" if max_hops == 1 else ":IMPORTS*1..2"
         result = self._execute([{
-            "statement": f"""MATCH (s:Symbol {{repository_id:$repository}})
-            WHERE toLower(s.qualified_name) IN $symbols
-            MATCH (s)<-[:DECLARES]-(origin:File)
-            OPTIONAL MATCH (origin)-[{relationship}]-(related:File)
-            RETURN DISTINCT coalesce(related.path, origin.path) AS path,
-              CASE WHEN related IS NULL THEN 0 ELSE 1 END AS distance
+            "statement": f"""MATCH (origin:File {{repository_id:$repository}})
+            WHERE origin.path IN $paths OR EXISTS {{
+              MATCH (origin)-[:DECLARES]->(s:Symbol)
+              WHERE toLower(s.qualified_name) IN $symbols
+            }}
+            OPTIONAL MATCH p=(origin)-[{relationship}]-(related:File)
+            WITH coalesce(related, origin) AS candidate,
+              CASE WHEN p IS NULL THEN 0 ELSE length(p) END AS distance
+            RETURN candidate.path AS path, min(distance) AS distance
             ORDER BY distance, path LIMIT $limit""",
-            "parameters": {"repository": repository, "symbols": [value.lower() for value in symbols], "limit": limit},
+            "parameters": {"repository": repository, "symbols": [value.lower() for value in symbols], "paths": sorted(set(paths)), "limit": limit},
         }])
         return [{"path": item["row"][0], "distance": item["row"][1]} for item in result.get("results", [{}])[0].get("data", [])]
 

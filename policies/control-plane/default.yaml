@@ -1,6 +1,6 @@
 version: control-policy-v1
 budget: { calls: 20, input_tokens: 180000, output_tokens: 40000, cost_usd: 10.00, repair_iterations: 2 }
-context: { retrieval_policy: retrieval-v2, packing_policy: packing-v2 }
+context: { retrieval_policy: retrieval-v3, packing_policy: packing-v3 }
 workspace: { policy: workspace-v1 }
 gates: { unresolved: reject_run, tool_unavailable: human_review, scanner_finding: fail, scanner_crash: error }
 repair: { max_iterations: 2, unexpected_file_policy: human_review }

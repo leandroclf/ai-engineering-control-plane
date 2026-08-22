@@ -1,10 +1,12 @@
 import { BudgetExceededError } from "./task-budget.mjs";
 import { normalizeUsage } from "./budget-policy.mjs";
+import { reconcilePhysicalUsage } from "./physical-usage.mjs";
+import { randomUUID } from "node:crypto";
 
 function number(value) { return Number(value ?? 0); }
 function mapBudget(row) {
   const limits = { calls: row.max_calls, inputTokens: number(row.max_input_tokens), outputTokens: number(row.max_output_tokens), costUsd: number(row.max_cost_usd), iterations: row.max_iterations };
-  const used = { calls: row.used_calls, inputTokens: number(row.used_input_tokens), outputTokens: number(row.used_output_tokens), costUsd: number(row.used_cost_usd), iterations: row.used_iterations };
+  const used = { calls: row.used_calls, physicalAttempts: number(row.used_physical_attempts), inputTokens: number(row.used_input_tokens), outputTokens: number(row.used_output_tokens), costUsd: number(row.used_cost_usd), iterations: row.used_iterations };
   const reserved = { calls: row.reserved_calls, inputTokens: number(row.reserved_input_tokens), outputTokens: number(row.reserved_output_tokens), costUsd: number(row.reserved_cost_usd), iterations: 0 };
   return { taskId: row.task_id, limits, used, reserved, remaining: Object.fromEntries(Object.keys(limits).map((key) => [key, Math.max(0, limits[key] - used[key] - reserved[key])])), status: row.status, version: number(row.version) };
 }
@@ -39,7 +41,7 @@ export class PostgresBudgetStore {
     return result.rows.map((row) => ({ id: String(row.id), eventType: row.event_type, payload: row.payload, runId: row.run_id, reservationId: row.reservation_id, createdAt: row.created_at }));
   }
 
-  async reserve({ taskId, runId, stage, estimatedUsage, idempotencyKey, ttlSeconds = 900 }) {
+  async reserve({ taskId, runId, stage, estimatedUsage, idempotencyKey, logicalInvocationId = randomUUID(), modelAlias = null, ttlSeconds = 900 }) {
     const usage = normalizeUsage(estimatedUsage);
     return this.transact(async (client) => {
       const duplicate = await client.query("SELECT * FROM control.budget_reservations WHERE idempotency_key=$1", [idempotencyKey]);
@@ -57,9 +59,9 @@ export class PostgresBudgetStore {
       const exceeded = checks.find(([, next, maximum]) => next > maximum);
       if (exceeded) throw new BudgetExceededError(exceeded[0]);
       const inserted = await client.query(
-        `INSERT INTO control.budget_reservations(task_id,run_id,stage,reserved_calls,reserved_input_tokens,reserved_output_tokens,reserved_cost_usd,state,idempotency_key,expires_at)
-         VALUES($1,$2,$3,$4,$5,$6,$7,'RESERVED',$8,now()+($9*interval '1 second')) RETURNING *`,
-        [taskId, runId, stage, usage.calls, usage.inputTokens, usage.outputTokens, usage.costUsd, idempotencyKey, ttlSeconds],
+        `INSERT INTO control.budget_reservations(task_id,run_id,stage,invocation_id,logical_invocation_id,model_alias,reserved_calls,reserved_input_tokens,reserved_output_tokens,reserved_cost_usd,state,idempotency_key,expires_at)
+         VALUES($1,$2,$3,$4,$4,$5,$6,$7,$8,$9,'RESERVED',$10,now()+($11*interval '1 second')) RETURNING *`,
+        [taskId, runId, stage, logicalInvocationId, modelAlias, usage.calls, usage.inputTokens, usage.outputTokens, usage.costUsd, idempotencyKey, ttlSeconds],
       );
       await client.query(`UPDATE control.task_budgets SET reserved_calls=reserved_calls+$2,reserved_input_tokens=reserved_input_tokens+$3,reserved_output_tokens=reserved_output_tokens+$4,reserved_cost_usd=reserved_cost_usd+$5,version=version+1,updated_at=now() WHERE task_id=$1`, [taskId, usage.calls, usage.inputTokens, usage.outputTokens, usage.costUsd]);
       await client.query("INSERT INTO control.budget_events(task_id,run_id,reservation_id,event_type,payload) VALUES($1,$2,$3,'RESERVED',$4::jsonb)", [taskId, runId, inserted.rows[0].id, JSON.stringify(usage)]);
@@ -73,12 +75,20 @@ export class PostgresBudgetStore {
       const reservation = found.rows[0];
       if (!reservation) throw new Error(`unknown budget reservation: ${reservationId}`);
       if (reservation.state !== "RESERVED") return reservation;
-      const actual = state === "COMMITTED" ? normalizeUsage({ ...actualUsage, calls: reservation.reserved_calls }) : normalizeUsage({ calls: 0 });
+      const physical = state === "COMMITTED" ? reconcilePhysicalUsage(actualUsage, actualUsage.providerAttempts ?? []) : { actualUsage: normalizeUsage({ calls: 0 }), physicalAttempts: [], fallbackCostDelta: 0 };
+      const actual = { ...physical.actualUsage, calls: state === "COMMITTED" ? number(reservation.reserved_calls) : 0 };
+      for (const attempt of physical.physicalAttempts) {
+        await client.query(
+          `INSERT INTO control.provider_attempts(reservation_id,logical_invocation_id,attempt,provider,model,provider_request_id,fallback,status,input_tokens,output_tokens,cached_input_tokens,cost_usd,duration_ms)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT(reservation_id,attempt) DO NOTHING`,
+          [reservationId, reservation.logical_invocation_id, attempt.attempt, attempt.provider, attempt.model, attempt.providerRequestId, attempt.fallback, attempt.status, attempt.inputTokens, attempt.outputTokens, attempt.cachedInputTokens, attempt.costUsd, attempt.durationMs],
+        );
+      }
       await client.query("SELECT task_id FROM control.task_budgets WHERE task_id=$1 FOR UPDATE", [reservation.task_id]);
       await client.query(
         `UPDATE control.task_budgets SET reserved_calls=reserved_calls-$2,reserved_input_tokens=reserved_input_tokens-$3,reserved_output_tokens=reserved_output_tokens-$4,reserved_cost_usd=reserved_cost_usd-$5,
-         used_calls=used_calls+$6,used_input_tokens=used_input_tokens+$7,used_output_tokens=used_output_tokens+$8,used_cost_usd=used_cost_usd+$9,version=version+1,updated_at=now() WHERE task_id=$1`,
-        [reservation.task_id, reservation.reserved_calls, reservation.reserved_input_tokens, reservation.reserved_output_tokens, reservation.reserved_cost_usd, actual.calls, actual.inputTokens, actual.outputTokens, actual.costUsd],
+         used_calls=used_calls+$6,used_input_tokens=used_input_tokens+$7,used_output_tokens=used_output_tokens+$8,used_cost_usd=used_cost_usd+$9,used_physical_attempts=used_physical_attempts+$10,version=version+1,updated_at=now() WHERE task_id=$1`,
+        [reservation.task_id, reservation.reserved_calls, reservation.reserved_input_tokens, reservation.reserved_output_tokens, reservation.reserved_cost_usd, actual.calls, actual.inputTokens, actual.outputTokens, actual.costUsd, physical.physicalAttempts.length],
       );
       if (state === "COMMITTED") {
         await client.query(`UPDATE control.task_budgets SET status='EXHAUSTED',updated_at=now()
@@ -91,8 +101,9 @@ export class PostgresBudgetStore {
         outputRatio: number(reservation.reserved_output_tokens) ? actual.outputTokens / number(reservation.reserved_output_tokens) : actual.outputTokens ? Infinity : 0,
         costRatio: number(reservation.reserved_cost_usd) ? actual.costUsd / number(reservation.reserved_cost_usd) : actual.costUsd ? Infinity : 0,
       } : null;
-      const updated = await client.query(`UPDATE control.budget_reservations SET state=$2,actual_input_tokens=$3,actual_output_tokens=$4,actual_cost_usd=$5,committed_at=CASE WHEN $2='COMMITTED' THEN now() ELSE NULL END WHERE id=$1 RETURNING *`, [reservationId, state, actual.inputTokens, actual.outputTokens, actual.costUsd]);
-      await client.query("INSERT INTO control.budget_events(task_id,run_id,reservation_id,event_type,payload) VALUES($1,$2,$3,$4,$5::jsonb)", [reservation.task_id, reservation.run_id, reservationId, state, JSON.stringify(actual)]);
+      const updated = await client.query(`UPDATE control.budget_reservations SET state=$2,actual_input_tokens=$3,actual_output_tokens=$4,actual_cost_usd=$5,physical_attempts=$6,fallback_cost_delta=$7,committed_at=CASE WHEN $2='COMMITTED' THEN now() ELSE NULL END WHERE id=$1 RETURNING *`, [reservationId, state, actual.inputTokens, actual.outputTokens, actual.costUsd, physical.physicalAttempts.length, physical.fallbackCostDelta]);
+      await client.query("INSERT INTO control.budget_events(task_id,run_id,reservation_id,event_type,payload) VALUES($1,$2,$3,$4,$5::jsonb)", [reservation.task_id, reservation.run_id, reservationId, state, JSON.stringify({ ...actual, logicalInvocationId: reservation.logical_invocation_id, physicalAttempts: physical.physicalAttempts.length, fallbackCostDelta: physical.fallbackCostDelta })]);
+      if (physical.physicalAttempts.length) await client.query("INSERT INTO control.budget_events(task_id,run_id,reservation_id,event_type,payload) VALUES($1,$2,$3,'PHYSICAL_USAGE_RECONCILED',$4::jsonb)", [reservation.task_id, reservation.run_id, reservationId, JSON.stringify({ logicalInvocationId: reservation.logical_invocation_id, modelAlias: reservation.model_alias, attempts: physical.physicalAttempts, fallbackCostDelta: physical.fallbackCostDelta })]);
       if (drift?.exceeded) await client.query("INSERT INTO control.budget_events(task_id,run_id,reservation_id,event_type,payload) VALUES($1,$2,$3,'BUDGET_RESERVATION_DRIFT',$4::jsonb)", [reservation.task_id, reservation.run_id, reservationId, JSON.stringify({ reserved: { inputTokens: number(reservation.reserved_input_tokens), outputTokens: number(reservation.reserved_output_tokens), costUsd: number(reservation.reserved_cost_usd) }, actual, drift })]);
       return { ...updated.rows[0], drift };
     });

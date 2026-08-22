@@ -34,11 +34,7 @@ jobs:
       - run: npm ci
       - run: npm run ci:contracts
       - name: Build owned images
-        run: |
-          set -a
-          source versions.env
-          set +a
-          docker compose build memory-service workspace harness
+        run: npm run build:owned-images
       - name: Upload normalized contract evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -73,6 +69,24 @@ jobs:
       - run: for migration in memory-service/migrations/*.sql; do psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"; done
       - run: npm run test:integration
 
+  mock-provider-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run test:e2e:mock-gateway
+
+  recovery-drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - run: bash tests/integration/backup-tamper.integration.sh
+      - run: bash tests/integration/restore-clean-host.integration.sh
+
   security-scanners:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -98,7 +112,7 @@ jobs:
 
           docker run --rm -v "$PWD:/repo:ro" -v "$raw:/reports" \
             ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
-            detect --source=/repo --redact --report-format=json \
+            dir /repo --config=/repo/security/gitleaks.toml --redact --report-format=json \
             --report-path=/reports/gitleaks.json --exit-code=0
           echo $? > .aicp/ci/raw/gitleaks.exit
 
@@ -130,4 +144,40 @@ jobs:
       - run: npm ci
       - run: npm run evaluate:baseline
       - run: npm run validate:benchmark
+      - run: python3 observability/evaluation/run-context-v3-benchmark.py .aicp/evaluations/context-v3.report.json
+      - run: jq -e '.delta.selectedTokenRatio <= 1 and .delta.contextPrecision >= 0 and .delta.vectorUseRate < 0' .aicp/evaluations/context-v3.report.json
       - run: jq -e '.metrics.taskCount > 0 and .baseline.status == "observation"' .aicp/evaluations/baseline.report.json
+
+  supply-chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run validate:supply-chain
+
+  image-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Validate immutable owned image inputs
+        run: npm run validate:supply-chain
+      - name: Build owned images for downstream scanning
+        run: npm run build:owned-images
+      - name: Build and attest ephemeral worker profiles
+        run: bash scripts/build-worker-images.sh
+      - name: Exercise deployment-side worker lifecycle
+        run: AICP_DOCKER_TEST=1 node --test tests/integration/worker-docker.integration.mjs tests/integration/worker-manager-http.integration.mjs
+      - name: Generate owned image SBOMs and vulnerability evidence
+        run: npm run scan:owned-images
+      - name: Upload owned image evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: aicp-owned-image-evidence
+          path: .aicp/ci/images
+          if-no-files-found: error
+          retention-days: 14

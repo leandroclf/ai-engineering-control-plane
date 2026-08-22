@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { createHash } from "node:crypto";
+import { finalizeParse } from "./parser-utils.mjs";
 
 const exec = promisify(execFile);
 
@@ -35,22 +36,12 @@ export class JavaScriptParser {
       const symbol = line.match(/(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)|(?:export\s+)?class\s+([A-Za-z_$][\w$]*)|(?:export\s+)?const\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\(/);
       if (symbol) {
         const qualifiedName = symbol[1] ?? symbol[2] ?? symbol[3];
-        symbols.push({ qualifiedName, kind: symbol[2] ? "class" : "function", lineStart: index + 1, lineEnd: index + 1 });
+        symbols.push({ language: "javascript", qualifiedName, semanticContainer: path, signatureHash: createHash("sha256").update(line.trim().replace(/\s*\{.*$/, "")).digest("hex"), kind: symbol[2] ? "class" : "function", lineStart: index + 1, lineEnd: index + 1 });
       }
       for (const match of line.matchAll(/(?:from\s+|require\s*\(\s*)['"]([^'"]+)['"]/g)) {
-        references.push({ source: path, target: match[1], line: index + 1 });
+        references.push({ source: path, target: match[1], line: index + 1, type: "IMPORTS" });
       }
     });
-    const chunks = symbols.map((symbol) => {
-      const text = lines[symbol.lineStart - 1];
-      return {
-        id: createHash("sha256").update(`${oid}\0${symbol.qualifiedName}\0${symbol.lineStart}`).digest("hex"),
-        symbol: symbol.qualifiedName,
-        content: text,
-        contentHash: createHash("sha256").update(text).digest("hex"),
-        provenance: { path, oid, lineStart: symbol.lineStart, lineEnd: symbol.lineEnd },
-      };
-    });
-    return { symbols, references, chunks };
+    return finalizeParse({ path, oid, language: "javascript", content, symbols, references });
   }
 }

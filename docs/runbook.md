@@ -31,6 +31,19 @@ probe evidence. `MISCONFIGURED` required capabilities block before any model
 call. Install/configure the declared project tool or deliberately update the
 project policy; do not replace a required gate with a guessed conventional command.
 
+## Ephemeral execution for remote/team mode
+
+Run the deployment-side manager on the trusted Docker host, never inside the
+Harness or an agent container. Set `AICP_WORKER_PROJECTS_ROOT` to the exact host
+checkout boundary and provide independent manager, workload-signing, scoped
+LiteLLM and Memory tokens through the process environment. Start it with
+`npm run worker-manager`. Configure the Harness with
+`AICP_EXECUTION_MODE=ephemeral`, `WORKER_MANAGER_URL`, `WORKER_MANAGER_TOKEN`
+and `WORKER_CLIENT_PROJECT_ROOT`. Readiness fails closed when the manager or an
+attested toolchain profile is unavailable. Local personal mode remains
+long-lived unless explicitly switched; remote/team deployments must use the
+ephemeral mode.
+
 ## Suspected secret exposure
 
 Stop affected workflow, revoke/rotate the credential at its authority, preserve

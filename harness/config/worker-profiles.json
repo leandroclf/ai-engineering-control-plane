@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "profiles": {
+    "node22": {
+      "projectKinds": ["node"],
+      "image": "aicp-worker-node22:local",
+      "dockerfile": "docker/workers/node22/Dockerfile",
+      "probes": [["node", "--version"], ["npm", "--version"], ["git", "--version"]]
+    },
+    "java21-gradle": {
+      "projectKinds": ["gradle"],
+      "image": "aicp-worker-java21-gradle:local",
+      "dockerfile": "docker/workers/java21-gradle/Dockerfile",
+      "probes": [["java", "--version"], ["gradle", "--version"], ["git", "--version"]]
+    },
+    "java21-maven": {
+      "projectKinds": ["maven"],
+      "image": "aicp-worker-java21-maven:local",
+      "dockerfile": "docker/workers/java21-maven/Dockerfile",
+      "probes": [["java", "--version"], ["mvn", "--version"], ["git", "--version"]]
+    },
+    "python313": {
+      "projectKinds": ["python"],
+      "image": "aicp-worker-python313:local",
+      "dockerfile": "docker/workers/python313/Dockerfile",
+      "probes": [["python", "--version"], ["pip", "--version"], ["git", "--version"]]
+    },
+    "go124": {
+      "projectKinds": ["go"],
+      "image": "aicp-worker-go124:local",
+      "dockerfile": "docker/workers/go124/Dockerfile",
+      "probes": [["go", "version"], ["git", "--version"]]
+    }
+  }
+}
+

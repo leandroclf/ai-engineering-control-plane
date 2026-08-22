@@ -4,7 +4,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root"
 mkdir -p .aicp/security
-compose_json="$(docker compose --env-file versions.env config --format json)"
+compose_json="$(bash scripts/compose-contract.sh --format json)"
 
 # host-workspace
 test -z "$(jq -r '.services.workspace.volumes[]?.source' <<<"$compose_json" | grep '/var/run/docker.sock' || true)"

@@ -35,12 +35,12 @@ export class InvocationEstimator {
 }
 
 export class RoutingPricingCatalog {
-  constructor(routes = {}) { this.routes = structuredClone(routes); }
-  modelsFor(alias) { return this.routes[alias]?.deployments?.map((item) => item.model) ?? []; }
+  constructor(routes = {}, environment = process.env) { this.routes = structuredClone(routes); this.environment = environment; }
+  modelsFor(alias) { return this.routes[alias]?.deployments?.map((item) => item.model ?? this.environment[item.modelEnv]).filter(Boolean) ?? []; }
   pricesFor(alias) {
-    return this.routes[alias]?.deployments?.map(({ inputPerMillion, outputPerMillion }) => ({
-      inputPerToken: Number(inputPerMillion) / 1_000_000,
-      outputPerToken: Number(outputPerMillion) / 1_000_000,
+    return this.routes[alias]?.deployments?.map(({ inputPerMillion, outputPerMillion, inputPerMillionEnv, outputPerMillionEnv }) => ({
+      inputPerToken: Number(inputPerMillion ?? this.environment[inputPerMillionEnv]) / 1_000_000,
+      outputPerToken: Number(outputPerMillion ?? this.environment[outputPerMillionEnv]) / 1_000_000,
     })) ?? [];
   }
 }

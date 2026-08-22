@@ -104,6 +104,30 @@ class MemoryLedgerTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cannot be promoted"):
             ledger.promote(memory.id, "REPOSITORY:aicp", "agent:1")
 
+    def test_llm_candidate_has_retention_and_requires_confidence_to_promote(self):
+        now = datetime(2026, 8, 21, tzinfo=timezone.utc)
+        ledger = MemoryLedger(clock=lambda: now)
+        memory = ledger.create_candidate(
+            scope="RUN:T1", canonical_key="derived.fact", summary="derived evidence",
+            authority="LLM_INFERENCE", confidence=.70,
+        )
+        self.assertEqual(memory.expires_at, now + timedelta(days=7))
+        with self.assertRaisesRegex(ValueError, "lacks promotion confidence"):
+            ledger.promote(memory.id, "REPOSITORY:aicp", "human:1")
+
+    def test_expired_candidate_is_reconciled_before_promotion(self):
+        now = datetime(2026, 8, 21, tzinfo=timezone.utc)
+        ledger = MemoryLedger(clock=lambda: now)
+        memory = ledger.create_candidate(
+            scope="RUN:T1", canonical_key="derived.fact", summary="derived evidence",
+            authority="LLM_INFERENCE", confidence=.90,
+        )
+        now += timedelta(days=8)
+        ledger.expire_due()
+        self.assertEqual(ledger.get(memory.id).status, "EXPIRED")
+        with self.assertRaisesRegex(ValueError, "only candidate"):
+            ledger.promote(memory.id, "REPOSITORY:aicp", "human:1")
+
 
 if __name__ == "__main__":
     unittest.main()

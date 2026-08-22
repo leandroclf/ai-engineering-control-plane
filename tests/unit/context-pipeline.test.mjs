@@ -7,6 +7,11 @@ import { join } from "node:path";
 
 import { GitIndexer, InMemoryIndexStore } from "../../context/indexer/git-indexer.mjs";
 import { JavaScriptParser } from "../../context/parsers/javascript-parser.mjs";
+import { TypeScriptParser } from "../../context/parsers/typescript-parser.mjs";
+import { JavaParser } from "../../context/parsers/java-parser.mjs";
+import { PythonParser } from "../../context/parsers/python-parser.mjs";
+import { GoParser } from "../../context/parsers/go-parser.mjs";
+import { ParserRegistry } from "../../context/parsers/parser-registry.mjs";
 import { planGraphDelta } from "../../context/indexer/graph-projection.mjs";
 import { EmbeddingCache, hybridRetrieve } from "../../context/retrieval/hybrid-retrieval.mjs";
 import { compileContextPackage } from "../../context/compiler/context-package.mjs";
@@ -54,6 +59,26 @@ test("javascript parser extracts symbols and rejects syntax errors", async () =>
   assert.deepEqual(result.references.map((reference) => reference.target), ["./db.js"]);
   assert.ok(result.chunks.every((chunk) => chunk.provenance.oid === "blob-1"));
   await assert.rejects(parser.parse({ path: "broken.js", absolutePath: invalid, oid: "blob-2" }), /syntax error/);
+});
+
+test("polyglot parser registry emits stable symbols and deterministic imports", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "aicp-polyglot-parser-"));
+  const fixtures = [
+    ["service.ts", "import { x } from './x';\nexport interface Port {}\nexport function run(value: string) { return x(value); }\n", "typescript", "run", "./x"],
+    ["Service.java", "package com.acme;\nimport java.util.List;\npublic class Service {\n public void run(String value) {}\n}\n", "java", "com.acme.Service.run", "java.util.List"],
+    ["service.py", "from app.db import load\nclass Service:\n    def run(self, value):\n        return load(value)\n", "python", "Service.run", "app.db"],
+    ["service.go", "package service\nimport \"context\"\ntype Service struct {}\nfunc (s *Service) Run(ctx context.Context) {}\n", "go", "service.Service.Run", "context"],
+  ];
+  const registry = new ParserRegistry([new JavaScriptParser(), new TypeScriptParser(), new JavaParser(), new PythonParser(), new GoParser()]);
+  for (const [path, content, language, symbol, imported] of fixtures) {
+    const absolutePath = join(directory, path); await writeFile(absolutePath, content);
+    const parsed = await registry.parse({ path, absolutePath, oid: `oid-${language}`, repositoryId: "repo" });
+    assert.ok(parsed.symbols.some((item) => item.qualifiedName === symbol && item.language === language), `${language} symbol`);
+    assert.ok(parsed.references.some((item) => item.target === imported && item.type === "IMPORTS"), `${language} import`);
+    const first = planGraphDelta({ repositoryId: "repo", changed: [{ path, symbols: parsed.symbols }], deleted: [] });
+    const shifted = planGraphDelta({ repositoryId: "repo", changed: [{ path, symbols: parsed.symbols.map((item) => ({ ...item, lineStart: item.lineStart + 10, lineEnd: item.lineEnd + 10 })) }], deleted: [] });
+    assert.deepEqual(first.upsertSymbols.map((item) => item.id), shifted.upsertSymbols.map((item) => item.id));
+  }
 });
 
 test("graph delta handles rename delete and ambiguous symbols deterministically", () => {

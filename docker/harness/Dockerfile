@@ -36,6 +36,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 COPY context ./context
 COPY harness ./harness
+COPY security ./security
+COPY scripts/scanner-bundle-manifest.mjs ./scripts/scanner-bundle-manifest.mjs
 COPY docker/harness/entrypoint.sh /usr/local/bin/aicp-harness-entrypoint
 RUN chmod 755 /usr/local/bin/aicp-harness-entrypoint \
     && install -d -o dev -g dev /home/dev/.cache /home/dev/.config/opencode /home/dev/.local/share/opencode /home/dev/.local/state

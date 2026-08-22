@@ -8,10 +8,11 @@ export class WorkloadIdentity {
 }
 
 export class EphemeralWorkerSpec {
-  constructor({ runId, projectDirectory, identity, capabilities = [], environment = {} }) {
+  constructor({ runId, projectDirectory, identity, identityToken = null, profile = "node22", capabilities = [], environment = {} }) {
     if (identity?.runId !== runId) throw new TypeError("worker identity must be scoped to run");
     if (Object.keys(environment).some((name) => FORBIDDEN_ENV.test(name))) throw new TypeError("physical provider credentials are forbidden in workers");
-    this.runId = runId; this.projectDirectory = projectDirectory; this.identity = identity; this.capabilities = Object.freeze([...capabilities]); this.environment = Object.freeze({ ...environment });
+    if (!projectDirectory || !profile) throw new TypeError("projectDirectory and worker profile are required");
+    this.runId = runId; this.projectDirectory = projectDirectory; this.identity = identity; this.identityToken = identityToken; this.profile = profile; this.capabilities = Object.freeze([...capabilities]); this.environment = Object.freeze({ ...environment });
     this.security = Object.freeze({ readOnlyRoot: true, noNewPrivileges: true, capabilitiesDropped: "ALL", dockerSocket: false, maxGraphHops: 2 });
     Object.freeze(this);
   }
@@ -19,5 +20,7 @@ export class EphemeralWorkerSpec {
 
 export class WorkerManager {
   async create(_spec) { throw new Error("WorkerManager.create must be implemented by the deployment adapter"); }
+  async exec(_runId, _command) { throw new Error("WorkerManager.exec must be implemented by the deployment adapter"); }
+  async collectEvidence(_runId) { throw new Error("WorkerManager.collectEvidence must be implemented by the deployment adapter"); }
   async destroy(_runId) { throw new Error("WorkerManager.destroy must be implemented by the deployment adapter"); }
 }

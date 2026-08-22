@@ -7,6 +7,7 @@ mkdir -p .aicp/ci
 npm run validate
 npm run test:architecture > .aicp/ci/architecture-contracts.json
 npm run validate:supply-chain > .aicp/ci/supply-chain.json
+npm run validate:model-catalog
 npm run evaluate:baseline > .aicp/ci/evaluation.stdout.json
 npm run validate:benchmark > .aicp/ci/paired-benchmark.json
 
@@ -16,7 +17,7 @@ done
 for contract in harness/workflows/feature.yaml harness/policies/quality-gates.yaml security/suppressions.yaml; do
   jq -e '.version == 1' "$contract" >/dev/null
 done
-docker compose --env-file versions.env config --quiet
+bash scripts/compose-contract.sh --quiet
 
 fixture_report=".aicp/ci/vulnerable-project.json"
 if node harness/src/cli/audit-project.mjs --project tests/fixtures/vulnerable-project > "$fixture_report"; then

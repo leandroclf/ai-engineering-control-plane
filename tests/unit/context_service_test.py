@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 
 from aicp_memory.context_service import ContextService
 
@@ -27,7 +28,7 @@ class FakeRepository:
         ]
 
     def search_active(self, scopes):
-        return []
+        return getattr(self, "memories", [])
 
 
 class FakeEmbedder:
@@ -104,8 +105,10 @@ class ContextServiceTest(unittest.TestCase):
         self.assertEqual(service.repository.queries, [("repo", "Service.run payment", ["service.run"])])
         self.assertEqual(counter.calls, ["run payment", "other"])
         self.assertEqual(result["token_count_model"], "coding-fast")
-        self.assertEqual(result["schema_version"], 2)
-        self.assertEqual(result["retrieval_policy_version"], "retrieval-v2")
+        self.assertEqual(result["schema_version"], 3)
+        self.assertEqual(result["retrieval_policy_version"], "retrieval-v3")
+        self.assertTrue(result["metrics"]["vector_skipped"])
+        self.assertEqual(service.embedder.calls, [])
 
     def test_context_identity_changes_with_semantic_policy_or_index_version(self):
         service = ContextService(FakeRepository(), FakeEmbedder(), FakeGraph(), FakeTokenCounter())
@@ -113,7 +116,7 @@ class ContextServiceTest(unittest.TestCase):
                 "exact_symbols": ["Service.run"], "budget": 6, "index_schema_version": "5"}
         first = service.compile(base, [])
         same = service.compile(dict(base), [])
-        changed_policy = service.compile({**base, "retrieval_policy_version": "retrieval-v3"}, [])
+        changed_policy = service.compile({**base, "retrieval_policy_version": "retrieval-v4"}, [])
         changed_index = service.compile({**base, "index_schema_version": "6"}, [])
         self.assertEqual(first["context_id"], same["context_id"])
         self.assertNotEqual(first["context_id"], changed_policy["context_id"])
@@ -136,4 +139,57 @@ class ContextServiceTest(unittest.TestCase):
         result = service.compile(base, [])
         self.assertEqual(result["budget"], 10)
         self.assertLessEqual(result["token_count"], result["budget"])
+        self.assertEqual(result["packing_limit"], 9)
         self.assertNotEqual(result["context_id"], service.compile({**base, "safety_reserve": 2}, [])["context_id"])
+
+    def test_vector_is_used_when_cheap_retrieval_confidence_is_low(self):
+        embedder = FakeEmbedder()
+        result = ContextService(FakeRepository(), embedder, FakeGraph(), FakeTokenCounter()).compile({
+            "repository": "repo", "task_id": "task", "query": "unrelated semantic intent", "budget": 20,
+        }, [])
+        self.assertFalse(result["metrics"]["vector_skipped"])
+        self.assertEqual(embedder.calls, ["unrelated semantic intent"])
+
+    def test_memory_requires_query_relevance(self):
+        repository = FakeRepository()
+        repository.memories = [
+            SimpleNamespace(id="relevant", summary="payment retry policy", canonical_key="payments", authority="POLICY", scope="PROJECT:A", version=1),
+            SimpleNamespace(id="noise", summary="office lunch menu", canonical_key="lunch", authority="HUMAN", scope="PROJECT:A", version=1),
+        ]
+        result = ContextService(repository, FakeEmbedder(), FakeGraph(), FakeTokenCounter()).compile({
+            "repository": "repo", "task_id": "task", "query": "payment policy", "budget": 20,
+        }, ["PROJECT:A"])
+        memory_ids = [item["id"] for item in result["artifacts"] if item["id"].startswith("memory:")]
+        self.assertIn("memory:relevant", memory_ids)
+        self.assertNotIn("memory:noise", memory_ids)
+        self.assertEqual(result["metrics"]["memory_hits"], 1)
+
+    def test_memory_ranking_accounts_for_scope_distance_and_authority(self):
+        repository = FakeRepository()
+        repository.memories = [
+            SimpleNamespace(id="global", summary="payment settlement policy", canonical_key="payments", authority="HUMAN", scope="GLOBAL:all", version=1),
+            SimpleNamespace(id="repo", summary="payment retry policy", canonical_key="payments", authority="POLICY", scope="REPOSITORY:aicp", version=1),
+        ]
+        result = ContextService(repository, FakeEmbedder(), FakeGraph(), FakeTokenCounter()).compile({
+            "repository": "repo", "task_id": "task", "query": "payment policy", "budget": 40,
+        }, ["REPOSITORY:aicp", "GLOBAL:all"])
+        memories = [item for item in result["artifacts"] if item["id"].startswith("memory:")]
+        self.assertEqual([item["id"] for item in memories], ["memory:repo", "memory:global"])
+        self.assertEqual(memories[0]["scores"]["memory_scope_distance"], 0)
+
+    def test_same_snapshot_produces_deterministic_context(self):
+        service = ContextService(FakeRepository(), FakeEmbedder(), FakeGraph(), FakeTokenCounter())
+        payload = {"repository": "repo", "task_id": "task", "query": "Service.run payment",
+                   "exact_symbols": ["Service.run"], "budget": 20, "index_snapshot": "commit-1", "graph_snapshot": "graph-1"}
+        self.assertEqual(service.compile(payload, [])["context_id"], service.compile(payload, [])["context_id"])
+
+    def test_packing_target_is_bounded_and_changes_context_identity(self):
+        service = ContextService(FakeRepository(), FakeEmbedder(), FakeGraph(), FakeTokenCounter())
+        payload = {"repository": "repo", "task_id": "task", "query": "payment", "budget": 100}
+        default = service.compile(payload, [])
+        constrained = service.compile({**payload, "packing_target_utilization": .75}, [])
+        self.assertEqual(default["packing_limit"], 98)
+        self.assertEqual(constrained["packing_limit"], 75)
+        self.assertNotEqual(default["context_id"], constrained["context_id"])
+        with self.assertRaisesRegex(ValueError, "packing target"):
+            service.compile({**payload, "packing_target_utilization": 1.1}, [])

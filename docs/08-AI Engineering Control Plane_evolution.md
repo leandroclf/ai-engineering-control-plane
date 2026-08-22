@@ -1238,7 +1238,7 @@ Create run:
   "project": "service-payments",
   "repository": "service-payments",
   "query": "Adicionar idempotência ao endpoint de pagamento",
-  "idempotencyKey": "ticket-PAY-1234-v1",
+  "idempotencyKey": "<opaque-request-key>",
   "exactSymbols": [
     "PaymentService",
     "PaymentController"
@@ -1291,7 +1291,7 @@ Error envelope único:
 Para `POST /v1/runs`, eu migraria progressivamente a idempotência do body para também suportar o header HTTP:
 
 ```text
-Idempotency-Key: ticket-PAY-1234-v1
+Idempotency-Key: <opaque-request-key>
 ```
 
 e retornaria `409` para conflitos semânticos, `429` para quota/rate limit, `503` para dependência indisponível e `422` para uma solicitação sintaticamente válida mas incompatível com capabilities.

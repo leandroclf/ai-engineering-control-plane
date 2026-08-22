@@ -69,6 +69,21 @@ services:
       LITELLM_OTEL_V2: "true"
       OTEL_EXPORTER: otlp_http
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      CODING_STRONG_MODEL: ${CODING_STRONG_MODEL:-}
+      CODING_STRONG_SECONDARY_MODEL: ${CODING_STRONG_SECONDARY_MODEL:-}
+      CODING_FAST_MODEL: ${CODING_FAST_MODEL:-}
+      ARCHITECTURE_MODEL: ${ARCHITECTURE_MODEL:-}
+      ARCHITECTURE_SECONDARY_MODEL: ${ARCHITECTURE_SECONDARY_MODEL:-}
+      SECURITY_MODEL: ${SECURITY_MODEL:-}
+      SECURITY_SECONDARY_MODEL: ${SECURITY_SECONDARY_MODEL:-}
+      REVIEW_MODEL: ${REVIEW_MODEL:-}
+      REVIEW_SECONDARY_MODEL: ${REVIEW_SECONDARY_MODEL:-}
+      AICP_OPENAI_STRONG_INPUT_PRICE: ${AICP_OPENAI_STRONG_INPUT_PRICE:-}
+      AICP_OPENAI_STRONG_OUTPUT_PRICE: ${AICP_OPENAI_STRONG_OUTPUT_PRICE:-}
+      AICP_OPENAI_FAST_INPUT_PRICE: ${AICP_OPENAI_FAST_INPUT_PRICE:-}
+      AICP_OPENAI_FAST_OUTPUT_PRICE: ${AICP_OPENAI_FAST_OUTPUT_PRICE:-}
+      AICP_ANTHROPIC_STRONG_INPUT_PRICE: ${AICP_ANTHROPIC_STRONG_INPUT_PRICE:-}
+      AICP_ANTHROPIC_STRONG_OUTPUT_PRICE: ${AICP_ANTHROPIC_STRONG_OUTPUT_PRICE:-}
       OTEL_SERVICE_NAME: aicp-litellm
       OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT: no_content
       LITELLM_OTEL_INTEGRATION_ENABLE_METRICS: "true"
@@ -191,6 +206,21 @@ services:
       MEMORY_SERVICE_URL: http://memory-service:8080
       MEMORY_SERVICE_TOKEN_FILE: /run/secrets/memory_service_token
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      CODING_STRONG_MODEL: ${CODING_STRONG_MODEL:-}
+      CODING_STRONG_SECONDARY_MODEL: ${CODING_STRONG_SECONDARY_MODEL:-}
+      CODING_FAST_MODEL: ${CODING_FAST_MODEL:-}
+      ARCHITECTURE_MODEL: ${ARCHITECTURE_MODEL:-}
+      ARCHITECTURE_SECONDARY_MODEL: ${ARCHITECTURE_SECONDARY_MODEL:-}
+      SECURITY_MODEL: ${SECURITY_MODEL:-}
+      SECURITY_SECONDARY_MODEL: ${SECURITY_SECONDARY_MODEL:-}
+      REVIEW_MODEL: ${REVIEW_MODEL:-}
+      REVIEW_SECONDARY_MODEL: ${REVIEW_SECONDARY_MODEL:-}
+      AICP_OPENAI_STRONG_INPUT_PRICE: ${AICP_OPENAI_STRONG_INPUT_PRICE:-}
+      AICP_OPENAI_STRONG_OUTPUT_PRICE: ${AICP_OPENAI_STRONG_OUTPUT_PRICE:-}
+      AICP_OPENAI_FAST_INPUT_PRICE: ${AICP_OPENAI_FAST_INPUT_PRICE:-}
+      AICP_OPENAI_FAST_OUTPUT_PRICE: ${AICP_OPENAI_FAST_OUTPUT_PRICE:-}
+      AICP_ANTHROPIC_STRONG_INPUT_PRICE: ${AICP_ANTHROPIC_STRONG_INPUT_PRICE:-}
+      AICP_ANTHROPIC_STRONG_OUTPUT_PRICE: ${AICP_ANTHROPIC_STRONG_OUTPUT_PRICE:-}
       SEMGREP_SEND_METRICS: "off"
       SEMGREP_ENABLE_VERSION_CHECK: "0"
     secrets: [postgres_password, harness_service_token, litellm_api_key, memory_service_token]
@@ -198,6 +228,7 @@ services:
       - ${ACTIVE_PROJECT_DIR:-./projects/site-lf-solucoes}:/workspace/project
       - ./opencode:/home/dev/.config/opencode:ro
       - harness-opencode-state:/home/dev/.local/share/opencode
+      - scanner-data:/security/trivy:ro
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:8081/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 10s
@@ -219,7 +250,25 @@ services:
       postgres: { condition: service_healthy }
       litellm: { condition: service_healthy }
       memory-service: { condition: service_healthy }
+      scanner-data-updater: { condition: service_completed_successfully }
     networks: [agent-internal, data]
+
+  scanner-data-updater:
+    build:
+      context: .
+      dockerfile: docker/harness/Dockerfile
+      args:
+        OPENCODE_VERSION: ${OPENCODE_VERSION:-1.18.21}
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm@sha256:0557ac14e0d45d02ed563067b82856ca5e7aa3437fa28d98d4350ea9c3d9494a}
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-ec"]
+    command: ["trivy image --cache-dir /security/trivy --download-db-only && node /aicp/scripts/scanner-bundle-manifest.mjs /security/trivy"]
+    volumes: ["scanner-data:/security/trivy"]
+    read_only: true
+    tmpfs: ["/tmp:size=128m,mode=1777"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [provider-egress]
 
   control-gateway:
     image: ${CONTROL_GATEWAY_IMAGE:-nginx:1.31.4-alpine3.24@sha256:db35bfc6b2951e7f8a72db5db120288c127ffaeeb4a6d4b95a26fead017d5913}
@@ -275,3 +324,4 @@ volumes:
   workspace-local-state: {}
   workspace-cache: {}
   harness-opencode-state: {}
+  scanner-data: {}
