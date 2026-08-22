@@ -13,12 +13,57 @@ def _cosine(left, right):
     return dot / (left_norm * right_norm) if left_norm and right_norm else 0.0
 
 
+def _terms(value):
+    return re.findall(r"[A-Za-z0-9_$]+", value.lower())
+
+
+def _bm25(query_terms, chunks, k1=1.2, b=0.75):
+    """Small deterministic BM25 baseline over the already bounded candidate set."""
+    documents = [_terms(f"{chunk.get('symbol') or ''} {chunk['content']}") for chunk in chunks]
+    average_length = sum(map(len, documents)) / max(len(documents), 1)
+    document_frequency = {
+        term: sum(1 for document in documents if term in document)
+        for term in set(query_terms)
+    }
+    scores = {}
+    for chunk, document in zip(chunks, documents):
+        score = 0.0
+        for term in set(query_terms):
+            frequency = document.count(term)
+            if not frequency:
+                continue
+            frequency_in_documents = document_frequency[term]
+            inverse_frequency = math.log(1 + (len(documents) - frequency_in_documents + .5) / (frequency_in_documents + .5))
+            normalizer = frequency + k1 * (1 - b + b * len(document) / max(average_length, 1))
+            score += inverse_frequency * frequency * (k1 + 1) / normalizer
+        scores[chunk["id"]] = score
+    return scores
+
+
+def _retrieval_confidence(query_terms, chunks, exact_symbols, lexical_scores):
+    if not chunks or not query_terms:
+        return 0.0
+    top = max(chunks, key=lambda item: (lexical_scores[item["id"]], item["id"]))
+    top_terms = set(_terms(f"{top.get('symbol') or ''} {top['content']}"))
+    coverage = len(set(query_terms) & top_terms) / len(set(query_terms))
+    ordered = sorted(lexical_scores.values(), reverse=True)
+    dominance = 1.0 if len(ordered) == 1 else max(0.0, (ordered[0] - ordered[1]) / max(ordered[0], .000001))
+    exact = 1.0 if (top.get("symbol") or "").lower() in exact_symbols else 0.0
+    return min(1.0, .62 * coverage + .22 * dominance + .16 * exact)
+
+
+def _memory_relevance(memory, query_terms):
+    memory_terms = set(_terms(f"{memory.canonical_key} {memory.summary}"))
+    return len(set(query_terms) & memory_terms) / max(len(set(query_terms)), 1)
+
+
 class ContextService:
-    def __init__(self, repository, embedder, graph, token_counter=None):
+    def __init__(self, repository, embedder, graph, token_counter=None, semantic_skip_threshold=.82):
         self.repository = repository
         self.embedder = embedder
         self.graph = graph
         self.token_counter = token_counter
+        self.semantic_skip_threshold = semantic_skip_threshold
 
     def index_state(self, repository):
         return self.repository.index_state(repository)
@@ -87,55 +132,65 @@ class ContextService:
         if effective_budget <= 0:
             raise ValueError("context envelope has no available tokens")
         query = payload["query"]
-        query_vector = self.embedder.embed(query)
-        terms = set(re.findall(r"[A-Za-z0-9_$]+", query.lower()))
+        terms = _terms(query)
         exact = {value.lower() for value in payload.get("exact_symbols", [])}
         candidates = []
         chunks = self.repository.retrieve_chunks(payload["repository"], query, sorted(exact))
-        lexical_order = sorted(chunks, key=lambda chunk: (-sum(1 for term in terms if term in f"{chunk.get('symbol') or ''} {chunk['content']}".lower()), chunk["id"]))
-        vector_order = sorted(chunks, key=lambda chunk: (-_cosine(query_vector, chunk.get("embedding")), chunk["id"]))
+        lexical_scores = _bm25(terms, chunks)
+        lexical_order = sorted(chunks, key=lambda chunk: (-lexical_scores[chunk["id"]], chunk["id"]))
         lexical_rank = {item["id"]: rank for rank, item in enumerate(lexical_order, 1)}
+        confidence = _retrieval_confidence(terms, chunks, exact, lexical_scores)
+        vector_skipped = confidence >= float(payload.get("semantic_skip_threshold", self.semantic_skip_threshold))
+        query_vector = None if vector_skipped else self.embedder.embed(query)
+        vector_order = [] if vector_skipped else sorted(chunks, key=lambda chunk: (-_cosine(query_vector, chunk.get("embedding")), chunk["id"]))
         vector_rank = {item["id"]: rank for rank, item in enumerate(vector_order, 1)}
-        graph_rows = self.graph.retrieve(payload["repository"], sorted(exact), sorted(set(payload.get("changed_paths", []))), max_hops=2) if hasattr(self.graph, "retrieve") else []
+        seed_chunks = lexical_order[:10] + vector_order[:10]
+        graph_symbols = exact | {(item.get("symbol") or "").lower() for item in seed_chunks if item.get("symbol")}
+        graph_rows = self.graph.retrieve(payload["repository"], sorted(graph_symbols), sorted(set(payload.get("changed_paths", []))), max_hops=2) if hasattr(self.graph, "retrieve") else []
         graph_distance = {item["path"]: item["distance"] for item in graph_rows}
         changed_paths = set(payload.get("changed_paths", []))
         for chunk in chunks:
             haystack = f"{chunk.get('symbol') or ''} {chunk['content']}".lower()
             exact_score = 1 if (chunk.get("symbol") or "").lower() in exact else 0
-            lexical_score = sum(1 for term in terms if term in haystack)
-            vector_score = _cosine(query_vector, chunk.get("embedding"))
-            reason = "exact-symbol+lexical" if exact_score and lexical_score else "exact-symbol" if exact_score else "lexical" if lexical_score else "vector"
+            lexical_score = lexical_scores[chunk["id"]]
+            vector_score = _cosine(query_vector, chunk.get("embedding")) if query_vector else 0.0
+            reason = "exact-symbol+lexical" if exact_score and lexical_score else "exact-symbol" if exact_score else "lexical" if lexical_score else "vector" if query_vector else "structural"
             rrf_lexical = 61 / (60 + lexical_rank[chunk["id"]])
-            rrf_vector = 61 / (60 + vector_rank[chunk["id"]])
+            rrf_vector = 61 / (60 + vector_rank[chunk["id"]]) if chunk["id"] in vector_rank else 0.0
             symbol_boost = 1.0 if exact_score else 0.0
             distance = graph_distance.get(chunk["path"])
             graph_boost = {0: 1.0, 1: 0.7, 2: 0.4, 3: 0.2}.get(distance, 0.0)
             git_boost = 1.0 if chunk["path"] in changed_paths else 0.0
-            fused_score = .30 * rrf_lexical + .25 * rrf_vector + .25 * symbol_boost + .10 * graph_boost + .10 * git_boost
+            fused_score = .28 * rrf_lexical + .24 * rrf_vector + .20 * symbol_boost + .12 * graph_boost + .08 * git_boost
             category = "exact_symbols" if exact_score else "tests" if re.search(r"(^|/)(test|tests|spec)", chunk["path"], re.I) else "relevant_code"
             candidates.append({
                 **chunk,
                 "reason": reason,
                 "priority": 1 if exact_score else 2 if lexical_score else 5,
                 "score": fused_score, "category": category,
-                "scores": {"lexical_rank": lexical_rank[chunk["id"]], "vector_rank": vector_rank[chunk["id"]], "vector_raw": vector_score, "graph_distance": distance, "git_affinity": git_boost},
+                "scores": {"bm25": lexical_score, "lexical_rank": lexical_rank[chunk["id"]], "vector_rank": vector_rank.get(chunk["id"]), "vector_raw": vector_score, "graph_distance": distance, "git_affinity": git_boost},
                 "provenance": {"path": chunk["path"], "symbol": chunk.get("symbol"), "content_hash": chunk["content_hash"]},
             })
         authority_rank = {"HUMAN": 1, "POLICY": 2, "CI": 3, "SOURCE_CODE": 4, "TOOL": 5, "LLM_INFERENCE": 99}
-        memories = sorted(self.repository.search_active(authorized_scopes), key=lambda item: (authority_rank.get(item.authority, 50), item.scope, item.canonical_key, -item.version))
-        for rank, memory in enumerate(memories, 1):
+        relevant_memories = [
+            (memory, _memory_relevance(memory, terms))
+            for memory in self.repository.search_active(authorized_scopes)
+        ]
+        relevant_memories = [(memory, relevance) for memory, relevance in relevant_memories if relevance > 0]
+        memories = sorted(relevant_memories, key=lambda item: (-item[1], authority_rank.get(item[0].authority, 50), item[0].scope, item[0].canonical_key, -item[0].version))[:20]
+        for rank, (memory, relevance) in enumerate(memories, 1):
             candidates.append({
                 "id": f"memory:{memory.id}", "content": memory.summary,
                 "content_hash": sha256(memory.summary.encode()).hexdigest(),
                 "token_count": max(1, math.ceil(len(memory.summary) / 4)),
-                "reason": "scoped-authoritative-memory", "priority": 4, "score": 61 / (60 + rank), "category": "memory",
-                "scores": {"memory_authority_rank": authority_rank.get(memory.authority, 50), "memory_rank": rank},
+                "reason": "scoped-relevant-authoritative-memory", "priority": 4, "score": .05 * (61 / (60 + rank)) + .03 * relevance, "category": "memory",
+                "scores": {"memory_authority_rank": authority_rank.get(memory.authority, 50), "memory_rank": rank, "memory_relevance": relevance},
                 "provenance": {"memory_id": memory.id, "scope": memory.scope, "authority": memory.authority},
             })
         candidates.sort(key=lambda item: (item["priority"], -item["score"], item["id"]))
         selected, token_count = [], 0
         seen = set()
-        reserves = {"exact_symbols": .25, "relevant_code": .30, "tests": .12, "architecture": .10, "memory": .08, "security": .07, "constraints": .08}
+        reserves = {"exact_symbols": .24, "relevant_code": .30, "tests": .12, "architecture": .10, "memory": .07, "security": .07, "constraints": .10}
         measured = []
         for candidate in candidates:
             content_hash = candidate["content_hash"]
@@ -155,10 +210,10 @@ class ContextService:
             if token_count + candidate["token_count"] <= effective_budget:
                 selected.append(candidate); token_count += candidate["token_count"]
         selected.sort(key=lambda item: (-item["score"], item["id"]))
-        policy = payload.get("retrieval_policy_version", "retrieval-v2")
-        packing = payload.get("packing_policy_version", "packing-v2")
+        policy = payload.get("retrieval_policy_version", "retrieval-v3")
+        packing = payload.get("packing_policy_version", "packing-v3")
         identity = json.dumps({
-            "schema_version": 2, "task_id": payload["task_id"], "repository_id": payload["repository"],
+            "schema_version": 3, "task_id": payload["task_id"], "repository_id": payload["repository"],
             "commit": payload.get("commit"), "query_hash": sha256(query.encode()).hexdigest(), "budget": effective_budget,
             "model_window": model_window, "envelope_reserves": envelope_reserves,
             "retrieval_policy_version": policy, "packing_policy_version": packing,
@@ -169,7 +224,7 @@ class ContextService:
             "artifacts": [(item["id"], item["content_hash"], item["reason"]) for item in selected],
         }, sort_keys=True, separators=(",", ":"))
         return {
-            "schema_version": 2,
+            "schema_version": 3,
             "context_id": "ctx_" + sha256(identity.encode()).hexdigest(),
             "task_id": payload["task_id"],
             "token_count": token_count,
@@ -184,5 +239,5 @@ class ContextService:
             "tokenizer_version": payload.get("tokenizer_version", "1"),
             "index_snapshot": payload.get("index_snapshot") or payload.get("commit"),
             "graph_snapshot": payload.get("graph_snapshot"),
-            "metrics": {"retrieved_candidates": len(candidates), "selected_candidates": len(selected), "candidate_tokens": sum(item["token_count"] for item in measured), "selected_tokens": token_count, "dedup_saved_tokens": sum(item.get("token_count", 0) for item in candidates) - sum(item["token_count"] for item in measured), "graph_hits": len(graph_rows), "memory_hits": len(memories)},
+            "metrics": {"retrieved_candidates": len(candidates), "selected_candidates": len(selected), "candidate_tokens": sum(item["token_count"] for item in measured), "selected_tokens": token_count, "dedup_saved_tokens": sum(item.get("token_count", 0) for item in candidates) - sum(item["token_count"] for item in measured), "graph_hits": len(graph_rows), "memory_hits": len(memories), "retrieval_confidence": confidence, "vector_skipped": vector_skipped},
         }

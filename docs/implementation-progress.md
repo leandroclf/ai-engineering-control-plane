@@ -19,6 +19,7 @@
 | `feat/ephemeral-worker-manager` | IMPLEMENTED | lifecycle/cross-run/revocation unit + Docker smoke | Deployment do manager deve permanecer fora da trust boundary do agente |
 | `feat/polyglot-context-parsers` | IMPLEMENTED | JS/TS/Java/Python/Go symbol/import tests | Parsers sem dependências externas priorizam fatos sintáticos deliberadamente conservadores |
 | `feat/graph-retrieval-v2` | IMPLEMENTED | hop real, multi-seed e relation allowlist PASS | Relações semânticas continuam limitadas às que possuem fonte determinística |
+| `feat/context-compiler-v3` | IMPLEMENTED | BM25, confiança determinística, vector condicional, memória relevante e packing token-aware | Threshold deve ser calibrado pelo benchmark pareado |
 
 ## Metrics
 
