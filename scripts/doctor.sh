@@ -17,4 +17,8 @@ check litellm curl -fsS http://127.0.0.1:4000/health/readiness
 check memory docker compose exec -T memory-service python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"
 check opencode docker compose exec -T workspace opencode --version
 check harness curl -fsS http://127.0.0.1:${HARNESS_PORT:-18081}/health
+check non-root docker compose exec -T workspace sh -ec 'test "$(id -u)" -ne 0'
+check no-docker-socket docker compose exec -T workspace sh -ec 'test ! -S /var/run/docker.sock'
+check no-provider-secrets docker compose exec -T workspace sh -ec 'test -z "${OPENAI_API_KEY:-}" && test -z "${ANTHROPIC_API_KEY:-}" && test -z "${GOOGLE_API_KEY:-}"'
+check root-read-only docker compose exec -T workspace sh -ec 'touch /etc/aicp-write-test >/dev/null 2>&1 && exit 1 || exit 0'
 exit "$fail"

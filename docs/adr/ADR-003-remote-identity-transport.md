@@ -16,7 +16,7 @@ the other capability.
 
 - Remote access uses TLS 1.2 or 1.3 with mandatory client certificates over a
   private network or approved VPN. Direct public exposure is prohibited.
-- The gateway is the only remotely bound service and joins only the `frontend`
+- The gateway is the only remotely bound service and joins only the `agent-internal`
   network. PostgreSQL, Redis and Neo4j remain unpublished on `data`.
 - A unique client certificate identifies each workload or user. Shared client
   certificates are allowed only in the local Host B acceptance fixture.

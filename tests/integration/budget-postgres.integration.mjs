@@ -1,0 +1,54 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import pg from "pg";
+import { PostgresBudgetStore } from "../../harness/src/budget/postgres-budget-store.mjs";
+
+const { Pool } = pg;
+test("two concurrent connections cannot reserve the last call twice", async () => {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4 });
+  const key = `budget-it-${Date.now()}-${Math.random()}`;
+  try {
+    const task = await pool.query("INSERT INTO control.tasks(idempotency_key,workflow_version) VALUES($1,1) RETURNING id", [key]);
+    const taskId = task.rows[0].id;
+    const store = new PostgresBudgetStore(pool);
+    await store.ensure(taskId, { maxCalls: 1, maxInputTokens: 100, maxOutputTokens: 100, maxCostUsd: 1, maxIterations: 1 });
+    const attempts = await Promise.allSettled(["a", "b"].map((suffix) => store.reserve({ taskId, stage: "implement", estimatedUsage: { calls: 1 }, idempotencyKey: `${key}:${suffix}` })));
+    assert.equal(attempts.filter((attempt) => attempt.status === "fulfilled").length, 1);
+    assert.equal(attempts.filter((attempt) => attempt.status === "rejected" && attempt.reason.name === "BudgetExceededError").length, 1);
+    const budget = await store.get(taskId);
+    assert.equal(budget.reserved.calls, 1);
+    await pool.query("DELETE FROM control.tasks WHERE id=$1", [taskId]);
+  } finally { await pool.end(); }
+});
+
+test("reservation lifecycle is idempotent and reconciles actual usage", async () => {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 2 });
+  const key = `budget-lifecycle-${Date.now()}-${Math.random()}`;
+  try {
+    const task = await pool.query("INSERT INTO control.tasks(idempotency_key,workflow_version) VALUES($1,1) RETURNING id", [key]);
+    const taskId = task.rows[0].id;
+    const store = new PostgresBudgetStore(pool);
+    await store.ensure(taskId, { maxCalls: 5, maxInputTokens: 1000, maxOutputTokens: 1000, maxCostUsd: 5, maxIterations: 2 });
+    const reserved = await store.reserve({ taskId, stage: "discover", estimatedUsage: { calls: 1, inputTokens: 100, outputTokens: 50, costUsd: 1 }, idempotencyKey: `${key}:same` });
+    const replay = await store.reserve({ taskId, stage: "discover", estimatedUsage: { calls: 1 }, idempotencyKey: `${key}:same` });
+    assert.equal(replay.id, reserved.id);
+    assert.equal(replay.idempotentReplay, true);
+    await store.commit(reserved.id, { inputTokens: 40, outputTokens: 10, costUsd: 0.25 });
+    let budget = await store.get(taskId);
+    assert.deepEqual({ calls: budget.used.calls, input: budget.used.inputTokens, output: budget.used.outputTokens, cost: budget.used.costUsd }, { calls: 1, input: 40, output: 10, cost: 0.25 });
+    assert.equal(budget.reserved.calls, 0);
+    const released = await store.reserve({ taskId, stage: "plan", estimatedUsage: { calls: 1, inputTokens: 10 }, idempotencyKey: `${key}:release` });
+    await store.release(released.id);
+    budget = await store.get(taskId);
+    assert.equal(budget.reserved.calls, 0);
+    await store.reserve({ taskId, stage: "plan", estimatedUsage: { calls: 1 }, idempotencyKey: `${key}:stale`, ttlSeconds: -1 });
+    assert.equal(await store.expireStale(), 1);
+    await store.consumeIteration(taskId, null);
+    await store.consumeIteration(taskId, null);
+    await assert.rejects(store.consumeIteration(taskId, null), (error) => error.name === "BudgetExceededError");
+    await store.cancel(taskId);
+    await assert.rejects(store.reserve({ taskId, stage: "implement", estimatedUsage: { calls: 1 }, idempotencyKey: `${key}:cancelled` }), (error) => error.name === "BudgetExceededError");
+    assert.ok((await store.events(taskId)).length >= 8);
+    await pool.query("DELETE FROM control.tasks WHERE id=$1", [taskId]);
+  } finally { await pool.end(); }
+});

@@ -6,7 +6,7 @@ Control Plane state restored from canonical PostgreSQL/Git sources.
 ## Evidence
 
 - gateway ran as non-root with read-only filesystem, all capabilities dropped
-  and only the `frontend` network;
+  and only the isolated `agent-internal` network;
 - connection without a client certificate was rejected during mTLS handling;
 - an accepted Host B certificate with an invalid bearer token returned `401`;
 - an accepted identity requesting `PROJECT:host-b-denied` returned `403`;

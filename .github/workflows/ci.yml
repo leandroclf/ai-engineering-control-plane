@@ -9,6 +9,16 @@ permissions:
   contents: read
 
 jobs:
+  architecture-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run test:architecture
+
   contracts:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -39,6 +49,28 @@ jobs:
             .aicp/security/*.json
           if-no-files-found: error
           retention-days: 14
+
+  control-plane-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: aicp, POSTGRES_PASSWORD: integration, POSTGRES_DB: aicp_memory }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U aicp -d aicp_memory"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://aicp:integration@127.0.0.1:5432/aicp_memory
+      PGPASSWORD: integration
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: for migration in memory-service/migrations/*.sql; do psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"; done
+      - run: npm run test:integration
 
   security-scanners:
     runs-on: ubuntu-latest
@@ -86,3 +118,15 @@ jobs:
           path: .aicp/ci
           if-no-files-found: error
           retention-days: 14
+
+  benchmark-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run evaluate:baseline
+      - run: npm run validate:benchmark
+      - run: jq -e '.metrics.taskCount > 0 and .baseline.status == "observation"' .aicp/evaluations/baseline.report.json

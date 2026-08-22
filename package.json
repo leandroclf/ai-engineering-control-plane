@@ -6,13 +6,16 @@
   "scripts": {
     "test": "node --test tests/unit/*.test.mjs",
     "test:python": "PYTHONPATH=memory-service/src python3 -m unittest discover -s tests/unit -p '*_test.py'",
+    "test:integration": "node --test tests/integration/*.integration.mjs",
     "test:acceptance": "bash tests/acceptance/config_test.sh && bash tests/acceptance/harness_test.sh && bash tests/acceptance/backup_contract_test.sh",
     "harness": "node harness/src/cli/run-workflow.mjs",
     "smoke:fallback": "bash scripts/fallback-smoke.sh",
     "evaluate:baseline": "node observability/evaluation/run-baseline.mjs",
+    "validate:benchmark": "node observability/evaluation/validate-paired-benchmark.mjs",
     "validate:suppressions": "node harness/src/cli/validate-suppressions.mjs",
     "test:security": "bash tests/security/abuse_test.sh",
     "ci:contracts": "bash scripts/ci-contract.sh",
+    "test:architecture": "node scripts/architecture-contracts.mjs",
     "validate:project": "node harness/src/cli/validate-project.mjs",
     "validate": "npm test && npm run test:python && npm run validate:suppressions && npm run test:security && npm run test:acceptance"
   },

@@ -11,7 +11,7 @@ import urllib.error
 import urllib.request
 
 base = "http://127.0.0.1:8080"
-token = os.environ["MEMORY_SERVICE_TOKEN"]
+token = os.environ.get("MEMORY_SERVICE_TOKEN") or open("/run/secrets/memory_service_token", encoding="utf-8").read()
 
 def call(method, path, body=None):
     request = urllib.request.Request(

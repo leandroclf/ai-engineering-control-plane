@@ -5,6 +5,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 mkdir -p .aicp/ci
 npm run validate
+npm run test:architecture > .aicp/ci/architecture-contracts.json
 npm run evaluate:baseline > .aicp/ci/evaluation.stdout.json
 
 for schema in harness/schemas/*.json; do

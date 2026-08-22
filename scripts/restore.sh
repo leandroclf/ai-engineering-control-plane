@@ -30,13 +30,23 @@ test "$current_salt" = "$LITELLM_SALT_KEY" || {
   exit 1
 }
 
-docker compose stop workspace memory-service litellm >/dev/null
+docker compose stop control-gateway workspace harness memory-service litellm >/dev/null
 docker compose up -d --wait postgres
 for database in aicp_memory litellm; do
   docker compose exec -T postgres pg_restore --username aicp --dbname "$database" \
     --clean --if-exists --no-owner < "$staging/$database.dump"
 done
-docker compose up -d --wait redis neo4j otel-collector litellm memory-service workspace
+opencode_restore="$staging/opencode.restore"
+mkdir -p "$opencode_restore"
+tar -xzf "$staging/opencode-config.tar.gz" -C "$opencode_restore"
+test -f "$opencode_restore/opencode.json" || { echo 'invalid OpenCode configuration backup' >&2; exit 1; }
+opencode_previous=".aicp/opencode-before-restore-$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -p .aicp
+mv opencode "$opencode_previous"
+mkdir opencode
+cp -a "$opencode_restore/." opencode/
+printf 'previous OpenCode configuration preserved at %s\n' "$opencode_previous"
+docker compose up -d --wait redis neo4j otel-collector litellm memory-service workspace harness control-gateway
 if test -n "$repository_path"; then
   ./scripts/index.sh "$repository_path" "$repository_id" --rebuild
 fi

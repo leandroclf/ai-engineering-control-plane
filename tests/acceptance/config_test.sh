@@ -113,7 +113,7 @@ fi
 rm -f "$observability_env"
 
 remote_json="$(docker compose --env-file versions.env -f compose.yaml -f compose/remote.yaml config --format json)"
-jq -e '.services["remote-gateway"].networks | has("frontend") and (has("data") | not)' <<<"$remote_json" >/dev/null
+jq -e '.services["remote-gateway"].networks | has("agent-internal") and (has("data") | not)' <<<"$remote_json" >/dev/null
 jq -e '.services["remote-gateway"].read_only == true' <<<"$remote_json" >/dev/null
 jq -e '.services["remote-gateway"].cap_drop == ["ALL"]' <<<"$remote_json" >/dev/null
 jq -e '.services["remote-gateway"].user != "0:0"' <<<"$remote_json" >/dev/null
@@ -124,6 +124,10 @@ rg -q 'ssl_verify_client on' remote/nginx.conf
 rg -q 'proxy_pass http://memory-service:8080/' remote/nginx.conf
 jq -e '[.services.workspace.volumes[] | select(.target == "/home/dev/.local/share/opencode")][0].type == "volume"' <<<"$compose_json" >/dev/null
 jq -e '[.services.workspace.volumes[] | select(.target == "/home/dev/.local/state")][0].type == "volume"' <<<"$compose_json" >/dev/null
+jq -e '.networks["agent-internal"].internal == true' <<<"$compose_json" >/dev/null
+jq -e '.services.workspace.read_only == true and .services.workspace.pids_limit == 512' <<<"$compose_json" >/dev/null
+jq -e '.services.harness.read_only == true and .services.harness.pids_limit == 512' <<<"$compose_json" >/dev/null
+jq -e '(.services.workspace.networks | has("provider-egress") | not) and (.services.harness.networks | has("provider-egress") | not)' <<<"$compose_json" >/dev/null
 
 workspace_environment="$(jq -r '.services.workspace.environment | keys[]' <<<"$compose_json")"
 if printf '%s\n' "$workspace_environment" | rg '^(OPENAI|ANTHROPIC|GEMINI)_' ; then

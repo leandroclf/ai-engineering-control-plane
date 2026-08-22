@@ -45,4 +45,24 @@ set_if_placeholder NEO4J_AUTH "neo4j/$(openssl rand -hex 24)"
 set_if_placeholder MEMORY_SERVICE_TOKEN "$(openssl rand -hex 32)"
 
 chmod 600 "$runtime_file"
+if test "$runtime_file" = ".env.runtime"; then
+  mkdir -p secrets
+  chmod 700 secrets
+  sync_secret() {
+    local variable="$1" target="$2" value
+    value="$(awk -F= -v key="$variable" '$1 == key { sub(/^[^=]*=/, ""); print; exit }' "$runtime_file")"
+    printf '%s' "$value" > "secrets/$target"
+    chmod 600 "secrets/$target"
+  }
+  sync_secret LITELLM_MASTER_KEY litellm_master_key
+  sync_secret LITELLM_SALT_KEY litellm_salt_key
+  sync_secret LITELLM_API_KEY litellm_api_key
+  sync_secret MEMORY_SERVICE_TOKEN memory_service_token
+  sync_secret NEO4J_AUTH neo4j_auth
+  sync_secret OPENAI_API_KEY openai_api_key
+  sync_secret ANTHROPIC_API_KEY anthropic_api_key
+  sync_secret GEMINI_API_KEY gemini_api_key
+  # Neo4j reads *_FILE after dropping privileges. The parent directory remains 0700.
+  chmod 644 secrets/neo4j_auth
+fi
 echo '[PASS] local runtime defaults configured without changing provider credentials'

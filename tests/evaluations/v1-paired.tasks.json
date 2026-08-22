@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "aicp-v1-paired-20",
+  "repository": "ai-engineering-control-plane",
+  "baseCommit": "28b00ac8a185b527ad9a921a698fc4c6a103e6d3",
+  "protocol": { "design": "paired", "order": "alternating-randomized", "baseline": "opencode", "treatment": "aicp", "sameModelAlias": "coding-strong" },
+  "tasks": [
+    { "taskId": "bench-001", "type": "bug", "description": "Reject an invalid workflow transition", "acceptanceTests": ["unit"], "hiddenTests": ["transition invariant"], "expectedScope": ["harness/src/workflow"], "difficulty": "small", "order": ["treatment", "baseline"] },
+    { "taskId": "bench-002", "type": "bug", "description": "Preserve budget consumption after resume", "acceptanceTests": ["integration"], "hiddenTests": ["resume ledger"], "expectedScope": ["harness/src/budget"], "difficulty": "medium", "order": ["baseline", "treatment"] },
+    { "taskId": "bench-003", "type": "bug", "description": "Classify scanner crash as error", "acceptanceTests": ["unit"], "hiddenTests": ["exit code 2"], "expectedScope": ["harness/src/gates"], "difficulty": "small", "order": ["treatment", "baseline"] },
+    { "taskId": "bench-004", "type": "bug", "description": "Prevent project path traversal", "acceptanceTests": ["unit", "security"], "hiddenTests": ["absolute path"], "expectedScope": ["harness/src/cli"], "difficulty": "small", "order": ["baseline", "treatment"] },
+    { "taskId": "bench-005", "type": "bug", "description": "Expire a stale reservation", "acceptanceTests": ["integration"], "hiddenTests": ["reserved balance returned"], "expectedScope": ["harness/src/budget"], "difficulty": "medium", "order": ["treatment", "baseline"] },
+    { "taskId": "bench-006", "type": "bug", "description": "Keep context identity deterministic", "acceptanceTests": ["python-unit"], "hiddenTests": ["canonical JSON"], "expectedScope": ["memory-service/src/aicp_memory/context_service.py"], "difficulty": "medium", "order": ["baseline", "treatment"] },
+    { "taskId": "bench-007", "type": "bug", "description": "Invalidate memory when a source is deleted", "acceptanceTests": ["python-unit"], "hiddenTests": ["event emitted"], "expectedScope": ["memory-service/src/aicp_memory"], "difficulty": "medium", "order": ["treatment", "baseline"] },
+    { "taskId": "bench-008", "type": "bug", "description": "Keep symbol identity stable after line shifts", "acceptanceTests": ["unit"], "hiddenTests": ["same semantic ID"], "expectedScope": ["context/indexer"], "difficulty": "medium", "order": ["baseline", "treatment"] },
+    { "taskId": "bench-009", "type": "feature", "description": "Add a budget event query", "acceptanceTests": ["integration"], "hiddenTests": ["ordered ledger"], "expectedScope": ["harness/src/budget"], "difficulty": "small", "order": ["treatment", "baseline"] },
+    { "taskId": "bench-010", "type": "feature", "description": "Add a run cancellation endpoint", "acceptanceTests": ["unit"], "hiddenTests": ["idempotent cancel"], "expectedScope": ["harness/src/runtime"], "difficulty": "medium", "order": ["baseline", "treatment"] },
+    { "taskId": "bench-011", "type": "feature", "description": "Detect a Gradle project", "acceptanceTests": ["unit"], "hiddenTests": ["wrapper preferred"], "expectedScope": ["harness/src/gates"], "difficulty": "small", "order": ["treatment", "baseline"] },
+    { "taskId": "bench-012", "type": "feature", "description": "Add graph neighborhood retrieval", "acceptanceTests": ["python-unit"], "hiddenTests": ["distance boost"], "expectedScope": ["memory-service/src/aicp_memory"], "difficulty": "medium", "order": ["baseline", "treatment"] },
+    { "taskId": "bench-013", "type": "feature", "description": "Emit real stage duration telemetry", "acceptanceTests": ["unit"], "hiddenTests": ["positive duration"], "expectedScope": ["harness/src/telemetry"], "difficulty": "medium", "order": ["treatment", "baseline"] },
+    { "taskId": "bench-014", "type": "refactor", "description": "Extract scanner gate execution", "acceptanceTests": ["unit"], "hiddenTests": ["normalized finding"], "expectedScope": ["harness/src/gates", "harness/src/scanners"], "difficulty": "medium", "order": ["baseline", "treatment"] },
+    { "taskId": "bench-015", "type": "refactor", "description": "Centralize project capabilities", "acceptanceTests": ["unit"], "hiddenTests": ["all workflow gates resolve"], "expectedScope": ["harness/src/gates"], "difficulty": "medium", "order": ["treatment", "baseline"] },
+    { "taskId": "bench-016", "type": "refactor", "description": "Make Python the context authority", "acceptanceTests": ["python-unit"], "hiddenTests": ["schema v2"], "expectedScope": ["memory-service/src/aicp_memory"], "difficulty": "medium", "order": ["baseline", "treatment"] },
+    { "taskId": "bench-017", "type": "refactor", "description": "Separate local control ingress", "acceptanceTests": ["acceptance"], "hiddenTests": ["harness has no edge network"], "expectedScope": ["compose.yaml", "remote"], "difficulty": "medium", "order": ["treatment", "baseline"] },
+    { "taskId": "bench-018", "type": "security", "description": "Deny OpenCode capabilities by default", "acceptanceTests": ["security"], "hiddenTests": ["reviewers cannot edit"], "expectedScope": ["opencode"], "difficulty": "small", "order": ["baseline", "treatment"] },
+    { "taskId": "bench-019", "type": "security", "description": "Remove provider credentials from executors", "acceptanceTests": ["acceptance"], "hiddenTests": ["secret attestation"], "expectedScope": ["compose.yaml", "docker"], "difficulty": "medium", "order": ["treatment", "baseline"] },
+    { "taskId": "bench-020", "type": "security", "description": "Reject LLM inference promotion as policy", "acceptanceTests": ["python-unit"], "hiddenTests": ["authority invariant"], "expectedScope": ["memory-service/src/aicp_memory"], "difficulty": "small", "order": ["baseline", "treatment"] }
+  ]
+}

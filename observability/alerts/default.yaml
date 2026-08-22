@@ -1,0 +1,8 @@
+version: alerts-v1
+alerts:
+  - { name: critical-finding, metric: aicp_findings_total, condition: 'severity="critical" > 0', window: 1m }
+  - { name: budget-rejections, metric: aicp_budget_rejections_total, condition: rate_above_baseline, window: 15m }
+  - { name: task-cost-regression, metric: aicp_task_cost_usd, condition: p95_above_2x_rolling_baseline, window: 30m }
+  - { name: repair-loop-regression, metric: aicp_repair_loops_total, condition: p95 > 2, window: 15m }
+  - { name: model-fallback-rate, metric: aicp_fallbacks_total, condition: ratio > 0.10, window: 15m }
+  - { name: llm-error-rate, metric: aicp_agent_calls_total, condition: error_ratio > 0.05, window: 10m }

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "control-plane-v1",
+  "title": "AI Engineering Control Plane v1",
+  "sections": {
+    "aiCost": ["aicp_task_cost_usd", "aicp_task_input_tokens", "aicp_task_output_tokens"],
+    "engineeringEfficiency": ["aicp_task_duration_seconds", "aicp_first_pass_total", "aicp_repair_loops_total"],
+    "contextEfficiency": ["aicp_context_tokens", "aicp_context_utilization_ratio", "aicp_context_reuse_total"],
+    "budget": ["aicp_budget_rejections_total", "aicp_budget_utilization_ratio"],
+    "qualityAndSecurity": ["aicp_gate_failures_total", "aicp_findings_total"],
+    "platform": ["aicp_agent_calls_total", "aicp_agent_call_duration_seconds", "aicp_fallbacks_total"]
+  },
+  "cardinalityPolicy": "task_id, run_id and context_id belong only in traces/logs"
+}
