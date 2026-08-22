@@ -24,6 +24,9 @@ required=(
   scripts/backup.sh
   scripts/restore.sh
   scripts/migrate.sh
+  scripts/configure-local.sh
+  scripts/provision-litellm-key.sh
+  docker/litellm/entrypoint.sh
   README.md
   opencode/agents/architect.md
   opencode/agents/implementer.md
@@ -45,9 +48,15 @@ for path in "${required[@]}"; do
   }
 done
 
+compose_json="$(docker compose --env-file versions.env config --format json)"
 docker compose --env-file versions.env config --quiet
+jq -e '.services.litellm.healthcheck.test | length > 0' <<<"$compose_json" >/dev/null
+jq -e '[.services.litellm.secrets[].source] | index("postgres_password") != null' <<<"$compose_json" >/dev/null
+jq -e '.services.workspace.depends_on.litellm.condition == "service_healthy"' <<<"$compose_json" >/dev/null
+jq -e '[.services.workspace.volumes[] | select(.target == "/home/dev/.local/share/opencode")][0].type == "volume"' <<<"$compose_json" >/dev/null
+jq -e '[.services.workspace.volumes[] | select(.target == "/home/dev/.local/state")][0].type == "volume"' <<<"$compose_json" >/dev/null
 
-workspace_environment="$(docker compose --env-file versions.env config --format json | jq -r '.services.workspace.environment | keys[]')"
+workspace_environment="$(jq -r '.services.workspace.environment | keys[]' <<<"$compose_json")"
 if printf '%s\n' "$workspace_environment" | rg '^(OPENAI|ANTHROPIC|GEMINI)_' ; then
   echo 'provider credentials must not be present in the workspace environment' >&2
   exit 1
@@ -63,4 +72,28 @@ if rg -n 'git push.*allow' opencode; then
   exit 1
 fi
 
+rg -q 'smoke_alias coding-fast' scripts/smoke.sh
+rg -q 'smoke_alias coding-strong' scripts/smoke.sh
+rg -q -- '--no-deps --force-recreate workspace' scripts/bootstrap.sh
+
 echo '[PASS] configuration contract'
+
+temporary_directory="$(mktemp -d)"
+trap 'rm -rf "$temporary_directory"' EXIT
+cp .env.example "$temporary_directory/runtime.env"
+./scripts/configure-local.sh --file "$temporary_directory/runtime.env"
+
+set -a
+source "$temporary_directory/runtime.env"
+set +a
+test "$CODING_STRONG_MODEL" = "openai/gpt-5.3-codex"
+test "$CODING_FAST_MODEL" = "openai/gpt-5.4-mini"
+test "$ARCHITECTURE_MODEL" = "openai/gpt-5.4"
+test "$SECURITY_MODEL" = "openai/gpt-5.4"
+test "$REVIEW_MODEL" = "openai/gpt-5.4"
+test "$EMBEDDING_MODEL" = "openai/text-embedding-3-small"
+[[ "$LITELLM_MASTER_KEY" != *change-me* ]]
+[[ "$LITELLM_SALT_KEY" != *change-me* ]]
+[[ "$NEO4J_AUTH" != *change-me* ]]
+rg -q '^  database_url: os\.environ/DATABASE_URL$' litellm/config.template.yaml
+echo '[PASS] local runtime configuration'

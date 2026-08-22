@@ -55,10 +55,19 @@ services:
     env_file:
       - path: .env.runtime
         required: false
+    entrypoint: ["/bin/sh", "/aicp/entrypoint.sh"]
     command: ["--config", "/app/config.yaml", "--port", "4000"]
+    secrets: [postgres_password]
     volumes:
       - ./litellm/generated/config.yaml:/app/config.yaml:ro
+      - ./docker/litellm/entrypoint.sh:/aicp/entrypoint.sh:ro
     ports: ["127.0.0.1:4000:4000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/readiness')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -98,13 +107,14 @@ services:
     volumes:
       - ${PROJECTS_DIR:-./projects}:/workspace/projects
       - ./opencode:/home/dev/.config/opencode:ro
-      - ${AICP_STATE_DIR:-./state}/opencode:/home/dev/.local/share/opencode
-      - ${AICP_STATE_DIR:-./state}/cache:/home/dev/.cache
+      - opencode-state:/home/dev/.local/share/opencode
+      - workspace-local-state:/home/dev/.local/state
+      - workspace-cache:/home/dev/.cache
     command: ["sleep", "infinity"]
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
     depends_on:
-      litellm: { condition: service_started }
+      litellm: { condition: service_healthy }
       memory-service: { condition: service_healthy }
     networks: [frontend]
 
@@ -118,3 +128,8 @@ secrets:
     file: ./secrets/postgres_password
   redis_password:
     file: ./secrets/redis_password
+
+volumes:
+  opencode-state: {}
+  workspace-local-state: {}
+  workspace-cache: {}

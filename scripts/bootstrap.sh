@@ -31,6 +31,11 @@ docker compose config --quiet
 docker compose build
 docker compose up -d postgres redis neo4j
 ./scripts/migrate.sh
-docker compose up -d litellm memory-service workspace
+docker compose up -d --wait litellm memory-service
+./scripts/provision-litellm-key.sh
+set -a
+source .env.runtime
+set +a
+docker compose up -d --no-deps --force-recreate workspace
 ./scripts/doctor.sh
 ./scripts/smoke.sh
