@@ -13,11 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
+      - name: Install CI contract tools
+        run: sudo apt-get update && sudo apt-get install --yes ripgrep
       - run: npm ci
       - run: npm run ci:contracts
       - name: Build owned images
@@ -28,7 +30,7 @@ jobs:
           docker compose build memory-service workspace harness
       - name: Upload normalized contract evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aicp-contract-evidence
           path: |
@@ -42,8 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -78,7 +80,7 @@ jobs:
         run: node harness/src/cli/evaluate-scanner-reports.mjs
       - name: Upload scanner evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aicp-scanner-evidence
           path: .aicp/ci
