@@ -132,6 +132,8 @@ fi
 rg -q 'smoke_alias coding-fast' scripts/smoke.sh
 rg -q 'smoke_alias coding-strong' scripts/smoke.sh
 rg -q -- '--no-deps --force-recreate workspace' scripts/bootstrap.sh
+rg -q 'getent group "\$\{DEV_GID\}"' docker/harness/Dockerfile
+rg -q 'getent passwd "\$\{DEV_UID\}"' docker/harness/Dockerfile
 
 echo '[PASS] configuration contract'
 
