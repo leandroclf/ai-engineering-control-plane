@@ -41,7 +41,7 @@ export class GitIndexer {
       const match = line.match(/^\d+ ([a-f0-9]+) \d+\t(.+)$/);
       if (!match) throw new Error(`unsupported git index entry: ${line}`);
       return { oid: match[1], path: match[2] };
-    });
+    }).filter((file) => !this.parser.supports || this.parser.supports(file.path));
     const previous = await this.store.load(repositoryId);
     const plan = planIncrementalIndex(previous, files, { parserVersion, schemaVersion });
     const records = new Map();

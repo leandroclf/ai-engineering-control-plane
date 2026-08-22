@@ -97,4 +97,11 @@ test "$EMBEDDING_MODEL" = "openai/text-embedding-3-small"
 [[ "$NEO4J_AUTH" != *change-me* ]]
 [[ "$MEMORY_SERVICE_TOKEN" != *change-me* ]]
 rg -q '^  database_url: os\.environ/DATABASE_URL$' litellm/config.template.yaml
+rg -q '^  - model_name: embeddings$' litellm/config.template.yaml
+rg -q '"embeddings"' scripts/provision-litellm-key.sh
+if rg -n 'CREATE CONSTRAINT symbol_identity' graph/cypher; then
+  echo 'obsolete symbol-name uniqueness must not be recreated' >&2
+  exit 1
+fi
+rg -q 'CREATE CONSTRAINT symbol_id' graph/cypher/003_symbol_identity.cypher
 echo '[PASS] local runtime configuration'

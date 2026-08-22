@@ -29,7 +29,7 @@ source versions.env
 set +a
 docker compose config --quiet
 docker compose build
-docker compose up -d postgres redis neo4j
+docker compose up -d --wait postgres redis neo4j
 ./scripts/migrate.sh
 docker compose up -d --wait litellm memory-service
 ./scripts/provision-litellm-key.sh

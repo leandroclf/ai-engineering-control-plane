@@ -8,6 +8,10 @@ import { createHash } from "node:crypto";
 const exec = promisify(execFile);
 
 export class JavaScriptParser {
+  supports(path) {
+    return /\.(?:cjs|js|mjs)$/.test(path);
+  }
+
   async parse({ path, absolutePath, oid }) {
     const content = await readFile(absolutePath, "utf8");
     let syntaxPath = absolutePath;

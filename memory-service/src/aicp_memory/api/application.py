@@ -13,9 +13,10 @@ class Response:
 
 
 class MemoryApplication:
-    def __init__(self, ledger, authorizer):
+    def __init__(self, ledger, authorizer, context_service=None):
         self.ledger = ledger
         self.authorizer = authorizer
+        self.context_service = context_service
 
     def handle(self, method, target, headers, raw_body):
         try:
@@ -26,6 +27,10 @@ class MemoryApplication:
                 return self._create(principal, payload)
             if method == "GET" and parsed.path == "/v1/memories/search":
                 return self._search(principal, parse_qs(parsed.query))
+            if method == "POST" and parsed.path == "/v1/context:compile":
+                return self._compile_context(principal, payload)
+            if parsed.path.startswith("/v1/index/repositories/"):
+                return self._index_route(method, parsed.path.removeprefix("/v1/index/repositories/"), principal, payload)
             if parsed.path.startswith("/v1/memories/"):
                 return self._memory_route(method, parsed.path.removeprefix("/v1/memories/"), principal, payload)
             return Response(404, {"error": "NOT_FOUND"})
@@ -35,6 +40,8 @@ class MemoryApplication:
             return Response(403, {"error": "FORBIDDEN", "message": str(error)})
         except (KeyError, ValueError, SensitiveDataError, json.JSONDecodeError) as error:
             return Response(400, {"error": "INVALID_REQUEST", "message": str(error)})
+        except RuntimeError:
+            return Response(503, {"error": "DEPENDENCY_UNAVAILABLE"})
 
     def _create(self, principal, payload):
         scope = payload["scope"]
@@ -80,3 +87,24 @@ class MemoryApplication:
         else:
             return Response(404, {"error": "NOT_FOUND"})
         return Response(200, memory.to_dict())
+
+    def _index_route(self, method, suffix, principal, payload):
+        repository, separator, operation = suffix.rpartition(":")
+        if not separator:
+            repository = suffix
+            operation = "state"
+        scope = f"REPOSITORY:{repository}"
+        if operation == "state" and method == "GET":
+            principal.require("read", scope)
+            return Response(200, self.context_service.index_state(repository))
+        if operation in {"sync", "rebuild"} and method == "POST":
+            principal.require("index", scope)
+            return Response(200, self.context_service.sync(repository, payload, rebuild=operation == "rebuild"))
+        return Response(404, {"error": "NOT_FOUND"})
+
+    def _compile_context(self, principal, payload):
+        principal.require("compile", f"REPOSITORY:{payload['repository']}")
+        scopes = payload.get("scopes", [])
+        for scope in scopes:
+            principal.require("read", scope)
+        return Response(200, self.context_service.compile(payload, scopes))

@@ -174,3 +174,74 @@ class PostgresMemoryRepository:
                 (list(scopes),),
             ).fetchall()
         return [_memory(row) for row in rows]
+
+    def index_state(self, repository):
+        with self._connect() as connection, connection.cursor() as cursor:
+            rows = cursor.execute(
+                """SELECT path, git_blob_oid AS oid, parser_version, index_schema_version AS schema_version,
+                          indexed_commit AS commit
+                   FROM memory.index_files WHERE repository_id=%s ORDER BY path""",
+                (repository,),
+            ).fetchall()
+        return {"repository": repository, "files": rows}
+
+    def cached_embedding(self, chunk_id, content_hash, model, dimensions):
+        with self._connect() as connection, connection.cursor() as cursor:
+            row = cursor.execute(
+                """SELECT embedding FROM memory.index_chunks
+                   WHERE id=%s AND embedded_content_hash=%s AND embedding_model=%s
+                     AND embedding_dimensions=%s""",
+                (chunk_id, content_hash, model, dimensions),
+            ).fetchone()
+        return row["embedding"] if row else None
+
+    def sync_index(self, repository, payload, rebuild=False):
+        with self._connect() as connection, connection.cursor() as cursor:
+            if rebuild:
+                cursor.execute("DELETE FROM memory.index_chunks WHERE repository_id=%s", (repository,))
+                cursor.execute("DELETE FROM memory.index_symbols WHERE repository_id=%s", (repository,))
+                cursor.execute("DELETE FROM memory.index_files WHERE repository_id=%s", (repository,))
+            paths = sorted(set(payload.get("deleted", [])) | {item["path"] for item in payload.get("files", [])})
+            if paths:
+                cursor.execute("DELETE FROM memory.index_chunks WHERE repository_id=%s AND path=ANY(%s)", (repository, paths))
+                cursor.execute("DELETE FROM memory.index_symbols WHERE repository_id=%s AND path=ANY(%s)", (repository, paths))
+                cursor.execute("DELETE FROM memory.index_files WHERE repository_id=%s AND path=ANY(%s)", (repository, paths))
+            for source_file in payload.get("files", []):
+                cursor.execute(
+                    """INSERT INTO memory.index_files
+                       (repository_id,path,git_blob_oid,parser_version,index_schema_version,indexed_commit)
+                       VALUES (%s,%s,%s,%s,%s,%s)""",
+                    (repository, source_file["path"], source_file["oid"], payload["parser_version"],
+                     payload["schema_version"], payload.get("commit")),
+                )
+                for symbol in source_file.get("symbols", []):
+                    cursor.execute(
+                        """INSERT INTO memory.index_symbols
+                           (repository_id,path,qualified_name,symbol_kind,line_start,line_end,content_hash,parser_version,metadata)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)""",
+                        (repository, source_file["path"], symbol["qualifiedName"], symbol["kind"],
+                         symbol["lineStart"], symbol["lineEnd"], source_file["oid"], payload["parser_version"], "{}"),
+                    )
+                for chunk in source_file.get("chunks", []):
+                    cursor.execute(
+                        """INSERT INTO memory.index_chunks
+                           (id,repository_id,path,symbol,content,content_hash,token_count,embedding,
+                            embedding_model,embedding_dimensions,embedded_content_hash,metadata)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s,%s,%s::jsonb)""",
+                        (chunk["id"], repository, source_file["path"], chunk.get("symbol"), chunk["content"],
+                         chunk["content_hash"], chunk["token_count"], json.dumps(chunk["embedding"]),
+                         chunk["embedding_model"], chunk["embedding_dimensions"], chunk["content_hash"],
+                         json.dumps(chunk.get("provenance") or {})),
+                    )
+
+    def retrieve_chunks(self, repository, query, exact_symbols=None, limit=50):
+        with self._connect() as connection, connection.cursor() as cursor:
+            rows = cursor.execute(
+                """SELECT id,path,symbol,content,content_hash,token_count,embedding
+                   FROM memory.index_chunks WHERE repository_id=%s
+                   ORDER BY CASE WHEN lower(coalesce(symbol, '')) = ANY(%s) THEN 0 ELSE 1 END,
+                            ts_rank(search_document, plainto_tsquery('simple', %s)) DESC, id
+                   LIMIT %s""",
+                (repository, list(exact_symbols or []), query, limit),
+            ).fetchall()
+        return rows

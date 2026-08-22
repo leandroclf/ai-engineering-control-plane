@@ -11,6 +11,7 @@ import { planGraphDelta } from "../../context/indexer/graph-projection.mjs";
 import { EmbeddingCache, hybridRetrieve } from "../../context/retrieval/hybrid-retrieval.mjs";
 import { compileContextPackage } from "../../context/compiler/context-package.mjs";
 import { GovernedContextProvider } from "../../harness/src/agents/governed-context-provider.mjs";
+import { ContextApiClient } from "../../context/client/context-api-client.mjs";
 
 function git(directory, ...args) {
   return execFileSync("git", args, { cwd: directory, encoding: "utf8" }).trim();
@@ -129,4 +130,22 @@ test("harness context provider rejects unauthorized or stale memory", async () =
 
   assert.deepEqual(result.artifacts.map((item) => item.id), ["memory:active"]);
   assert.ok(result.contextId);
+});
+
+test("context API client loads persistent Git state and sends sync delta", async () => {
+  const calls = [];
+  const request = async (path, options = {}) => {
+    calls.push([path, options]);
+    if (!options.method) return { repository: "repo", files: [{ path: "app.js", oid: "1", parser_version: "js-1", schema_version: "1" }] };
+    return { parsed: 1, embedded: 1 };
+  };
+  const client = new ContextApiClient({ baseUrl: "http://memory", token: "internal", request });
+
+  const state = await client.indexState("repo");
+  const result = await client.sync("repo", { files: [{ path: "app.js" }] });
+
+  assert.equal(state.get("app.js").oid, "1");
+  assert.deepEqual(result, { parsed: 1, embedded: 1 });
+  assert.equal(calls[1][1].headers.Authorization, "Bearer internal");
+  assert.equal(calls[1][1].method, "POST");
 });

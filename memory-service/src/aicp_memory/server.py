@@ -4,16 +4,26 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from aicp_memory.api.application import MemoryApplication
 from aicp_memory.auth import Principal, StaticAuthorizer
+from aicp_memory.context_service import ContextService
+from aicp_memory.embedding import LiteLLMEmbedder
+from aicp_memory.graph import Neo4jGraphProjection
 from aicp_memory.repository import PostgresMemoryRepository
 
 
 def build_application():
     token = os.environ["MEMORY_SERVICE_TOKEN"]
     scopes = frozenset(filter(None, os.environ.get("MEMORY_AUTHORIZED_SCOPES", "").split(",")))
-    actions = frozenset({"create", "read", "promote", "invalidate", "supersede"})
+    actions = frozenset({"create", "read", "promote", "invalidate", "supersede", "index", "compile"})
     repository = PostgresMemoryRepository(os.environ["DATABASE_URL"])
     authorizer = StaticAuthorizer({token: Principal("service:workspace", scopes, actions)})
-    return repository, MemoryApplication(repository, authorizer)
+    embedder = LiteLLMEmbedder(
+        os.environ["LITELLM_BASE_URL"], os.environ["LITELLM_API_KEY"],
+        model=os.environ.get("EMBEDDING_ALIAS", "embeddings"),
+        dimensions=int(os.environ.get("EMBEDDING_DIMENSIONS", "1536")),
+    )
+    graph = Neo4jGraphProjection(os.environ["NEO4J_HTTP_URL"], os.environ["NEO4J_AUTH"])
+    context = ContextService(repository, embedder, graph)
+    return repository, MemoryApplication(repository, authorizer, context)
 
 
 class Handler(BaseHTTPRequestHandler):

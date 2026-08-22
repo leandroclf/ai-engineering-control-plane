@@ -82,13 +82,21 @@ services:
       PORT: 8080
       MEMORY_SERVICE_TOKEN: ${MEMORY_SERVICE_TOKEN:-}
       MEMORY_AUTHORIZED_SCOPES: ${MEMORY_AUTHORIZED_SCOPES:-GLOBAL:local,ORGANIZATION:local,SOLUTION:local,PROJECT:local,REPOSITORY:site-lf-solucoes,REPOSITORY:ai-engineering-control-plane,AGENT:opencode,EXECUTION:local}
+      LITELLM_BASE_URL: http://litellm:4000/v1
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-}
+      EMBEDDING_ALIAS: embeddings
+      EMBEDDING_DIMENSIONS: 1536
+      NEO4J_HTTP_URL: http://neo4j:7474
+      NEO4J_AUTH: ${NEO4J_AUTH:-neo4j/change-me-before-start}
     entrypoint: ["/bin/sh", "/aicp/entrypoint.sh"]
     secrets: [postgres_password]
     volumes:
       - ./docker/memory-service/entrypoint.sh:/aicp/entrypoint.sh:ro
+    ports: ["127.0.0.1:${MEMORY_SERVICE_PORT:-18080}:8080"]
     depends_on:
       postgres: { condition: service_healthy }
       neo4j: { condition: service_healthy }
+      litellm: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 10s

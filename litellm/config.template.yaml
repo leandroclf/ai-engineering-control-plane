@@ -19,6 +19,10 @@ model_list:
     litellm_params:
       model: ${REVIEW_MODEL}
       api_key: os.environ/OPENAI_API_KEY
+  - model_name: embeddings
+    litellm_params:
+      model: ${EMBEDDING_MODEL}
+      api_key: os.environ/OPENAI_API_KEY
 router_settings:
   routing_strategy: simple-shuffle
   num_retries: 1
