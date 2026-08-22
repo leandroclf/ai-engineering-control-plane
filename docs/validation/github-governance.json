@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "repository": "leandroclf/ai-engineering-control-plane",
+  "capturedAt": "2026-08-22T21:01:21Z",
+  "rulesetId": 21211393,
+  "name": "main-protected",
+  "enforcement": "active",
+  "target": "refs/heads/main",
+  "bypassActors": 0,
+  "requiredApprovals": 1,
+  "codeOwnerReview": true,
+  "requiredChecks": [
+    "architecture-contracts",
+    "contracts",
+    "control-plane-integration",
+    "mock-provider-e2e",
+    "recovery-drill",
+    "security-scanners",
+    "benchmark-regression",
+    "supply-chain",
+    "image-security"
+  ]
+}

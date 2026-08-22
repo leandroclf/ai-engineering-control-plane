@@ -12,6 +12,8 @@
       { "context": "architecture-contracts" },
       { "context": "contracts" },
       { "context": "control-plane-integration" },
+      { "context": "mock-provider-e2e" },
+      { "context": "recovery-drill" },
       { "context": "security-scanners" },
       { "context": "benchmark-regression" },
       { "context": "supply-chain" },

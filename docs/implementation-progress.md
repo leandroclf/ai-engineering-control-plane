@@ -26,16 +26,17 @@
 | `feat/state-recovery-multihost` | IMPLEMENTED | checksum tamper fail-closed, restore clean-host e tabelas operacionais | Drill completo do ambiente ativo permanece uma operação deliberadamente não destrutiva em CI |
 | `feat/ephemeral-worker-runtime-integration` | IMPLEMENTED | runtime create→evidence→destroy; cleanup em falha; manager deployment-side autenticado | Remote/team exige `AICP_EXECUTION_MODE=ephemeral`; Docker socket não entra no Harness |
 | `feat/aicp-v1-benchmark` | IMPLEMENTED | protocolo 30×2×3 validado; Context v3 real: 90+90 observações | Ledger LLM/humano de 180 runs ainda não medido |
-| `fix/context-packing-quality-regression` | IMPLEMENTED | tokens -1,80%; precisão +1,85 p.p.; vector use -16,67 p.p. | Resultado estrutural não substitui aceitação humana/LLM pareada |
+| `fix/context-packing-quality-regression` | IMPLEMENTED | tokens -2,07%; precisão +1,63 p.p.; vector use -16,67 p.p. | Resultado estrutural não substitui aceitação humana/LLM pareada |
+| `chore/v1-release-contract` | IMPLEMENTED_BLOCKED | 28/30 controles com evidência; ruleset remoto ativo | Benchmark humano/LLM e findings CRITICAL impedem `V1_DEFENSIBLE` |
 
 ## Metrics
 
 | Metric | Before | After |
 |---|---:|---:|
-| Node unit tests | 65 PASS | 66 PASS |
-| Python unit tests | 25 PASS | NOT_EXECUTED nesta etapa |
+| Node unit tests | 65 PASS | 78 PASS |
+| Python unit tests | 25 PASS | 34 PASS |
 | Behavioral OpenAPI create-run cases | 0 | 4 |
-| Versioned required CI checks | 5 | 7 |
+| Versioned required CI checks | 5 | 9 |
 | Physical-attempt reconciliation tests | 0 | 3 |
 | Fontes editáveis de model/routing/pricing | 2 | 1 |
 | Fallback silencioso `strong → fast` | 1 | 0 |
@@ -44,10 +45,10 @@
 | Implementações concretas de `WorkerManager` | 0 | 1 |
 | Linguagens no Parser Registry | 1 | 5 |
 | Graph distance constante/incorreta | 1 | 0 |
-| Protected `main` no GitHub | NOT_MEASURED | NOT_MEASURED |
+| Protected `main` no GitHub | ausente | ruleset ativo, sem bypass, 9 checks |
 
 ## Open risks
 
-- O ruleset está versionado, mas o estado remoto do GitHub deve ser verificado e aplicado sem bypass.
-- Scanning efetivo das imagens será fechado no workstream de CI/supply chain.
+- O benchmark estrutural passou, mas o ledger LLM/humano pareado de 180 runs ainda não foi executado nem aprovado.
+- Findings HIGH/CRITICAL das imagens próprias precisam de remediação ou aceitação humana independente; não foram suprimidos.
 - Providers/gateways que não entregarem telemetria física completa falham fechados quando declararem attempts sem pricing.

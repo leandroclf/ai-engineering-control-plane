@@ -6,22 +6,22 @@
   "baseCommit": "abba46743744c9a32372b5226709505600497e5a",
   "tasks": 30,
   "repetitions": 3,
-  "corpusChunks": 215,
+  "corpusChunks": 219,
   "baseline": {
     "runs": 90,
-    "meanSelectedTokens": 4039.3333333333335,
-    "meanContextPrecision": 0.15484126984126984,
+    "meanSelectedTokens": 4040.866666666667,
+    "meanContextPrecision": 0.15706349206349207,
     "vectorUseRate": 1
   },
   "candidate": {
     "runs": 90,
-    "meanSelectedTokens": 3966.4666666666667,
+    "meanSelectedTokens": 3957.3,
     "meanContextPrecision": 0.17335812335812337,
     "vectorUseRate": 0.8333333333333334
   },
   "delta": {
-    "selectedTokenRatio": 0.9819607195906915,
-    "contextPrecision": 0.018516853516853532,
+    "selectedTokenRatio": 0.97931961790375,
+    "contextPrecision": 0.016294631294631295,
     "vectorUseRate": -0.16666666666666663
   },
   "perTask": [
@@ -38,7 +38,7 @@
       "baselinePrecision": 0.0,
       "candidatePrecision": 0.0,
       "baselineTokens": 4064,
-      "candidateTokens": 4007,
+      "candidateTokens": 3963,
       "vectorSkipped": false
     },
     {
@@ -46,7 +46,7 @@
       "baselinePrecision": 0.25,
       "candidatePrecision": 0.42857142857142855,
       "baselineTokens": 3996,
-      "candidateTokens": 3974,
+      "candidateTokens": 3975,
       "vectorSkipped": false
     },
     {
@@ -76,9 +76,9 @@
     {
       "taskId": "bench-007",
       "baselinePrecision": 0.2,
-      "candidatePrecision": 0.14285714285714285,
+      "candidatePrecision": 0.125,
       "baselineTokens": 4012,
-      "candidateTokens": 3986,
+      "candidateTokens": 3977,
       "vectorSkipped": false
     },
     {
@@ -102,7 +102,7 @@
       "baselinePrecision": 0.0,
       "candidatePrecision": 0.0,
       "baselineTokens": 4006,
-      "candidateTokens": 3995,
+      "candidateTokens": 3890,
       "vectorSkipped": false
     },
     {
@@ -118,7 +118,7 @@
       "baselinePrecision": 0.0,
       "candidatePrecision": 0.0,
       "baselineTokens": 4078,
-      "candidateTokens": 3938,
+      "candidateTokens": 3942,
       "vectorSkipped": false
     },
     {
@@ -150,7 +150,7 @@
       "baselinePrecision": 0.0,
       "candidatePrecision": 0.0,
       "baselineTokens": 3973,
-      "candidateTokens": 3999,
+      "candidateTokens": 3890,
       "vectorSkipped": false
     },
     {
@@ -227,26 +227,26 @@
     },
     {
       "taskId": "bench-026",
-      "baselinePrecision": 0.6,
+      "baselinePrecision": 0.6666666666666666,
       "candidatePrecision": 0.625,
-      "baselineTokens": 4040,
-      "candidateTokens": 3995,
+      "baselineTokens": 4057,
+      "candidateTokens": 3956,
       "vectorSkipped": false
     },
     {
       "taskId": "bench-027",
       "baselinePrecision": 0.2,
-      "candidatePrecision": 0.125,
-      "baselineTokens": 4048,
-      "candidateTokens": 3972,
+      "candidatePrecision": 0.14285714285714285,
+      "baselineTokens": 4061,
+      "candidateTokens": 3982,
       "vectorSkipped": false
     },
     {
       "taskId": "bench-028",
       "baselinePrecision": 0.16666666666666666,
       "candidatePrecision": 0.1,
-      "baselineTokens": 4019,
-      "candidateTokens": 3927,
+      "baselineTokens": 4035,
+      "candidateTokens": 3943,
       "vectorSkipped": false
     },
     {
@@ -269,5 +269,5 @@
   "limitations": [
     "No LLM generation, cost, defect or human-acceptance claim is made by this structural benchmark."
   ],
-  "observationsHash": "e83b67bd5d7cb73646fafc924d05e779dc91f6616d4563b47ab60c04ed547c04"
+  "observationsHash": "3574fc05b928aa0ad651c41c224eb466f3f33fd0edec81b6a2b272b903cbc207"
 }
