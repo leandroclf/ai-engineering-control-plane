@@ -54,6 +54,8 @@ required=(
   docs/threat-model.md
   docs/runbook.md
   docs/memory-model.md
+  security/README.md
+  harness/src/cli/validate-suppressions.mjs
 )
 
 for path in "${required[@]}"; do

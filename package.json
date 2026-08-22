@@ -10,8 +10,9 @@
     "harness": "node harness/src/cli/run-workflow.mjs",
     "smoke:fallback": "bash scripts/fallback-smoke.sh",
     "evaluate:baseline": "node observability/evaluation/run-baseline.mjs",
+    "validate:suppressions": "node harness/src/cli/validate-suppressions.mjs",
     "validate:project": "node harness/src/cli/validate-project.mjs",
-    "validate": "npm test && npm run test:python && npm run test:acceptance"
+    "validate": "npm test && npm run test:python && npm run validate:suppressions && npm run test:acceptance"
   },
   "engines": {
     "node": ">=18"
