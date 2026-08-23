@@ -1,5 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { parse } from "yaml";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 
 const root = new URL("..", import.meta.url);
 const catalog = parse(await readFile(new URL("architecture/catalog.yaml", root), "utf8"));
@@ -12,4 +15,5 @@ for (const component of catalog.components) {
   ids.add(component.id);
 }
 for (const component of catalog.components) for (const dependency of component.dependencies) if (!ids.has(dependency) && !["docker", "project-repository", "provider-apis", "neo4j", "redis", "opencode"].includes(dependency)) throw new Error(`${component.id} references unknown component ${dependency}`);
+await promisify(execFile)("node", ["scripts/generate-architecture-catalog.mjs", "--check"], { cwd: fileURLToPath(root) });
 process.stdout.write(`${JSON.stringify({ schemaVersion: 1, status: "pass", components: catalog.components.length })}\n`);

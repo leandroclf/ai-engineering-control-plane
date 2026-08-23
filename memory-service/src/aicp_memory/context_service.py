@@ -22,7 +22,7 @@ def _terms(value):
 
 def _bm25(query_terms, chunks, k1=1.2, b=0.75):
     """Small deterministic BM25 baseline over the already bounded candidate set."""
-    documents = [_terms(f"{chunk.get('symbol') or ''} {chunk['content']}") for chunk in chunks]
+    documents = [_terms(f"{chunk.get('path') or ''} {chunk.get('symbol') or ''} {chunk['content']}") for chunk in chunks]
     average_length = sum(map(len, documents)) / max(len(documents), 1)
     document_frequency = {
         term: sum(1 for document in documents if term in document)
@@ -47,7 +47,7 @@ def _retrieval_confidence(query_terms, chunks, exact_symbols, lexical_scores):
     if not chunks or not query_terms:
         return 0.0
     top = max(chunks, key=lambda item: (lexical_scores[item["id"]], item["id"]))
-    top_terms = set(_terms(f"{top.get('symbol') or ''} {top['content']}"))
+    top_terms = set(_terms(f"{top.get('path') or ''} {top.get('symbol') or ''} {top['content']}"))
     coverage = len(set(query_terms) & top_terms) / len(set(query_terms))
     ordered = sorted(lexical_scores.values(), reverse=True)
     dominance = 1.0 if len(ordered) == 1 else max(0.0, (ordered[0] - ordered[1]) / max(ordered[0], .000001))
@@ -210,8 +210,9 @@ class ContextService:
         chosen = set()
         for category, ratio in reserves.items():
             used = 0
+            category_limit = packing_limit if category == "exact_symbols" else packing_limit * ratio
             for candidate in (item for item in measured if item.get("category") == category):
-                if used + candidate["token_count"] <= packing_limit * ratio and token_count + candidate["token_count"] <= packing_limit:
+                if used + candidate["token_count"] <= category_limit and token_count + candidate["token_count"] <= packing_limit:
                     selected.append(candidate); chosen.add(candidate["id"]); used += candidate["token_count"]; token_count += candidate["token_count"]
         remaining = sorted((item for item in measured if item["id"] not in chosen), key=lambda item: (-item["score"], -item["score"] / max(item["token_count"], 1), item["id"]))
         for candidate in remaining:

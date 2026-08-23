@@ -19,15 +19,23 @@ export const firstGovernedRun: TutorialManifest = {
   ],
 };
 
-export const academyModules = [
-  ["foundations", "Foundations", "O modelo mental do AICP e suas autoridades."],
-  ["first-run", "First Governed Run", "Do pedido ao human review, passo a passo."],
-  ["authority", "Authority Model", "Por que LLMs não controlam workflow, budget ou gates."],
-  ["execution", "Execution Plane", "Workers efêmeros, worktrees e credenciais por run."],
-  ["budgets", "Budgets", "Reserva transacional e reconciliação física."],
-  ["context", "Context Compiler", "Retrieval determinístico dentro do envelope de tokens."],
-  ["memory", "Memory", "Scopes, validade, autoridade e reconciliação."],
-  ["graph", "Knowledge Graph", "Relações derivadas e impacto sem queries arbitrárias."],
-  ["security", "Security", "Gates fail-closed e defesa em profundidade."],
-  ["release", "Release Certification", "Como ler os controles e seus blockers reais."],
-] as const;
+export type AcademyModule = { id: string; title: string; description: string; estimatedMinutes: number; objectives: string[]; lessons: { concept: string; route?: string; target?: string }[]; checkpoint: { question: string; options: string[]; answer: string } };
+
+const module = (id: string, title: string, description: string, question: string, answer: string, route = "/"): AcademyModule => ({ id, title, description, estimatedMinutes: 8, objectives: ["Explain the authority boundary", "Locate the supporting evidence"], lessons: [{ concept: description, route }], checkpoint: { question, options: ["Harness", "AICP Console", "OpenCode", "LiteLLM"], answer } });
+
+export const academyModules: AcademyModule[] = [
+  module("foundations", "Foundations", "The AICP separates untrusted execution from deterministic governance.", "Which component governs engineering work?", "Harness"),
+  module("authority", "Authority Model", "Harness owns workflow, budgets, gates, authorization and termination.", "Who can advance a governed workflow?", "Harness", "/docs/authority"),
+  module("first-run", "First Governed Run", "Inspect a deterministic run from release readiness to evidence.", "Where can you inspect a governed run?", "AICP Console", "/runs/demo-run"),
+  module("evidence", "Evidence", "A status is useful only when the underlying evidence can be opened.", "Who records canonical gate evidence?", "Harness", "/runs/demo-run"),
+  module("budgets", "Budgets", "Logical reservations and physical usage are reconciled by policy.", "Who can block the next call when budget is exhausted?", "Harness", "/governance/budgets"),
+  module("execution", "Execution Plane", "Workers are isolated and disposable for each governed run.", "Which component creates isolated workers?", "Harness", "/docs/execution-plane"),
+  module("context", "Context", "Context compilation is bounded, deterministic and provenance-aware.", "Who owns context retrieval policy?", "Harness", "/knowledge/context"),
+  module("memory", "Memory", "Memory is scoped by relevance, authority and validity.", "Which state store is canonical?", "Harness", "/knowledge/memory"),
+  module("graph", "Graph", "Graph relationships are derived and rebuildable.", "Which component is not canonical state?", "AICP Console", "/knowledge/graph"),
+  module("security", "Security", "Security gates fail closed and browser boundaries protect credentials.", "Who owns provider credentials?", "LiteLLM", "/security"),
+  module("recovery", "Recovery", "Recovery rebuilds derived projections from canonical state and evidence.", "Which component remains canonical during recovery?", "Harness", "/docs/data"),
+  module("release", "Release Certification", "Release readiness shows real blockers rather than cosmetic PASS states.", "Who makes the release decision?", "Harness", "/release"),
+  module("extension-lab", "Extension Lab", "Extensions add bounded capability without bypassing governance.", "Who authorizes an extension to execute?", "Harness", "/docs/governed-execution"),
+  module("final-challenge", "Final Challenge", "Explain state, reason, authority and evidence for a blocked run.", "Which component explains a BLOCKED state with evidence?", "Harness", "/runs/demo-run"),
+];

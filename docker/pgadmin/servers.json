@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "AICP PostgreSQL",
+      "Group": "Local stack",
+      "Host": "postgres",
+      "Port": 5432,
+      "Username": "aicp",
+      "SSLMode": "prefer",
+      "MaintenanceDB": "postgres"
+    }
+  }
+}

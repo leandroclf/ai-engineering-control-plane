@@ -66,6 +66,7 @@ services:
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/aicp/entrypoint.sh"]
     environment:
+      SERVER_ROOT_PATH: /litellm
       LITELLM_OTEL_V2: "true"
       OTEL_EXPORTER: otlp_http
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
@@ -103,6 +104,44 @@ services:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
     networks: [agent-internal, provider-egress, data]
+
+  pgadmin:
+    image: ${PGADMIN_IMAGE:-dpage/pgadmin4:9.17@sha256:2f4ce946ddf8360680d7eff4eaba1d91859eb6b4003e6623bad5c63a322c2f4d}
+    restart: unless-stopped
+    environment:
+      SCRIPT_NAME: /pgadmin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD_FILE: /run/secrets/postgres_password
+      PGADMIN_DISABLE_POSTFIX: "1"
+      PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
+      PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"
+    secrets: [postgres_password]
+    volumes:
+      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [data]
+
+  redisinsight:
+    image: ${REDISINSIGHT_IMAGE:-redis/redisinsight@sha256:b5e19ee240abef6edb435871b90ff8a210995422e8e018ab61c0339d318a1f84}
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/aicp/entrypoint.sh"]
+    command: ["node", "redisinsight/api/dist/src/main"]
+    environment:
+      RI_PROXY_PATH: /redisinsight
+      RI_APP_PORT: 5540
+      RI_REDIS_HOST0: redis
+      RI_REDIS_PORT0: 6379
+      RI_REDIS_ALIAS0: AICP Redis
+      RI_REDIS_USERNAME0: default
+    secrets: [redis_password]
+    volumes:
+      - ./docker/redisinsight/entrypoint.sh:/aicp/entrypoint.sh:ro
+      - redisinsight-data:/data
+    depends_on:
+      redis: { condition: service_healthy }
+    networks: [data]
 
   memory-service:
     build:
@@ -267,6 +306,7 @@ services:
       provenance: mode=max
     restart: unless-stopped
     environment:
+      HOSTNAME: 0.0.0.0
       HARNESS_URL: http://harness:8081
       HARNESS_SERVICE_TOKEN_FILE: /run/secrets/harness_service_token
       AICP_DEMO_MODE: ${AICP_DEMO_MODE:-false}
@@ -286,7 +326,7 @@ services:
     cpus: 2
     depends_on:
       harness: { condition: service_healthy }
-    networks: [agent-internal]
+    networks: [agent-internal, control-edge]
 
   worker-manager:
     build:
@@ -332,7 +372,7 @@ services:
     command: ["trivy image --cache-dir /security/trivy --download-db-only && node /aicp/scripts/scanner-bundle-manifest.mjs /security/trivy"]
     volumes: ["scanner-data:/security/trivy"]
     read_only: true
-    tmpfs: ["/tmp:size=128m,mode=1777"]
+    tmpfs: ["/tmp:size=512m,mode=1777"]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     networks: [provider-egress]
@@ -352,7 +392,7 @@ services:
       - "127.0.0.1:4318:4318"
     depends_on:
       harness: { condition: service_healthy }
-    networks: [agent-internal, control-edge]
+    networks: [agent-internal, control-edge, data]
 
 networks:
   agent-internal:
@@ -397,3 +437,5 @@ volumes:
   harness-opencode-state: {}
   scanner-data: {}
   aicp-runs: {}
+  pgadmin-data: {}
+  redisinsight-data: {}

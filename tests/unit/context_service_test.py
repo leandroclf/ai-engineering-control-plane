@@ -110,6 +110,43 @@ class ContextServiceTest(unittest.TestCase):
         self.assertTrue(result["metrics"]["vector_skipped"])
         self.assertEqual(service.embedder.calls, [])
 
+    def test_compile_keeps_exact_symbol_when_it_exceeds_category_reserve(self):
+        class OversizedExactRepository(FakeRepository):
+            def retrieve_chunks(self, repository, query, exact_symbols=None, limit=50):
+                return [
+                    {"id": "exact-large", "path": "context_service.py", "symbol": "context_service", "content": "exact " * 60,
+                     "content_hash": "exact-hash", "token_count": 60, "embedding": [0, 1]},
+                    *[
+                        {"id": f"noise-{index}", "path": f"unrelated-{index}.py", "symbol": f"unrelated-{index}", "content": "identity noise " * 20,
+                         "content_hash": f"noise-hash-{index}", "token_count": 20, "embedding": [1, 0]}
+                        for index in range(3)
+                    ],
+                ]
+
+        service = ContextService(OversizedExactRepository(), FakeEmbedder(), FakeGraph())
+        result = service.compile({
+            "repository": "repo", "task_id": "task-exact", "query": "context_service deterministic identity",
+            "exact_symbols": ["context_service"], "budget": 100,
+        }, [])
+
+        self.assertIn("exact-large", [item["id"] for item in result["artifacts"]])
+
+    def test_compile_uses_file_path_as_lexical_evidence(self):
+        class PathAwareRepository(FakeRepository):
+            def retrieve_chunks(self, repository, query, exact_symbols=None, limit=50):
+                return [
+                    {"id": "a-noise", "path": "misc/unrelated.mjs", "symbol": "helper", "content": "shared content",
+                     "content_hash": "noise-path-hash", "token_count": 4, "embedding": [1, 0]},
+                    {"id": "z-relevant", "path": "harness/src/cli/project-path-traversal.mjs", "symbol": "helper", "content": "shared content",
+                     "content_hash": "relevant-path-hash", "token_count": 4, "embedding": [1, 0]},
+                ]
+
+        result = ContextService(PathAwareRepository(), FakeEmbedder(), FakeGraph()).compile({
+            "repository": "repo", "task_id": "task-path", "query": "project path traversal", "budget": 5,
+        }, [])
+
+        self.assertEqual([item["id"] for item in result["artifacts"]], ["z-relevant"])
+
     def test_context_identity_changes_with_semantic_policy_or_index_version(self):
         service = ContextService(FakeRepository(), FakeEmbedder(), FakeGraph(), FakeTokenCounter())
         base = {"repository": "repo", "task_id": "task-1", "query": "Service.run payment",

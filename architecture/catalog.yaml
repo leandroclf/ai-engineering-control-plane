@@ -17,7 +17,7 @@ components:
     failureMode: degraded-read-only
     securityBoundary: browser-to-server-only
     observability: [request-correlation, audit-links]
-    docs: /docs/architecture/control-plane
+    docs: /docs/control-plane
   - id: harness
     name: Harness
     plane: control
@@ -34,7 +34,7 @@ components:
     failureMode: fail-closed
     securityBoundary: trusted-control-plane
     observability: [otel, audit, stage-evidence]
-    docs: /docs/architecture/control-plane
+    docs: /docs/control-plane
   - id: worker-manager
     name: Worker Manager
     plane: execution
@@ -51,7 +51,7 @@ components:
     failureMode: fail-closed
     securityBoundary: deployment-side-execution-boundary
     observability: [worker-attestation, lifecycle-evidence]
-    docs: /docs/architecture/execution-plane
+    docs: /docs/execution-plane
   - id: worker
     name: Ephemeral Worker
     plane: execution
@@ -68,7 +68,7 @@ components:
     failureMode: fail-closed
     securityBoundary: container-and-network-boundary
     observability: [otel, redacted-evidence]
-    docs: /docs/architecture/execution-plane
+    docs: /docs/execution-plane
   - id: postgres
     name: PostgreSQL
     plane: data
@@ -85,7 +85,7 @@ components:
     failureMode: fail-closed
     securityBoundary: data-plane
     observability: [health, metrics, backup-integrity]
-    docs: /docs/architecture/data
+    docs: /docs/data
   - id: memory-service
     name: Memory Service
     plane: knowledge
@@ -102,7 +102,7 @@ components:
     failureMode: fail-closed
     securityBoundary: knowledge-plane
     observability: [retrieval-reasons, token-usage, otel]
-    docs: /docs/architecture/knowledge-plane
+    docs: /docs/knowledge-plane
   - id: litellm
     name: LiteLLM Gateway
     plane: external
@@ -119,4 +119,4 @@ components:
     failureMode: fail-closed
     securityBoundary: provider-egress
     observability: [cost, tokens, fallback-spans]
-    docs: /docs/architecture/model-routing
+    docs: /docs/model-routing
