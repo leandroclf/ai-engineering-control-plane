@@ -1,6 +1,12 @@
 {
   "schemaVersion": 1,
   "profiles": {
+    "static-site": {
+      "projectKinds": ["static-site"],
+      "image": "aicp-worker-static-site:local",
+      "dockerfile": "docker/workers/static-site/Dockerfile",
+      "probes": [["node", "--version"], ["npm", "--version"], ["git", "--version"], ["python3", "--version"], ["semgrep", "--version"], ["gitleaks", "version"], ["trivy", "--version"]]
+    },
     "node22": {
       "projectKinds": ["node"],
       "image": "aicp-worker-node22:local",
@@ -33,4 +39,3 @@
     }
   }
 }
-

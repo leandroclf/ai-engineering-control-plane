@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 
 export class CredentialBroker {
-  constructor({ ttlSeconds = 900, now = () => new Date(), random = () => randomBytes(32).toString("base64url") } = {}) {
+  constructor({ ttlSeconds = 900, now = () => new Date(), random = () => `sk-${randomBytes(32).toString("base64url")}` } = {}) {
     this.ttlSeconds = ttlSeconds;
     this.now = now;
     this.random = random;

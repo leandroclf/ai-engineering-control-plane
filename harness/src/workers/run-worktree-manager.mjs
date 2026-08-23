@@ -6,7 +6,13 @@ import { join, resolve } from "node:path";
 const execute = promisify(execFile);
 
 async function git(args, cwd) {
-  try { return (await execute("git", args, { cwd, encoding: "utf8", timeout: 30_000 })).stdout.trim(); }
+  try {
+    return (await execute("git", ["-c", `safe.directory=${cwd}`, ...args], {
+      cwd,
+      encoding: "utf8",
+      timeout: 30_000,
+    })).stdout.trim();
+  }
   catch (error) { throw new Error(`WORKTREE_GIT_FAILED:${String(error.stderr ?? error.message).trim()}`); }
 }
 

@@ -1,6 +1,6 @@
 ---
 description: Interpreta findings de segurança sem editar
-mode: subagent
+mode: primary
 model: controlplane/security
 steps: 6
 permission:

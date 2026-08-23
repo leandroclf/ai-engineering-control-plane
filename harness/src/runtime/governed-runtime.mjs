@@ -1,5 +1,6 @@
 import { WorkflowExecutor } from "../workflow/executor.mjs";
 import { readFile } from "node:fs/promises";
+import { redactText } from "../security/redact.mjs";
 
 export class GovernedRuntime {
   constructor({ definition, store, handlers, contextProvider = null, telemetry = null, budgetAuthority = null, preflight = null, readiness = null, capabilities = null, workerManager = null, workerProfile = null, executionPlane = null, metadata = {} }) {
@@ -97,6 +98,9 @@ export class GovernedRuntime {
         const executionEvidence = Object.freeze({ ...evidence, executableStages: stages.map((stage) => ({ stage: stage.state_from ?? stage.from ?? stage.stateFrom ?? null, workerId: evidence.workerId })) });
         this.executionEvidence.set(run.id, executionEvidence);
         return { ...(includeTask ? { task } : {}), run, stages, ...(includeTask ? { links: this.#links(run.id) } : {}), execution: executionEvidence };
+      } catch (error) {
+        if (!execution) await this.#recordFailure(pending, error);
+        throw error;
       } finally {
         if (execution) await this.executionPlane.destroyRun(pending.id);
       }
@@ -110,8 +114,28 @@ export class GovernedRuntime {
       const run = await this.executor.execute(pending.id);
       if (worker) workerEvidence = await this.workerManager.collectEvidence(run.id);
       return { ...(includeTask ? { task } : {}), run, stages: await this.store.listStages(run.id), ...(includeTask ? { links: this.#links(run.id) } : {}), ...(worker ? { worker: { ...worker, evidence: workerEvidence } } : {}) };
+    } catch (error) {
+      if (!worker) await this.#recordFailure(pending, error);
+      throw error;
     } finally {
       if (worker) await this.workerManager.destroy(pending.id);
+    }
+  }
+  async #recordFailure(run, error) {
+    const state = this.definition.states[run.state];
+    const outcome = Object.keys(state?.next ?? {}).find((value) => ["failed", "error", "blocked"].includes(value));
+    const target = outcome ? state.next[outcome] : null;
+    if (!outcome || !this.definition.terminal.includes(target)) return;
+    try {
+      await this.store.transition(run.id, {
+        expectedVersion: run.version,
+        outcome,
+        to: target,
+        terminal: true,
+        evidence: { error: { name: error.name ?? "Error", code: error.code ?? null, message: redactText(error.message).slice(0, 240) } },
+      });
+    } catch {
+      // Preserve the original infrastructure error; failure persistence is best effort.
     }
   }
   #links(runId) { return { self: `/v1/runs/${runId}`, stages: `/v1/runs/${runId}/stages`, audit: `/v1/runs/${runId}/audit`, gates: `/v1/runs/${runId}/gates`, findings: `/v1/runs/${runId}/findings` }; }

@@ -16,7 +16,10 @@ const required = (name) => process.env[name] || (() => { throw new TypeError(`${
 const apiToken = required("WORKER_MANAGER_TOKEN");
 const projectsRoot = resolve(required("AICP_WORKER_PROJECTS_ROOT"));
 const identities = new WorkloadIdentityService({ secret: required("WORKER_IDENTITY_SIGNING_SECRET"), ttlSeconds: Number(process.env.WORKER_IDENTITY_TTL_SECONDS ?? 900) });
-const credentials = new CredentialBroker({ ttlSeconds: Number(process.env.WORKER_IDENTITY_TTL_SECONDS ?? 900) });
+const credentials = new CredentialBroker({
+  ttlSeconds: Number(process.env.WORKER_IDENTITY_TTL_SECONDS ?? 900),
+  random: () => process.env.LITELLM_API_KEY ?? "",
+});
 const profiles = new WorkerProfileRegistry(JSON.parse(await readFile(process.env.WORKER_PROFILES_PATH ?? "harness/config/worker-profiles.json", "utf8")));
 const commandPolicy = new WorkerCommandPolicy(JSON.parse(await readFile(process.env.WORKER_COMMAND_POLICY_PATH ?? "harness/config/worker-command-policy.json", "utf8")));
 const worktrees = new RunWorktreeManager({ root: process.env.AICP_WORKTREE_ROOT ?? "/var/lib/aicp/runs" });

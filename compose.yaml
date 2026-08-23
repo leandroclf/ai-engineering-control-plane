@@ -154,7 +154,7 @@ services:
     environment:
       PORT: 8080
       MEMORY_SERVICE_TOKEN_FILE: /run/secrets/memory_service_token
-      MEMORY_AUTHORIZED_SCOPES: ${MEMORY_AUTHORIZED_SCOPES:-GLOBAL:local,ORGANIZATION:local,SOLUTION:local,PROJECT:local,REPOSITORY:site-lf-solucoes,REPOSITORY:ai-engineering-control-plane,AGENT:opencode,TASK:local,RUN:local,EXECUTION:local}
+      MEMORY_AUTHORIZED_SCOPES: ${MEMORY_AUTHORIZED_SCOPES:-GLOBAL:local,ORGANIZATION:local,SOLUTION:local,PROJECT:local,PROJECT:site-lf-solucoes,REPOSITORY:site-lf-solucoes,REPOSITORY:ai-engineering-control-plane,AGENT:opencode,TASK:local,RUN:local,EXECUTION:local}
       LITELLM_BASE_URL: http://litellm:4000/v1
       LITELLM_API_KEY_FILE: /run/secrets/litellm_api_key
       EMBEDDING_ALIAS: embeddings
@@ -340,17 +340,20 @@ services:
     user: "0:0"
     environment:
       WORKER_MANAGER_PORT: 8090
+      WORKER_MANAGER_HOST: 0.0.0.0
       AICP_WORKER_PROJECTS_ROOT: /repositories/project
-      AICP_WORKTREE_ROOT: /var/lib/aicp/runs
+      AICP_WORKTREE_ROOT: ${AICP_RUNS_HOST_ROOT:-/var/lib/aicp/runs}
       WORKER_NETWORK: aicp_agent-internal
+      LITELLM_BASE_URL: http://litellm:4000/v1
+      MEMORY_SERVICE_URL: http://memory-service:8080
       WORKER_PROFILES_PATH: /aicp/harness/config/worker-profiles.json
       WORKER_COMMAND_POLICY_PATH: /aicp/harness/config/worker-command-policy.json
       WORKER_MANAGER_TOKEN_FILE: /run/secrets/worker_manager_token
       WORKER_IDENTITY_SIGNING_SECRET_FILE: /run/secrets/worker_identity_signing_secret
-    secrets: [worker_manager_token, worker_identity_signing_secret]
+    secrets: [worker_manager_token, worker_identity_signing_secret, litellm_api_key]
     volumes:
       - ${ACTIVE_PROJECT_DIR:-./projects/site-lf-solucoes}:/repositories/project
-      - aicp-runs:/var/lib/aicp/runs
+      - ${AICP_RUNS_HOST_ROOT:-/var/lib/aicp/runs}:${AICP_RUNS_HOST_ROOT:-/var/lib/aicp/runs}
       - /var/run/docker.sock:/var/run/docker.sock
     read_only: true
     tmpfs: ["/tmp:size=128m,mode=1777"]

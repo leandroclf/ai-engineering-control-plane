@@ -7,3 +7,4 @@ docker build --tag aicp-memory-service:latest --file "$root/docker/memory-servic
 docker build --tag aicp-workspace:latest --file "$root/docker/workspace/Dockerfile" --build-arg "NODE_IMAGE=$NODE_IMAGE" --build-arg "OPENCODE_VERSION=$OPENCODE_VERSION" "$root"
 docker build --tag aicp-harness:latest --file "$root/docker/harness/Dockerfile" --build-arg "NODE_IMAGE=$NODE_IMAGE" --build-arg "OPENCODE_VERSION=$OPENCODE_VERSION" "$root"
 docker build --tag aicp-worker-manager:latest --file "$root/docker/worker-manager/Dockerfile" --build-arg "NODE_IMAGE=$NODE_IMAGE" "$root"
+docker build --tag aicp-worker-static-site:local --file "$root/docker/workers/static-site/Dockerfile" --build-arg "NODE_IMAGE=$NODE_IMAGE" --build-arg "OPENCODE_VERSION=$OPENCODE_VERSION" "$root"

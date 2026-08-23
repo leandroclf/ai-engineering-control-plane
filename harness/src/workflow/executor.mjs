@@ -1,4 +1,5 @@
 import { Workflow } from "./workflow.mjs";
+import { redactText } from "../security/redact.mjs";
 
 export class WorkflowExecutor {
   constructor({ definition, store, handlers, contextProvider = null, telemetry = null }) {
@@ -21,7 +22,25 @@ export class WorkflowExecutor {
       const context = this.contextProvider && stateDefinition.context
         ? await this.contextProvider.load({ task, state: run.state, policy: stateDefinition.context })
         : null;
-      const result = await handler({ run: structuredClone(run), task: task ? structuredClone(task) : null, state: run.state, context });
+      let result;
+      try {
+        result = await handler({ run: structuredClone(run), task: task ? structuredClone(task) : null, state: run.state, context });
+      } catch (error) {
+        const failureOutcome = Object.keys(stateDefinition.next).find((outcome) => ["failed", "error", "blocked"].includes(outcome));
+        const failureState = failureOutcome ? stateDefinition.next[failureOutcome] : null;
+        if (failureOutcome && failureState && this.workflow.isTerminal(failureState)) {
+          run = await this.store.transition(run.id, {
+            expectedVersion: run.version,
+            outcome: failureOutcome,
+            to: failureState,
+            terminal: true,
+            evidence: { error: { name: error.name ?? "Error", code: error.code ?? null, message: redactText(error.message).slice(0, 240) } },
+            startedAt,
+            finishedAt: new Date(),
+          });
+        }
+        throw error;
+      }
       const outcome = typeof result === "string" ? result : result?.outcome;
       const next = this.workflow.transition(run.state, outcome);
       const evidence = context ? {

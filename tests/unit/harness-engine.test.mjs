@@ -128,6 +128,34 @@ test("workflow executor delivers governed context and persists redacted provenan
   });
 });
 
+test("workflow executor closes a failed handler in a terminal failure state", async () => {
+  const failingDefinition = {
+    version: 1,
+    initial: "verify",
+    terminal: ["ready", "failed"],
+    states: {
+      verify: { next: { success: "ready", failed: "failed" } },
+      ready: {},
+      failed: {},
+    },
+  };
+  const store = new InMemoryRunStore();
+  const task = await store.createTask({ idempotencyKey: "handler-failure-terminal", workflowVersion: 1 });
+  const run = await store.createRun({ taskId: task.id, initialState: "verify", policyVersion: 1 });
+  const executor = new WorkflowExecutor({
+    definition: failingDefinition,
+    store,
+    handlers: { verify: async () => { throw Object.assign(new Error("scope denied"), { code: "FORBIDDEN" }); } },
+  });
+
+  await assert.rejects(executor.execute(run.id), /scope denied/);
+  const result = await store.getRun(run.id);
+  const [stage] = await store.listStages(run.id);
+  assert.equal(result.state, "failed");
+  assert.equal(result.status, "failed");
+  assert.deepEqual(stage.evidence, { error: { name: "Error", code: "FORBIDDEN", message: "scope denied" } });
+});
+
 test("workflow executor persists bounded handler evidence", async () => {
   const store = new InMemoryRunStore();
   const task = await store.createTask({ idempotencyKey: "evidence-1", workflowVersion: 1 });
@@ -179,6 +207,26 @@ test("governed runtime destroys an ephemeral worker when workflow execution fail
   const runtime = new GovernedRuntime({ definition, store, handlers: { verify: async () => { throw new Error("handler failed"); } }, workerManager, workerProfile: async () => "node22" });
   await assert.rejects(runtime.start({ idempotencyKey: "ephemeral-runtime-failure", metadata: { projectDirectory: "/workspace/project" } }), /handler failed/);
   assert.deepEqual(calls, ["create", "destroy"]);
+});
+
+test("governed runtime closes a run when ephemeral worker creation fails", async () => {
+  const store = new InMemoryRunStore();
+  let failedRun;
+  const transition = store.transition.bind(store);
+  store.transition = async (...args) => { failedRun = await transition(...args); return failedRun; };
+  const runtime = new GovernedRuntime({
+    definition: {
+      ...definition,
+      terminal: ["ready", "failed"],
+      states: { verify: { next: { pass: "ready", failed: "failed" } }, ready: {}, failed: {} },
+    },
+    store,
+    executionPlane: { createRun: async () => { throw Object.assign(new Error("worker unavailable"), { code: "WORKER_CREATE_FAILED" }); } },
+  });
+
+  await assert.rejects(runtime.start({ idempotencyKey: "ephemeral-worker-create-failure", metadata: {} }), /worker unavailable/);
+  assert.equal(failedRun.status, "failed");
+  assert.equal(failedRun.state, "failed");
 });
 
 test("workflow handlers constrain agent output to declared outcomes and governed context", async () => {
