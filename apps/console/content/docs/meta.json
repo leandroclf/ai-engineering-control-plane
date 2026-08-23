@@ -1,4 +1,4 @@
 {
   "title": "AICP Console",
-  "pages": ["index", "authority", "governed-execution", "release-certification"]
+  "pages": ["index", "introduction", "authority", "governed-execution", "release-certification", "component-catalog", "control-plane", "execution-plane", "knowledge-plane", "data", "model-routing"]
 }

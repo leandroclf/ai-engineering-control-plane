@@ -17,3 +17,5 @@ export type ArchitectureComponent = {
   observability: string[];
   docs: string;
 };
+
+export { architectureCatalog, architectureEdges } from "./generated/catalog";

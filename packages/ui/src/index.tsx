@@ -1,5 +1,8 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 
+export { labelForUnknownStatus, presentationForGateStatus, presentationForRunStatus } from "./domain-status";
+export type { RunStatus } from "./domain-status";
+
 export type Status = "neutral" | "running" | "success" | "warning" | "blocked" | "failed" | "cancelled" | "human-required";
 const statusLabels: Record<Status, string> = { neutral: "Neutral", running: "Running", success: "PASS", warning: "Warning", blocked: "BLOCKED", failed: "FAILED", cancelled: "Cancelled", "human-required": "Human required" };
 

@@ -5,7 +5,7 @@
 - [Visão do produto](product/product-vision.md), [personas](product/personas.md), [IA](product/information-architecture.md), [princípios UX](product/ux-principles.md) e [terminologia](product/terminology.md).
 - [Arquitetura atual](architecture/current.md), [diagramas](architecture/diagrams/system-context.md) e [catálogo de componentes](reference/component-catalog.md).
 - [Invariantes de UI e segurança](security/ui-invariants.md), [checklist de acessibilidade](validation/ui-accessibility-checklist.md) e [OpenAPI](api/control-plane-v1.openapi.yaml).
-- [Índice da evolução histórica](archive/evolution/README.md) e [guia executado](11-AI%20Engineering%20Control%20Plane_evolution.md).
+- [Índice da evolução histórica](archive/evolution/README.md) e os guias de evolução mantidos no histórico do repositório.
 
 O app `apps/console` oferece uma experiência navegável em Demo Mode, com
 documentação MDX compilada por Fumadocs, API BFF server-side, Academy,

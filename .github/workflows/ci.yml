@@ -31,6 +31,8 @@ jobs:
       - run: npm run validate:api-drift
       - run: npm run validate:architecture-catalog
       - run: npm run validate:docs
+      - run: npm run validate:i18n
+      - run: npm run test:ui
       - run: npm run presentations:build
       - run: npm run build:console
       - run: npm --workspace @aicp/console run lint
