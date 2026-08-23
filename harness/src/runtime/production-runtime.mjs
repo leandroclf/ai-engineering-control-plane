@@ -24,6 +24,11 @@ import { WorkerExecutionPlane } from "../execution/worker-execution-plane.mjs";
 import { PostgresRunStore } from "../workflow/postgres-run-store.mjs";
 import { GovernedRuntime } from "./governed-runtime.mjs";
 import { createWorkflowHandlers } from "./workflow-handlers.mjs";
+import { CapabilityRouter } from "../capabilities/provider.mjs";
+import { HttpBrowserCapabilityProvider } from "../capabilities/http-browser-provider.mjs";
+import { SkillRegistry } from "../skills/registry.mjs";
+import { AgentMetrics } from "../telemetry/agent-metrics.mjs";
+import { AgentHarnessMemoryClient } from "../memory/agent-harness-memory-client.mjs";
 
 const { Pool } = pg;
 
@@ -44,6 +49,16 @@ export async function createProductionRuntime({ environment = process.env } = {}
   const ephemeral = environment.AICP_EXECUTION_MODE === "ephemeral";
   if (environment.AICP_RELEASE_MODE === "production" && !ephemeral) throw new Error("PRODUCTION_REQUIRES_EPHEMERAL_EXECUTION");
   const workerManager = ephemeral ? new HttpWorkerManager({ baseUrl: required(environment, "WORKER_MANAGER_URL"), token: required(environment, "WORKER_MANAGER_TOKEN"), clientProjectRoot: environment.WORKER_CLIENT_PROJECT_ROOT ?? environment.PROJECTS_ROOT ?? "/workspace" }) : null;
+  const capabilityRouter = new CapabilityRouter();
+  const skillRegistry = new SkillRegistry();
+  const metrics = new AgentMetrics();
+  const harnessMemory = environment.MEMORY_SERVICE_URL && environment.MEMORY_SERVICE_TOKEN ? new AgentHarnessMemoryClient({ baseUrl: environment.MEMORY_SERVICE_URL, token: environment.MEMORY_SERVICE_TOKEN }) : null;
+  if (harnessMemory) {
+    try { for (const skill of (await harnessMemory.listSkills(environment.AICP_SKILL_SCOPE ?? "PROJECT:local")).items ?? []) skillRegistry.registerPersisted(skill); }
+    catch (error) { if (environment.AICP_SKILLS_REQUIRED !== "false") throw new Error(`SKILL_REGISTRY_BOOTSTRAP_FAILED:${error.message}`); }
+  }
+  if (environment.BROWSER_WORKER_URL && environment.BROWSER_WORKER_TOKEN) capabilityRouter.register(new HttpBrowserCapabilityProvider({ baseUrl: environment.BROWSER_WORKER_URL, token: environment.BROWSER_WORKER_TOKEN }));
+  if (environment.AICP_BROWSER_REQUIRED === "true" && (!environment.BROWSER_WORKER_URL || !environment.BROWSER_WORKER_TOKEN)) throw new Error("PRODUCTION_REQUIRES_BROWSER_WORKER");
   const database = new Pool({
     connectionString: required(environment, "DATABASE_URL"),
     max: Number(environment.HARNESS_DATABASE_POOL_SIZE ?? 5),
@@ -108,13 +123,15 @@ export async function createProductionRuntime({ environment = process.env } = {}
         models: Object.entries(routingConfiguration.aliases).map(([alias, route]) => ({ alias, capabilityClass: route.class, deployments: route.deployments.map(({ id, provider, modelEnv }) => ({ id, provider, configured: Boolean(environment[modelEnv]) })) })),
       },
       readiness: async () => {
-        const checks = { postgres: "ok", memory: "ok", litellm: "ok", opencode: "ok", workflow: "ok", gateRegistry: "ok", workerManager: ephemeral ? "ok" : "local-long-lived" };
+        const checks = { postgres: "ok", memory: "ok", litellm: "ok", opencode: "ok", workflow: "ok", gateRegistry: "ok", workerManager: ephemeral ? "ok" : "local-long-lived", browserWorker: "unconfigured" };
         try { await database.query("SELECT 1"); } catch { checks.postgres = "error"; }
         if (!ephemeral) {
           const scannerProbes = await Promise.all(["semgrep", "gitleaks", "trivy"].map((tool) => processRunner.run(tool, ["--version"], { timeoutMs: 5000 })));
           if (scannerProbes.some((probe) => probe.kind !== "completed" || probe.exitCode !== 0)) checks.gateRegistry = "error";
         }
         if (workerManager) { try { await workerManager.ready(); } catch { checks.workerManager = "error"; } }
+        const browser = capabilityRouter.providerFor("browser.navigate");
+        if (browser) { const status = await browser.healthcheck(); checks.browserWorker = status.status === "ready" || status.status === "AVAILABLE" ? "ok" : "error"; }
         const litellmRoot = environment.LITELLM_URL ?? environment.LITELLM_BASE_URL?.replace(/\/v1\/?$/, "");
         for (const [name, url] of [["memory", environment.MEMORY_SERVICE_URL ? `${environment.MEMORY_SERVICE_URL}/ready` : null], ["litellm", litellmRoot ? `${litellmRoot}/health/readiness` : null]]) {
           if (!url) { checks[name] = "unconfigured"; continue; }
@@ -142,7 +159,7 @@ export async function createProductionRuntime({ environment = process.env } = {}
       executionPlane,
     });
     return {
-      runtime,
+      runtime, capabilityRouter, skillRegistry, metrics,
       async close() {
         opencode?.server.close();
         await database.end();
