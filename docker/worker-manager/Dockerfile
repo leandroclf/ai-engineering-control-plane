@@ -12,5 +12,6 @@ COPY harness ./harness
 COPY docker/worker-manager/entrypoint.sh /usr/local/bin/aicp-worker-manager-entrypoint
 RUN chmod 755 /usr/local/bin/aicp-worker-manager-entrypoint
 
+USER node
 ENTRYPOINT ["/usr/local/bin/aicp-worker-manager-entrypoint"]
 CMD ["node", "harness/src/workers/worker-manager-server.mjs"]
