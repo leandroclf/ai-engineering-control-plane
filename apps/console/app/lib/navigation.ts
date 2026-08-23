@@ -2,6 +2,7 @@ export type NavigationItem = { label: string; href: string; group: "Operate" | "
 
 export const navigation: NavigationItem[] = [
   { label: "Overview", href: "/", group: "Operate", keywords: ["home", "release readiness"] },
+  { label: "Admin surfaces", href: "/admin", group: "Operate", keywords: ["litellm", "neo4j", "admin ui", "control"] },
   { label: "Runs", href: "/runs", group: "Operate", keywords: ["execution", "evidence"] },
   { label: "Projects", href: "/projects", group: "Operate", keywords: ["repositories"] },
   { label: "New run", href: "/runs/new", group: "Operate", keywords: ["start", "governed work"] },

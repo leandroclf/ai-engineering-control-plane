@@ -34,7 +34,7 @@ export function ThemeToggle() {
   return <button className="button button-ghost" type="button" onClick={toggle} aria-label={`Switch to ${dark ? "light" : "dark"} theme`}>{dark ? "☼ Light" : "◐ Dark"}</button>;
 }
 
-export function LocaleSwitcher() {
+export function LocaleSwitcher({ currentLocale }: { currentLocale: string }) {
   const change = (value: string) => { document.documentElement.lang = value; document.documentElement.dataset.locale = value; window.localStorage.setItem("aicp-locale", value); document.cookie = `aicp-locale=${value}; Path=/; SameSite=Lax`; window.location.reload(); };
-  return <label className="locale-switcher"><span className="sr-only">Locale</span><select aria-label="Locale" defaultValue="en" onChange={(event) => change(event.target.value)}><option value="en">EN</option><option value="pt-PT">PT</option></select></label>;
+  return <label className="locale-switcher"><span className="sr-only">Locale</span><select aria-label="Locale" value={currentLocale} onChange={(event) => change(event.target.value)}><option value="en">EN</option><option value="pt-PT">PT-PT</option><option value="pt-BR">PT-BR</option></select></label>;
 }
