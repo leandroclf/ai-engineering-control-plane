@@ -1,0 +1,4 @@
+import Link from "next/link";
+import { Card } from "@aicp/ui";
+const links = [["Introduction", "/docs/introduction"], ["Authority model", "/docs/authority"], ["Governed execution", "/docs/governed-execution"], ["Release certification", "/docs/release-certification"], ["Component catalog", "/docs/component-catalog"]];
+export default function DocsPage() { return <div className="content"><div className="page-heading"><div><div className="eyebrow">Reference documentation</div><h1>Build with evidence</h1><p className="muted">Concepts, architecture, security and API contracts for the AI Engineering Control Plane.</p></div></div><div className="grid two-col">{links.map(([title, href]) => <Card key={href} title={title}><p className="muted">Read the canonical reference and related ADRs.</p><Link className="evidence-link" href={href}>Read page →</Link></Card>)}</div></div>; }

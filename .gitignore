@@ -6,9 +6,15 @@ backups/
 litellm/generated/config.yaml
 .aicp/
 node_modules/
+apps/*/.next/
+apps/*/.source/
+apps/*/storybook-static/
+apps/*/playwright-report/
+apps/*/test-results/
 projects/
 __pycache__/
 *.pyc
+*.tsbuildinfo
 .coverage
 .pytest_cache/
 .DS_Store

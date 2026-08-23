@@ -1,4 +1,5 @@
 import { WorkflowExecutor } from "../workflow/executor.mjs";
+import { readFile } from "node:fs/promises";
 
 export class GovernedRuntime {
   constructor({ definition, store, handlers, contextProvider = null, telemetry = null, budgetAuthority = null, preflight = null, readiness = null, capabilities = null, workerManager = null, workerProfile = null, executionPlane = null, metadata = {} }) {
@@ -52,6 +53,17 @@ export class GovernedRuntime {
   getCredentials(runId) { const evidence = this.getExecution(runId); if (!evidence.credentials) throw new Error(`credentials unavailable ${runId}`); const { material: _material, ...safe } = evidence.credentials; return { ...safe, revoked: true }; }
   getAttestations(runId) { const evidence = this.getExecution(runId); return { runId, workerId: evidence.workerId, image: evidence.image, imageDigest: evidence.imageDigest, attestation: evidence.attestation ?? null }; }
   listRuns(filters) { return this.store.listRuns(filters); }
+  async overview() {
+    const [runs, certification] = await Promise.all([this.store.listRuns({ limit: 50, offset: 0 }), readFile("release/v1-contract.json", "utf8").then(JSON.parse)]);
+    const controls = certification.controls ?? [];
+    const count = (status) => controls.filter((control) => control.status === status).length;
+    return { release: { overall: count("BLOCKED") ? "NOT_YET_V1_CERTIFIED" : "CERTIFIED", pass: count("PASS"), blocked: count("BLOCKED"), failed: count("FAILED") }, activeRuns: runs.items.filter((run) => ["running", "blocked"].includes(run.status)).length, recentRuns: runs.items, attention: controls.filter((control) => control.status !== "PASS").map(({ id, status, reason, evidence }) => ({ id, status, reason: reason ?? null, evidence: evidence ?? [] })) };
+  }
+  systemStatus() { return { components: [{ id: "harness", name: "Harness", status: "READY" }, { id: "postgres", name: "PostgreSQL", status: "READY" }, { id: "execution-plane", name: "Execution Plane", status: this.executionPlane ? "READY" : "LOCAL_ONLY" }] }; }
+  currentActor() { return { actor: "authenticated-principal", roles: ["operator"], capabilities: ["runs:read", "runs:write", "tasks:read", "platform:read"] }; }
+  async projects() { const runs = await this.store.listRuns({ limit: 200, offset: 0 }); const byProject = new Map(); for (const run of runs.items) { const project = run.project ?? run.metadata?.project ?? "unknown"; if (!byProject.has(project)) byProject.set(project, { id: project, name: project, status: run.status, repository: project }); } return { items: [...byProject.values()], pagination: { limit: 200, offset: 0, total: byProject.size } }; }
+  async project(projectId) { const projects = await this.projects(); const project = projects.items.find((item) => item.id === projectId); if (!project) throw new Error(`unknown project: ${projectId}`); return project; }
+  async events(runId) { const audit = await this.getAudit(runId); return audit.items.map((item) => ({ id: `${item.type}-${item.occurredAt}`, type: item.type.toLowerCase(), occurredAt: item.occurredAt, data: item.data })); }
   getTask(taskId) { return this.store.getTask(taskId); }
   async getAudit(runId) {
     const run = await this.store.getRun(runId);

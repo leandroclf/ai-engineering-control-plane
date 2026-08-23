@@ -1,43 +1,58 @@
 openapi: 3.1.0
-info: { title: AI Engineering Control Plane API, version: 1.1.0 }
+info:
+  title: AI Engineering Control Plane API
+  version: 1.2.0
+  description: Governed read/write contract for the Human Control Plane. Secrets and raw source are never returned.
 security: [{ bearerAuth: [] }]
 paths:
   /health:
     get: { operationId: health, security: [], responses: { '200': { description: Alive } } }
   /ready:
-    get: { operationId: readiness, security: [], responses: { '200': { description: Ready }, '503': { description: Dependency unavailable } } }
+    get: { operationId: readiness, security: [], responses: { '200': { description: Ready, content: { application/json: { schema: { $ref: '#/components/schemas/Readiness' } } } }, '503': { description: Dependency unavailable, content: { application/json: { schema: { $ref: '#/components/schemas/Readiness' } } } } } }
+  /v1/overview:
+    get: { operationId: getOverview, responses: { '200': { description: Evidence-backed overview, content: { application/json: { schema: { $ref: '#/components/schemas/Overview' } } } } } }
+  /v1/system/status:
+    get: { operationId: getSystemStatus, responses: { '200': { description: Component readiness, content: { application/json: { schema: { $ref: '#/components/schemas/SystemStatus' } } } } } }
+  /v1/me:
+    get: { operationId: getCurrentActor, responses: { '200': { description: Current actor, content: { application/json: { schema: { $ref: '#/components/schemas/Actor' } } } } } }
+  /v1/projects:
+    get: { operationId: listProjects, responses: { '200': { description: Governed projects, content: { application/json: { schema: { $ref: '#/components/schemas/ProjectPage' } } } } } }
+  /v1/projects/{projectId}:
+    get: { operationId: getProject, parameters: [{ $ref: '#/components/parameters/ProjectId' }], responses: { '200': { description: Project, content: { application/json: { schema: { $ref: '#/components/schemas/Project' } } } } } }
   /v1/runs:
     post:
       operationId: createRun
       parameters: [{ name: Idempotency-Key, in: header, required: false, schema: { type: string } }]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CreateRunRequest' } } } }
-      responses: { '201': { description: Run created }, '422': { $ref: '#/components/responses/Error' } }
+      responses: { '201': { description: Run created, content: { application/json: { schema: { $ref: '#/components/schemas/RunDetail' } } } }, '422': { $ref: '#/components/responses/Error' } }
     get:
       operationId: listRuns
       parameters: [{ name: status, in: query, schema: { type: string } }, { name: taskId, in: query, schema: { type: string, format: uuid } }, { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }, { name: offset, in: query, schema: { type: integer, minimum: 0 } }]
-      responses: { '200': { description: Runs } }
+      responses: { '200': { description: Runs, content: { application/json: { schema: { $ref: '#/components/schemas/RunPage' } } } } }
   /v1/runs/{runId}:
-    get: { operationId: getRun, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Current run state } } }
+    get: { operationId: getRun, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Current run state, content: { application/json: { schema: { $ref: '#/components/schemas/RunDetail' } } } } } }
   /v1/runs/{runId}/stages:
-    get: { operationId: listRunStages, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Stage history } } }
+    get: { operationId: listRunStages, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Stage history, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/RunStage' } } } } } } }
   /v1/runs/{runId}:resume:
     post: { operationId: resumeRun, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Run resumed } } }
   /v1/runs/{runId}:cancel:
     post: { operationId: cancelRun, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Run cancelled } } }
   /v1/runs/{runId}/audit:
-    get: { operationId: getRunAudit, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Ordered audit timeline } } }
+    get: { operationId: getRunAudit, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Ordered audit timeline, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/AuditEvent' } } } } } } }
   /v1/runs/{runId}/gates:
-    get: { operationId: getRunGates, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Gate results } } }
+    get: { operationId: getRunGates, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Gate results, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/GateResult' } } } } } } }
   /v1/runs/{runId}/findings:
-    get: { operationId: getRunFindings, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Normalized findings } } }
+    get: { operationId: getRunFindings, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Normalized findings, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Finding' } } } } } } }
   /v1/runs/{runId}/execution:
-    get: { operationId: getRunExecution, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Execution-plane evidence } } }
+    get: { operationId: getRunExecution, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Execution-plane evidence, content: { application/json: { schema: { $ref: '#/components/schemas/ExecutionEvidence' } } } } } }
   /v1/runs/{runId}/credentials:
-    get: { operationId: getRunCredentials, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Run-scoped credential metadata without secrets } } }
+    get: { operationId: getRunCredentials, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Run-scoped credential metadata without secrets, content: { application/json: { schema: { $ref: '#/components/schemas/CredentialMetadata' } } } } } }
   /v1/runs/{runId}/attestations:
-    get: { operationId: getRunAttestations, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Worker and image attestation } } }
+    get: { operationId: getRunAttestations, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Worker and image attestation, content: { application/json: { schema: { $ref: '#/components/schemas/Attestation' } } } } } }
+  /v1/runs/{runId}/events:
+    get: { operationId: streamRunEvents, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Lifecycle event stream, content: { text/event-stream: { schema: { type: string } } } } } }
   /v1/certifications/v1:
-    get: { operationId: getV1Certification, responses: { '200': { description: V1 release certification contract } } }
+    get: { operationId: getV1Certification, responses: { '200': { description: V1 release certification contract, content: { application/json: { schema: { $ref: '#/components/schemas/Certification' } } } } } }
   /v1/certifications/v1/findings:
     get: { operationId: getV1CertificationFindings, responses: { '200': { description: Open V1 certification findings } } }
   /v1/tasks/{taskId}:
@@ -66,9 +81,95 @@ components:
   parameters:
     RunId: { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
     TaskId: { name: taskId, in: path, required: true, schema: { type: string, format: uuid } }
+    ProjectId: { name: projectId, in: path, required: true, schema: { type: string, minLength: 1 } }
   responses:
     Error: { description: Structured error, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
   schemas:
+    Readiness:
+      type: object
+      required: [status]
+      properties: { status: { type: string }, dependencies: { type: object, additionalProperties: { type: string } } }
+    SystemStatus:
+      type: object
+      required: [components]
+      properties: { components: { type: array, items: { $ref: '#/components/schemas/SystemComponent' } }, release: { $ref: '#/components/schemas/CertificationSummary' } }
+    SystemComponent:
+      type: object
+      required: [id, name, status]
+      properties: { id: { type: string }, name: { type: string }, status: { type: string }, detail: { type: string } }
+    Actor:
+      type: object
+      required: [actor, roles, capabilities]
+      properties: { actor: { type: string }, roles: { type: array, items: { type: string } }, capabilities: { type: array, items: { type: string } } }
+    Overview:
+      type: object
+      required: [release, activeRuns, recentRuns, attention]
+      properties: { release: { $ref: '#/components/schemas/CertificationSummary' }, activeRuns: { type: integer }, recentRuns: { type: array, items: { $ref: '#/components/schemas/RunSummary' } }, attention: { type: array, items: { type: object, additionalProperties: true } }, budget: { type: object, additionalProperties: true }, quality: { type: object, additionalProperties: true }, context: { type: object, additionalProperties: true } }
+    CertificationSummary:
+      type: object
+      required: [overall, pass, blocked, failed]
+      properties: { overall: { type: string }, pass: { type: integer }, blocked: { type: integer }, failed: { type: integer } }
+    Project:
+      type: object
+      required: [id, name, status]
+      properties: { id: { type: string }, name: { type: string }, status: { type: string }, repository: { type: string }, indexedAt: { type: string, format: date-time } }
+    ProjectPage:
+      type: object
+      required: [items, pagination]
+      properties: { items: { type: array, items: { $ref: '#/components/schemas/Project' } }, pagination: { $ref: '#/components/schemas/Pagination' } }
+    RunSummary:
+      type: object
+      required: [id, project, status]
+      properties: { id: { type: string }, taskId: { type: string }, project: { type: string }, query: { type: string }, status: { type: string }, stage: { type: string }, createdAt: { type: string, format: date-time }, updatedAt: { type: string, format: date-time }, costUsd: { type: number }, tokens: { type: integer }, durationSeconds: { type: number } }
+    RunPage:
+      type: object
+      required: [items, pagination]
+      properties: { items: { type: array, items: { $ref: '#/components/schemas/RunSummary' } }, pagination: { $ref: '#/components/schemas/Pagination' } }
+    RunDetail:
+      allOf: [{ $ref: '#/components/schemas/RunSummary' }, { type: object, properties: { stages: { type: array, items: { $ref: '#/components/schemas/RunStage' } }, links: { type: object, additionalProperties: { type: string } } } }]
+    RunStage:
+      type: object
+      required: [name, status]
+      properties: { name: { type: string }, status: { type: string }, startedAt: { type: string, format: date-time }, completedAt: { type: string, format: date-time }, evidence: { type: object, additionalProperties: true } }
+    GateResult:
+      type: object
+      required: [gate, status]
+      properties: { gate: { type: string }, status: { type: string }, evidence: { type: array, items: { type: string } }, reason: { type: string } }
+    Finding:
+      type: object
+      required: [fingerprint, severity, status]
+      properties: { fingerprint: { type: string }, severity: { type: string }, status: { type: string }, tool: { type: string }, message: { type: string }, location: { type: string } }
+    ExecutionEvidence:
+      type: object
+      additionalProperties: true
+      properties: { runId: { type: string }, workerId: { type: string }, profile: { type: string }, worktree: { type: string }, status: { type: string }, evidence: { type: object, additionalProperties: true } }
+    CredentialMetadata:
+      type: object
+      additionalProperties: true
+      properties: { runId: { type: string }, providerAlias: { type: string }, scope: { type: string }, issuedAt: { type: string, format: date-time }, expiresAt: { type: string, format: date-time }, revoked: { type: boolean } }
+    Attestation:
+      type: object
+      additionalProperties: true
+      properties: { type: { type: string }, subject: { type: string }, digest: { type: string }, verified: { type: boolean } }
+    AuditEvent:
+      type: object
+      required: [event, occurredAt]
+      properties: { event: { type: string }, occurredAt: { type: string, format: date-time }, actor: { type: string }, evidence: { type: object, additionalProperties: true } }
+    Pagination:
+      type: object
+      required: [limit, offset, total]
+      properties: { limit: { type: integer }, offset: { type: integer }, total: { type: integer } }
+    Certification:
+      type: object
+      required: [schemaVersion, release, controls]
+      properties: { schemaVersion: { type: integer }, release: { type: string }, controls: { type: array, items: { $ref: '#/components/schemas/CertificationControl' } } }
+    CertificationControl:
+      type: object
+      required: [id, status]
+      properties: { id: { type: string }, status: { type: string }, reason: { type: string }, evidence: { type: array, items: { type: string } } }
+    ContextProvenance:
+      type: object
+      additionalProperties: true
     CreateRunRequest:
       type: object
       additionalProperties: false

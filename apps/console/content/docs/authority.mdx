@@ -1,0 +1,13 @@
+---
+title: Authority model
+description: The boundaries that keep the browser and workers non-authoritative.
+---
+
+# Authority model
+
+Harness owns workflow, policy, budget, authorization, gates and termination.
+PostgreSQL is canonical state. Neo4j is a rebuildable projection and Redis is
+ephemeral. Provider credentials remain behind LiteLLM.
+
+The browser talks to the server-side BFF; it never receives provider keys,
+worker-manager credentials, database access or a Docker socket.

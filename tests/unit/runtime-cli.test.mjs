@@ -135,3 +135,34 @@ test("harness exposes execution evidence, safe credential metadata and certifica
   assert.equal(credentials.revoked, true);
   assert.equal(credentials.material, undefined);
 });
+
+test("harness exposes overview metadata and bounded live SSE run events", async (context) => {
+  const server = createHarnessServer({
+    token: "test-token",
+    runtime: {
+      overview: async () => ({ release: { overall: "NOT_YET_V1_CERTIFIED" }, activeRuns: 1 }),
+      systemStatus: () => ({ status: "ready" }),
+      currentActor: () => ({ subject: "human:reviewer", roles: ["reviewer"] }),
+      projects: async () => ({ items: [{ id: "site", name: "site" }] }),
+      events: async () => [{ id: "audit-1", type: "stage.completed", data: { stage: "verify" } }],
+    },
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  context.after(() => new Promise((resolve) => server.close(resolve)));
+  const endpoint = `http://127.0.0.1:${server.address().port}`;
+  const headers = { Authorization: "Bearer test-token" };
+
+  for (const path of ["/v1/overview", "/v1/system/status", "/v1/me", "/v1/projects"]) {
+    const response = await fetch(`${endpoint}${path}`, { headers });
+    assert.equal(response.status, 200, path);
+  }
+
+  const controller = new AbortController();
+  const response = await fetch(`${endpoint}/v1/runs/run-1/events`, { headers, signal: controller.signal });
+  assert.equal(response.headers.get("content-type"), "text/event-stream");
+  const reader = response.body.getReader();
+  const first = await reader.read();
+  assert.match(new TextDecoder().decode(first.value), /stage\.completed/);
+  controller.abort();
+  await reader.cancel().catch(() => {});
+});

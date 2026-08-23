@@ -20,6 +20,25 @@ jobs:
       - run: npm run test:architecture
       - run: npm run validate:supply-chain
 
+  console-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run validate:api-drift
+      - run: npm run validate:architecture-catalog
+      - run: npm run validate:docs
+      - run: npm run presentations:build
+      - run: npm run build:console
+      - run: npm --workspace @aicp/console run lint
+      - run: npm --workspace @aicp/console run typecheck
+      - run: CI=1 npm --workspace @aicp/console run build-storybook
+      - run: npm --workspace @aicp/console exec -- playwright install --with-deps chromium
+      - run: AICP_DEMO_MODE=true npm --workspace @aicp/console run e2e
+
   adversarial-certification:
     runs-on: ubuntu-latest
     timeout-minutes: 15

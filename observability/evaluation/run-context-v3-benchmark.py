@@ -12,7 +12,11 @@ sys.path.insert(0, str(ROOT / "memory-service" / "src"))
 from aicp_memory.context_service import ContextService
 
 SOURCE_SUFFIXES = {".js", ".mjs", ".ts", ".py", ".java", ".go", ".sql", ".yaml", ".yml", ".json", ".sh"}
-EXCLUDED = {".git", ".aicp", "node_modules", "projects", "state", "secrets", "backups"}
+# This paired benchmark covers the governed execution and memory planes. The
+# product console is validated by its own lint, typecheck, Storybook and E2E
+# gates; indexing it here would make this core retrieval measurement depend on
+# unrelated UI additions.
+EXCLUDED = {".git", ".aicp", "node_modules", "projects", "state", "secrets", "backups", "apps"}
 
 def terms(value): return re.findall(r"[A-Za-z0-9_$]+", value.lower())
 def vector(value, dimensions=64):

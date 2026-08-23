@@ -1,0 +1,9 @@
+{
+  "name": "@aicp/test-fixtures",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./demo/index.ts",
+  "types": "./demo/index.ts",
+  "exports": { ".": "./demo/index.ts" }
+}

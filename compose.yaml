@@ -257,6 +257,37 @@ services:
       scanner-data-updater: { condition: service_completed_successfully }
     networks: [agent-internal, data]
 
+  console:
+    build:
+      context: .
+      dockerfile: docker/console/Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm@sha256:0557ac14e0d45d02ed563067b82856ca5e7aa3437fa28d98d4350ea9c3d9494a}
+      sbom: true
+      provenance: mode=max
+    restart: unless-stopped
+    environment:
+      HARNESS_URL: http://harness:8081
+      HARNESS_SERVICE_TOKEN_FILE: /run/secrets/harness_service_token
+      AICP_DEMO_MODE: ${AICP_DEMO_MODE:-false}
+    secrets: [harness_service_token]
+    ports: ["127.0.0.1:3001:3000"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    read_only: true
+    tmpfs: ["/tmp:size=128m,mode=1777"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    pids_limit: 256
+    mem_limit: 1g
+    cpus: 2
+    depends_on:
+      harness: { condition: service_healthy }
+    networks: [agent-internal]
+
   worker-manager:
     build:
       context: .

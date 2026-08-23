@@ -1,0 +1,10 @@
+---
+title: Governed execution
+description: How a bounded run moves through stages and evidence.
+---
+
+# Governed execution
+
+Every run reserves budget before an LLM call, executes inside an ephemeral
+worker, records redacted evidence and settles actual usage afterward. Findings
+and blocked gates remain visible; the UI never promotes a blocked control.

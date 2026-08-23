@@ -7,7 +7,7 @@ import { ControlPlaneAuthorizer } from "../security/identity-authority.mjs";
 
 export const API_OPERATIONS = Object.freeze([
   "health", "readiness", "createRun", "listRuns", "getRun", "listRunStages", "resumeRun", "cancelRun", "getRunAudit", "getRunGates", "getRunFindings",
-  "getTask", "getTaskBudget", "listBudgetEvents", "cancelTaskBudget", "listCapabilities", "listWorkflows", "listPolicies", "listModels", "getContext", "getRunExecution", "getRunCredentials", "getRunAttestations", "getV1Certification", "getV1CertificationFindings",
+  "getTask", "getTaskBudget", "listBudgetEvents", "cancelTaskBudget", "listCapabilities", "listWorkflows", "listPolicies", "listModels", "getContext", "getRunExecution", "getRunCredentials", "getRunAttestations", "getV1Certification", "getV1CertificationFindings", "getOverview", "getSystemStatus", "getCurrentActor", "listProjects", "getProject", "streamRunEvents",
 ]);
 
 export const MAX_REQUEST_BODY_BYTES = 1_048_576;
@@ -107,6 +107,12 @@ export function createHarnessServer({ runtime, token, authorizer = null, project
         return;
       }
       if (request.method === "GET" && url.pathname === "/v1/runs") { send(response, 200, await runtime.listRuns({ status: url.searchParams.get("status"), taskId: url.searchParams.get("taskId"), limit: url.searchParams.get("limit"), offset: url.searchParams.get("offset") })); return; }
+      if (request.method === "GET" && url.pathname === "/v1/overview") { send(response, 200, await runtime.overview()); return; }
+      if (request.method === "GET" && url.pathname === "/v1/system/status") { send(response, 200, runtime.systemStatus()); return; }
+      if (request.method === "GET" && url.pathname === "/v1/me") { send(response, 200, runtime.currentActor()); return; }
+      if (request.method === "GET" && url.pathname === "/v1/projects") { send(response, 200, await runtime.projects()); return; }
+      const project = request.method === "GET" && url.pathname.match(/^\/v1\/projects\/([^/]+)$/);
+      if (project) { send(response, 200, await runtime.project(decodeURIComponent(project[1]))); return; }
       if (request.method === "GET" && url.pathname === "/v1/capabilities") { const project = url.searchParams.get("project"); send(response, 200, await runtime.capabilities({ project: project ? resolveProjectDirectory(projectsRoot, project) : null })); return; }
       if (request.method === "GET" && url.pathname === "/v1/workflows") { send(response, 200, runtime.workflows()); return; }
       if (request.method === "GET" && url.pathname === "/v1/policies") { send(response, 200, runtime.policies()); return; }
@@ -136,6 +142,28 @@ export function createHarnessServer({ runtime, token, authorizer = null, project
       if (credentials) { send(response, 200, runtime.getCredentials(decodeURIComponent(credentials[1]))); return; }
       const attestations = request.method === "GET" && url.pathname.match(/^\/v1\/runs\/([^/]+)\/attestations$/);
       if (attestations) { send(response, 200, runtime.getAttestations(decodeURIComponent(attestations[1]))); return; }
+      const events = request.method === "GET" && url.pathname.match(/^\/v1\/runs\/([^/]+)\/events$/);
+      if (events) {
+        response.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive", "X-Accel-Buffering": "no" });
+        let closed = false;
+        const emitted = new Set();
+        const emit = async () => {
+          if (closed) return;
+          for (const event of await runtime.events(decodeURIComponent(events[1]))) {
+            if (emitted.has(event.id)) continue;
+            emitted.add(event.id);
+            response.write(`id: ${event.id}\nevent: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`);
+          }
+          response.write(`: heartbeat ${Date.now()}\n\n`);
+        };
+        const close = () => { if (closed) return; closed = true; clearInterval(interval); clearTimeout(timeout); };
+        const interval = setInterval(() => { void emit().catch(() => close()); }, 1000);
+        const timeout = setTimeout(() => { close(); response.end(); }, 30000);
+        request.on("close", close);
+        response.on("close", close);
+        await emit();
+        return;
+      }
       if (request.method === "GET" && url.pathname === "/v1/certifications/v1") {
         const contract = JSON.parse(await readFile("release/v1-contract.json", "utf8"));
         send(response, 200, contract); return;

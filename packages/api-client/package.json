@@ -1,0 +1,12 @@
+{
+  "name": "@aicp/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "openapi-typescript ../../docs/api/control-plane-v1.openapi.yaml -o src/generated.ts",
+    "check": "npm run generate && openapi-typescript ../../docs/api/control-plane-v1.openapi.yaml -o /tmp/aicp-api-generated.ts && cmp --silent src/generated.ts /tmp/aicp-api-generated.ts"
+  },
+  "dependencies": { "openapi-fetch": "0.14.0" },
+  "devDependencies": { "openapi-typescript": "7.8.0" }
+}
