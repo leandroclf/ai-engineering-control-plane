@@ -1,0 +1,7 @@
+import Link from "next/link";
+import { Card, EvidenceLink, StatusBadge, Table } from "@aicp/ui";
+import { demoCertification } from "@aicp/test-fixtures";
+
+export default function SecurityPage() {
+  return <div className="content"><div className="page-heading"><div><div className="eyebrow">Security & Release / Findings</div><h1>Security posture</h1><p className="muted">Findings, scanners and residual risk are shown with their evidence. A green UI never suppresses a critical finding.</p></div><Link className="button button-secondary" href="/release">Open certification</Link></div><div className="grid three-col"><Card title="Blockers"><div className="metric-value">{demoCertification.blockers.length}</div><StatusBadge status="blocked">Review required</StatusBadge></Card><Card title="Provider credentials"><div className="metric-value">0</div><span className="muted">returned to browser</span></Card><Card title="Langfuse"><div className="metric-value">↗</div><span className="muted">deep LLM observability remains separate</span></Card></div><Card title="Open controls" className="" ><Table caption="Security blockers"><thead><tr><th>Control</th><th>Status</th><th>Why</th><th>Evidence</th></tr></thead><tbody>{demoCertification.blockers.map((item) => <tr key={item.id}><td><strong>{item.title}</strong><br /><span className="muted">{item.id}</span></td><td><StatusBadge status="blocked" /></td><td>Release evidence is still required.</td><td><EvidenceLink href="/release">View control</EvidenceLink></td></tr>)}</tbody></Table></Card></div>;
+}

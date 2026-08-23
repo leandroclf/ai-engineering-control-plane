@@ -1,0 +1,15 @@
+.git
+.aicp
+node_modules
+**/node_modules
+**/.next
+**/storybook-static
+**/playwright-report
+**/test-results
+state
+secrets
+projects
+backups
+*.log
+Dockerfile*
+!docker/**/Dockerfile

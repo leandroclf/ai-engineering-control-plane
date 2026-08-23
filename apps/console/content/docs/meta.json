@@ -1,0 +1,4 @@
+{
+  "title": "AICP Console",
+  "pages": ["index", "authority", "governed-execution", "release-certification"]
+}

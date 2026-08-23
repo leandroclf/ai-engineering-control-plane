@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "apps/console",
+    "packages/*"
+  ],
   "scripts": {
     "test": "node --test tests/unit/*.test.mjs",
     "test:python": "PYTHONPATH=memory-service/src python3 -m unittest discover -s tests/unit -p '*_test.py'",
@@ -33,6 +37,18 @@
     "generate:model-catalog": "node scripts/generate-model-catalog.mjs",
     "validate:model-catalog": "node scripts/generate-model-catalog.mjs --check",
     "validate:project": "node harness/src/cli/validate-project.mjs",
+    "build:console": "npm --workspace @aicp/console run build",
+    "dev:console": "npm --workspace @aicp/console run dev",
+    "generate:api": "npm --workspace @aicp/api-client run generate",
+    "validate:api-drift": "npm --workspace @aicp/api-client run check",
+    "validate:architecture-catalog": "node scripts/validate-architecture-catalog.mjs",
+    "generate:architecture-docs": "node scripts/generate-architecture-docs.mjs",
+    "validate:docs": "node scripts/validate-docs.mjs",
+    "presentations:build": "node scripts/build-presentations.mjs",
+    "presentations:pdf": "node scripts/build-presentations.mjs --format pdf",
+    "presentations:pptx": "node scripts/build-presentations.mjs --format pptx",
+    "test:ui": "npm --workspace @aicp/console run test",
+    "screenshots:docs": "npm --workspace @aicp/console run screenshots",
     "validate": "npm test && npm run test:python && npm run validate:suppressions && npm run test:security && npm run test:acceptance"
   },
   "engines": {
@@ -40,6 +56,13 @@
   },
   "dependencies": {
     "@opencode-ai/sdk": "1.18.21",
-    "pg": "8.16.3"
+    "pg": "8.16.3",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@storybook/react-webpack5": "^8.6.14"
+  },
+  "overrides": {
+    "postcss": "8.5.23"
   }
 }
