@@ -146,10 +146,11 @@ if printf '%s\n' "$harness_environment" | rg '^(OPENAI|ANTHROPIC|GEMINI)_' ; the
   exit 1
 fi
 
-if rg -n '/var/run/docker.sock' compose.yaml; then
-  echo 'workspace must not mount the host Docker socket' >&2
+if jq -e '.services.workspace.volumes[]?.source == "/var/run/docker.sock" or .services.harness.volumes[]?.source == "/var/run/docker.sock"' <<<"$compose_json" >/dev/null; then
+  echo 'workspace and Harness must not mount the host Docker socket' >&2
   exit 1
 fi
+jq -e '.services["worker-manager"].volumes[]?.source == "/var/run/docker.sock"' <<<"$compose_json" >/dev/null
 
 if rg -n 'git push.*allow' opencode; then
   echo 'git push must not be allowed' >&2

@@ -20,6 +20,48 @@ jobs:
       - run: npm run test:architecture
       - run: npm run validate:supply-chain
 
+  adversarial-certification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run test:adversarial
+
+  budget-adversarial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run test:budget-adversarial
+
+  execution-plane-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: bash scripts/build-worker-images.sh
+      - run: npm run test:worker-e2e
+
+  multistack-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run test:multistack
+      - run: npm run validate:version-contract
+
   contracts:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -170,7 +212,7 @@ jobs:
       - name: Build and attest ephemeral worker profiles
         run: bash scripts/build-worker-images.sh
       - name: Exercise deployment-side worker lifecycle
-        run: AICP_DOCKER_TEST=1 node --test tests/integration/worker-docker.integration.mjs tests/integration/worker-manager-http.integration.mjs
+        run: npm run test:worker-e2e
       - name: Generate owned image SBOMs and vulnerability evidence
         run: npm run scan:owned-images
       - name: Upload owned image evidence

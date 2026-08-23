@@ -1,4 +1,5 @@
 import { redactValue } from "../security/redact.mjs";
+import { LocalExecutionPlane } from "../execution/local-execution-plane.mjs";
 
 function requireProject(task) {
   const project = task?.metadata?.projectDirectory;
@@ -51,9 +52,10 @@ function normalizeAgentEvidence(result) {
   });
 }
 
-async function runAgent(controller, request) {
-  if (controller.runDetailed) return controller.runDetailed(request);
-  return { structured: await controller.run(request), usage: null };
+async function ensureExecutionRun(executionPlane, run, task) {
+  const runId = run?.id ?? "direct-handler-run";
+  if (!executionPlane.hasRun?.(runId)) await executionPlane.createRun({ run: { id: runId }, task });
+  return runId;
 }
 
 function gateOutcome(report) {
@@ -74,8 +76,9 @@ function implementationProvider(stages) {
   return [...stages].reverse().find((stage) => stageFrom(stage) === "implement")?.evidence?.handler?.usage?.provider ?? null;
 }
 
-export function createWorkflowHandlers({ definition, store = null, controller, projectAdapter, gateRunner, gateRegistry = null, budgetAuthority = null, routingPolicy = null }) {
+export function createWorkflowHandlers({ definition, store = null, controller, projectAdapter, gateRunner, executionPlane = null, gateRegistry = null, budgetAuthority = null, routingPolicy = null }) {
   if (!definition?.states) throw new TypeError("workflow definition is required");
+  const plane = executionPlane ?? new LocalExecutionPlane({ controller, gateRunner });
   const handlers = {};
   for (const [state, stateDefinition] of Object.entries(definition.states)) {
     if (definition.terminal.includes(state)) continue;
@@ -83,6 +86,7 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
       handlers[state] = async ({ run, task, context }) => {
         let reservation;
         try {
+          const runId = await ensureExecutionRun(plane, run, task);
           const prompt = agentPrompt({ task, state, context });
           const schema = agentSchema(Object.keys(stateDefinition.next));
           const alias = modelAlias(stateDefinition);
@@ -90,16 +94,15 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
           const routing = routingPolicy?.decide({ alias, role: stateDefinition.agent?.includes("reviewer") ? "reviewer" : "producer", producerProvider: implementationProvider(priorStages) }) ?? null;
           reservation = budgetAuthority ? await budgetAuthority.reserve({
             taskId: task.id, runId: run.id, stage: state, contextBudget: context?.budget ?? 0, attempt: run.version,
-            invocation: { alias, prompt, contextTokenCount: context?.tokenCount ?? 0, schema, maxOutputTokens: stateDefinition.maxOutputTokens ?? 4096 },
+            invocation: { alias, prompt, contextTokenCount: context?.tokenCount ?? 0, schema, maxOutputTokens: stateDefinition.maxOutputTokens ?? 4096, maxPhysicalAttempts: Math.max(1, routing?.deployments?.length ?? 1) },
           }) : null;
           if (reservation?.idempotentReplay) throw Object.assign(new Error("invocation reservation is already active"), { name: "InvocationInProgressError" });
-          const execution = await runAgent(controller, {
-          directory: requireProject(task),
+          const execution = await plane.invokeAgent(runId, {
           agent: stateDefinition.agent,
           prompt,
           schema,
           maxOutputTokens: reservation ? Number(reservation.reserved_output_tokens) : undefined,
-          invocation: reservation ? { taskId: task.id, runId: run.id, stage, reservationId: reservation.id, logicalInvocationId: reservation.logical_invocation_id, modelAlias: reservation.model_alias } : null,
+          invocation: reservation ? { taskId: task.id, runId: run.id, stage: state, reservationId: reservation.id, logicalInvocationId: reservation.logical_invocation_id, modelAlias: reservation.model_alias } : null,
           modelAlias: routing?.selected.gatewayAlias ?? alias,
           });
           const settlement = reservation ? await budgetAuthority.commit({ reservationId: reservation.id, actualUsage: execution.usage ?? {} }) : null;
@@ -125,17 +128,20 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
       continue;
     }
     if (stateDefinition.gates) {
-      handlers[state] = async ({ task }) => {
+      handlers[state] = async ({ run, task }) => {
+        const runId = await ensureExecutionRun(plane, run, task);
         const project = requireProject(task);
-        const profile = await projectAdapter.detect(project);
+        const profile = plane.profile?.(runId) ?? task.metadata.projectProfile ?? (plane.remote ? null : await projectAdapter.detect(project));
+        if (!profile) throw new Error("PROJECT_PROFILE_REQUIRED_FOR_EXECUTION");
         const definitions = gateRegistry ? await gateRegistry.preflight({ names: stateDefinition.gates, project, profile }) : null;
-        const report = await gateRunner.run({ project, profile, gateNames: stateDefinition.gates, definitions });
+        const report = await plane.executeCapability(runId, { capability: "gates", profile, gateNames: stateDefinition.gates, definitions });
         return { outcome: gateOutcome(report), evidence: redactValue({ projectKind: report.projectKind, gates: report.gates }) };
       };
       continue;
     }
     if (Number.isInteger(stateDefinition.maxIterations)) {
       handlers[state] = async ({ run, task }) => {
+        const runId = await ensureExecutionRun(plane, run, task);
         if (!store?.listStages) throw new TypeError("repair states require a run store");
         const stages = await store.listStages(run.id);
         const iterations = stages.filter((stage) => stageFrom(stage) === state).length;
@@ -166,8 +172,7 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
           reservation = budgetAuthority ? await budgetAuthority.reserve({ taskId: task.id, runId: run.id, stage: state, attempt: run.version,
             invocation: { alias: stateDefinition.model ?? "coding-strong", prompt, schema, maxOutputTokens: stateDefinition.maxOutputTokens ?? 4096 } }) : null;
           if (reservation?.idempotentReplay) throw Object.assign(new Error("invocation reservation is already active"), { name: "InvocationInProgressError" });
-          const execution = await runAgent(controller, {
-          directory: requireProject(task),
+          const execution = await plane.invokeAgent(runId, {
           agent: "implementer",
           prompt,
           schema,

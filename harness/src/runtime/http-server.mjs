@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
+import { readFile } from "node:fs/promises";
 
 import { resolveProjectDirectory } from "../cli/runtime-arguments.mjs";
 import { ControlPlaneAuthorizer } from "../security/identity-authority.mjs";
 
 export const API_OPERATIONS = Object.freeze([
   "health", "readiness", "createRun", "listRuns", "getRun", "listRunStages", "resumeRun", "cancelRun", "getRunAudit", "getRunGates", "getRunFindings",
-  "getTask", "getTaskBudget", "listBudgetEvents", "cancelTaskBudget", "listCapabilities", "listWorkflows", "listPolicies", "listModels", "getContext",
+  "getTask", "getTaskBudget", "listBudgetEvents", "cancelTaskBudget", "listCapabilities", "listWorkflows", "listPolicies", "listModels", "getContext", "getRunExecution", "getRunCredentials", "getRunAttestations", "getV1Certification", "getV1CertificationFindings",
 ]);
 
 export const MAX_REQUEST_BODY_BYTES = 1_048_576;
@@ -30,7 +31,7 @@ async function jsonBody(request, limit = 1_048_576) {
   return chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
 }
 
-const CREATE_RUN_FIELDS = new Set(["project", "repository", "query", "idempotencyKey", "exactSymbols", "scopes", "constraints"]);
+const CREATE_RUN_FIELDS = new Set(["project", "repository", "query", "idempotencyKey", "exactSymbols", "scopes", "constraints", "workerProfile", "projectKind", "projectModules", "projectProfile", "baseCommit"]);
 const CONSTRAINT_RULES = Object.freeze({
   maxCostUsd: { integer: false, minimum: 0, exclusive: true },
   maxCalls: { integer: true, minimum: 1 },
@@ -50,6 +51,11 @@ export function startRequest(body, projectsRoot, idempotencyHeader = null) {
   if (body.repository !== undefined && (typeof body.repository !== "string" || !body.repository.trim())) throw new TypeError("repository must be a non-empty string");
   if (body.exactSymbols !== undefined && (!Array.isArray(body.exactSymbols) || body.exactSymbols.some((value) => typeof value !== "string" || !value))) throw new TypeError("exactSymbols must contain non-empty strings");
   if (body.scopes !== undefined && (!Array.isArray(body.scopes) || body.scopes.some((value) => typeof value !== "string" || !value))) throw new TypeError("scopes must contain non-empty strings");
+  if (body.workerProfile !== undefined && (typeof body.workerProfile !== "string" || !body.workerProfile.trim())) throw new TypeError("workerProfile must be a non-empty string");
+  if (body.projectKind !== undefined && (typeof body.projectKind !== "string" || !body.projectKind.trim())) throw new TypeError("projectKind must be a non-empty string");
+  if (body.projectModules !== undefined && (!Array.isArray(body.projectModules) || body.projectModules.some((value) => typeof value !== "string" || !value.trim()))) throw new TypeError("projectModules must contain non-empty strings");
+  if (body.projectProfile !== undefined && (!body.projectProfile || typeof body.projectProfile !== "object" || Array.isArray(body.projectProfile))) throw new TypeError("projectProfile must be an object");
+  if (body.baseCommit !== undefined && (typeof body.baseCommit !== "string" || !body.baseCommit.trim())) throw new TypeError("baseCommit must be a non-empty string");
   const constraints = body.constraints ?? {};
   if (!constraints || typeof constraints !== "object" || Array.isArray(constraints)) throw new TypeError("constraints must be an object");
   for (const [name, value] of Object.entries(constraints)) {
@@ -64,6 +70,11 @@ export function startRequest(body, projectsRoot, idempotencyHeader = null) {
       query: body.query,
       repository: body.repository ?? body.project,
       scopes: body.scopes ?? [`REPOSITORY:${body.project}`],
+      ...(body.workerProfile ? { workerProfile: body.workerProfile } : {}),
+      ...(body.projectKind ? { projectKind: body.projectKind } : {}),
+      ...(body.projectModules ? { projectModules: body.projectModules } : {}),
+      ...(body.projectProfile ? { projectProfile: body.projectProfile } : {}),
+      ...(body.baseCommit ? { baseCommit: body.baseCommit } : {}),
       ...(body.exactSymbols ? { exactSymbols: body.exactSymbols } : {}),
     },
   };
@@ -119,6 +130,21 @@ export function createHarnessServer({ runtime, token, authorizer = null, project
       if (gates) { send(response, 200, await runtime.getGates(decodeURIComponent(gates[1]))); return; }
       const findings = request.method === "GET" && url.pathname.match(/^\/v1\/runs\/([^/]+)\/findings$/);
       if (findings) { send(response, 200, await runtime.getFindings(decodeURIComponent(findings[1]))); return; }
+      const execution = request.method === "GET" && url.pathname.match(/^\/v1\/runs\/([^/]+)\/execution$/);
+      if (execution) { send(response, 200, runtime.getExecution(decodeURIComponent(execution[1]))); return; }
+      const credentials = request.method === "GET" && url.pathname.match(/^\/v1\/runs\/([^/]+)\/credentials$/);
+      if (credentials) { send(response, 200, runtime.getCredentials(decodeURIComponent(credentials[1]))); return; }
+      const attestations = request.method === "GET" && url.pathname.match(/^\/v1\/runs\/([^/]+)\/attestations$/);
+      if (attestations) { send(response, 200, runtime.getAttestations(decodeURIComponent(attestations[1]))); return; }
+      if (request.method === "GET" && url.pathname === "/v1/certifications/v1") {
+        const contract = JSON.parse(await readFile("release/v1-contract.json", "utf8"));
+        send(response, 200, contract); return;
+      }
+      if (request.method === "GET" && url.pathname === "/v1/certifications/v1/findings") {
+        const contract = JSON.parse(await readFile("release/v1-contract.json", "utf8"));
+        const items = (contract.controls ?? []).filter((control) => control.status !== "PASS").map((control) => ({ id: control.id, status: control.status, reason: control.reason ?? null, evidence: control.evidence ?? [] }));
+        send(response, 200, { certification: "v1", items }); return;
+      }
       const task = request.method === "GET" && url.pathname.match(/^\/v1\/tasks\/([^/]+)$/);
       if (task) { send(response, 200, await runtime.getTask(decodeURIComponent(task[1]))); return; }
       const budget = request.method === "GET" && url.pathname.match(/^\/v1\/tasks\/([^/]+)\/budget$/);
@@ -134,7 +160,7 @@ export function createHarnessServer({ runtime, token, authorizer = null, project
       const unavailable = error.name === "GateResolutionError" || error.name === "PricingUnknownError";
       const forbidden = error.name === "AuthorizationError";
       const conflict = error.name === "IdempotencyConflictError";
-      const notFound = /^unknown (?:run|task|context|task budget)/.test(error.message);
+      const notFound = /^unknown (?:run|task|context|task budget|execution)/.test(error.message);
       send(response, payloadTooLarge ? 413 : clientError ? 400 : forbidden ? 403 : notFound ? 404 : conflict ? 409 : unavailable ? 422 : 500, { error: {
         code: payloadTooLarge ? "PAYLOAD_TOO_LARGE" : clientError ? "INVALID_REQUEST" : forbidden ? "FORBIDDEN" : notFound ? "NOT_FOUND" : conflict ? "IDEMPOTENCY_CONFLICT" : unavailable ? error.code ?? error.name : "RUNTIME_FAILURE",
         message: payloadTooLarge || clientError || unavailable ? error.message : "The control plane could not complete the request.", retryable: false, requestId, details: {},

@@ -15,7 +15,9 @@ const requiredGates = [...new Set(Object.values(workflow.states).flatMap((state)
 const missing = requiredGates.filter((name) => !gates.gates[name]);
 if (missing.length) throw new Error(`unresolved workflow gates: ${missing.join(",")}`);
 if (opencode.permission["*"] !== "deny") throw new Error("OpenCode must be deny-by-default");
-if (compose.includes("/var/run/docker.sock")) throw new Error("Docker socket must not be mounted");
+const harnessCompose = compose.slice(compose.indexOf("\n  harness:"), compose.indexOf("\n  worker-manager:"));
+if (harnessCompose.includes("/var/run/docker.sock")) throw new Error("Docker socket must not be mounted in Harness");
+if (!compose.includes("worker-manager:") || !compose.includes("/var/run/docker.sock")) throw new Error("deployment-side worker manager boundary is required");
 if (!compose.includes("agent-internal:\n    internal: true")) throw new Error("agent network must be internal");
 if (!compose.includes("read_only: true")) throw new Error("executor root filesystem must be read-only");
 if (!handlers.includes("budgetAuthority.reserve") || !handlers.includes("budgetAuthority.commit")) throw new Error("agents must be wrapped by budget authority");

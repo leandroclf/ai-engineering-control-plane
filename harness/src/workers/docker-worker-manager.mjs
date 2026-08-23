@@ -1,15 +1,17 @@
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { WorkerManager } from "../runtime/ephemeral-worker-contract.mjs";
+import { WorkerCommandPolicy } from "./worker-command-policy.mjs";
+import { WorkerAgentController } from "./worker-agent-controller.mjs";
 
 const PHYSICAL_PROVIDER_CREDENTIAL = /^(?:OPENAI|ANTHROPIC|GEMINI|GOOGLE)_.*(?:KEY|TOKEN|SECRET)$/i;
 function workerName(runId) { return `aicp-run-${createHash("sha256").update(runId).digest("hex").slice(0, 20)}`; }
 
 export class DockerWorkerManager extends WorkerManager {
-  constructor({ docker, profiles, identityService, network = "none", secretResolver = async () => null }) {
+  constructor({ docker, profiles, identityService, network = "none", secretResolver = async () => null, commandPolicy = null, credentials = null }) {
     super();
     if (!docker || !profiles || !identityService) throw new TypeError("docker control, profiles and identity service are required");
-    this.docker = docker; this.profiles = profiles; this.identityService = identityService; this.network = network; this.secretResolver = secretResolver; this.workers = new Map();
+    this.docker = docker; this.profiles = profiles; this.identityService = identityService; this.network = network; this.secretResolver = secretResolver; this.commandPolicy = commandPolicy; this.credentials = credentials; this.workers = new Map();
   }
 
   async create(spec) {
@@ -48,19 +50,43 @@ export class DockerWorkerManager extends WorkerManager {
     return handle;
   }
 
+  async invokeAgent(runId, request) {
+    const worker = this.workers.get(runId);
+    if (!worker) throw new Error(`WORKER_NOT_FOUND:${runId}`);
+    this.identityService.verify(worker.identityToken, runId);
+    return new WorkerAgentController({ docker: this.docker, commandPolicy: this.commandPolicy }).invoke({ workerId: worker.handle.workerId, profile: worker.handle.profile, ...request });
+  }
+
   async exec(runId, command) {
     const worker = this.workers.get(runId);
     if (!worker) throw new Error(`WORKER_NOT_FOUND:${runId}`);
     this.identityService.verify(worker.identityToken, runId);
+    if (this.commandPolicy) {
+      if (!Array.isArray(command) || !command.length) throw Object.assign(new Error("COMMAND_NOT_ALLOWED"), { name: "WorkerCapabilityError", code: "COMMAND_NOT_ALLOWED" });
+      const capability = this.commandPolicy.validate({ profile: worker.handle.profile, capability: "runtime:probe", tool: command[0], args: command.slice(1) });
+      return this.docker.exec(worker.handle.workerId, [capability.tool, ...capability.args]);
+    }
     return this.docker.exec(worker.handle.workerId, command);
+  }
+
+  async execCapability(runId, request) {
+    const worker = this.workers.get(runId);
+    if (!worker) throw new Error(`WORKER_NOT_FOUND:${runId}`);
+    this.identityService.verify(worker.identityToken, runId);
+    if (!this.commandPolicy?.validate) throw new Error("WORKER_COMMAND_POLICY_UNAVAILABLE");
+    const capability = this.commandPolicy.validate({ profile: worker.handle.profile, ...request });
+    const cwd = request.cwd ? String(request.cwd) : "/workspace/project";
+    if (!cwd.startsWith("/workspace/project") || /(?:^|\/)\.\.(?:\/|$)/.test(cwd)) throw Object.assign(new Error("COMMAND_NOT_ALLOWED"), { name: "WorkerCapabilityError", code: "COMMAND_NOT_ALLOWED" });
+    return this.docker.execCapability ? this.docker.execCapability(worker.handle.workerId, capability, { cwd }) : this.docker.exec(worker.handle.workerId, [capability.tool, ...capability.args]);
   }
 
   async collectEvidence(runId) {
     const worker = this.workers.get(runId);
     if (!worker) throw new Error(`WORKER_NOT_FOUND:${runId}`);
-    const repositoryDiff = await this.docker.exec(worker.handle.workerId, ["sh", "-lc", "git -C /workspace/project status --porcelain=v1 && git -C /workspace/project diff --binary --no-ext-diff"]);
-    const diff = repositoryDiff.exitCode === 0 ? repositoryDiff : await this.docker.diff(worker.handle.workerId);
-    return Object.freeze({ runId, workerId: worker.handle.workerId, diffHash: createHash("sha256").update(diff.stdout ?? "").digest("hex"), changedEntries: String(diff.stdout ?? "").trim() ? String(diff.stdout).trim().split("\n").length : 0 });
+    const status = await this.docker.exec(worker.handle.workerId, ["git", "-C", "/workspace/project", "status", "--porcelain=v1"]);
+    const diff = await this.docker.exec(worker.handle.workerId, ["git", "-C", "/workspace/project", "diff", "--binary", "--no-ext-diff"]);
+    const evidence = `${status.stdout ?? ""}\n${diff.stdout ?? ""}`;
+    return Object.freeze({ runId, workerId: worker.handle.workerId, image: worker.handle.image, imageDigest: worker.handle.imageDigest, attestation: worker.handle.attestation, ...(this.credentials ? { credentials: await this.credentials.describe(runId) } : {}), diffHash: createHash("sha256").update(evidence).digest("hex"), changedEntries: String(status.stdout ?? "").trim() ? String(status.stdout).trim().split("\n").length : 0 });
   }
 
   async destroy(runId) {
@@ -72,5 +98,17 @@ export class DockerWorkerManager extends WorkerManager {
     this.identityService.revoke(worker.identityToken);
     this.workers.delete(runId);
     return true;
+  }
+
+  async reconcile() {
+    if (!this.docker.listOwned) return { removed: 0 };
+    const owned = await this.docker.listOwned();
+    let removed = 0;
+    for (const containerId of owned) {
+      await this.docker.remove(containerId);
+      removed += 1;
+    }
+    this.workers.clear();
+    return { removed };
   }
 }
