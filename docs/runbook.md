@@ -35,14 +35,19 @@ project policy; do not replace a required gate with a guessed conventional comma
 
 Run the deployment-side manager on the trusted Docker host, never inside the
 Harness or an agent container. Set `AICP_WORKER_PROJECTS_ROOT` to the exact host
-checkout boundary and provide independent manager, workload-signing, scoped
-LiteLLM and Memory tokens through the process environment. Start it with
+checkout boundary and provide only the manager API token and workload-signing
+secret through secret files. The manager issues material credentials per run;
+provider keys never cross the LiteLLM boundary. Start it with
 `npm run worker-manager`. Configure the Harness with
 `AICP_EXECUTION_MODE=ephemeral`, `WORKER_MANAGER_URL`, `WORKER_MANAGER_TOKEN`
 and `WORKER_CLIENT_PROJECT_ROOT`. Readiness fails closed when the manager or an
 attested toolchain profile is unavailable. Local personal mode remains
 long-lived unless explicitly switched; remote/team deployments must use the
 ephemeral mode.
+
+Production also requires `AICP_RELEASE_MODE=production` and
+`AICP_AUTH_MODE=oauth` with issuer, audience and JWKS configuration. Static
+admin tokens are reserved for local mode.
 
 ## Suspected secret exposure
 

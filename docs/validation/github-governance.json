@@ -11,6 +11,10 @@
   "codeOwnerReview": true,
   "requiredChecks": [
     "architecture-contracts",
+    "adversarial-certification",
+    "budget-adversarial",
+    "execution-plane-e2e",
+    "multistack-matrix",
     "contracts",
     "control-plane-integration",
     "mock-provider-e2e",
