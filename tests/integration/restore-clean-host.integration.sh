@@ -13,7 +13,15 @@ for container in "$source_container" "$target_container"; do
   docker run -d --name "$container" -e POSTGRES_PASSWORD=test-only -e POSTGRES_USER=aicp -e POSTGRES_DB=postgres "$POSTGRES_IMAGE" >/dev/null
 done
 for container in "$source_container" "$target_container"; do
-  for _ in $(seq 1 30); do docker exec "$container" pg_isready -U aicp -d postgres >/dev/null 2>&1 && break; sleep 1; done
+  ready=false
+  for _ in $(seq 1 60); do
+    if docker exec "$container" psql -v ON_ERROR_STOP=1 -U aicp -d postgres -c 'SELECT 1' >/dev/null 2>&1; then
+      ready=true
+      break
+    fi
+    sleep 1
+  done
+  test "$ready" = true
   docker exec "$container" createdb -U aicp aicp_memory
   docker exec "$container" createdb -U aicp litellm
 done

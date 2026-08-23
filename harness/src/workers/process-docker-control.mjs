@@ -12,6 +12,11 @@ async function run(args, options = {}) {
 }
 
 export class ProcessDockerControl {
+  async listOwned() {
+    const result = await run(["ps", "-aq", "--filter", "label=aicp.run_id", "--format", "{{.ID}}"]);
+    if (result.exitCode !== 0) throw new Error("WORKER_LIST_FAILED");
+    return String(result.stdout ?? "").split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+  }
   async create(options) {
     const args = ["create", "--name", options.name, "--label", `aicp.run_id=${options.runId}`, "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "512", "--memory", "4g", "--cpus", "4", "--network", options.network];
     for (const mount of options.mounts) args.push("--mount", `type=bind,src=${mount.source},dst=${mount.target}${mount.readOnly ? ",readonly" : ""}`);
@@ -27,7 +32,10 @@ export class ProcessDockerControl {
   }
   async inspect(id) { const result = await run(["inspect", id]); if (result.exitCode !== 0) throw new Error("WORKER_INSPECT_FAILED"); return JSON.parse(result.stdout)[0]; }
   exec(id, command) { return run(["exec", id, ...command]); }
+  execCapability(id, capability, { cwd = null } = {}) {
+    const args = ["exec", ...(cwd ? ["--workdir", cwd] : []), id, capability.tool, ...capability.args];
+    return run(args);
+  }
   diff(id) { return run(["diff", id]); }
   async remove(id) { const result = await run(["rm", "--force", id]); if (result.exitCode !== 0) throw new Error("WORKER_DESTROY_FAILED"); }
 }
-

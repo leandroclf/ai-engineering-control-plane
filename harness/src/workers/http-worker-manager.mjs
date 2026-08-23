@@ -21,9 +21,12 @@ export class HttpWorkerManager extends WorkerManager {
     return path || ".";
   }
 
-  async create(spec) { return this.#request("POST", "/v1/workers", { runId: spec.runId, project: this.#project(spec.projectDirectory), profile: spec.profile, environment: spec.environment ?? {} }); }
+  async create(spec) { return this.#request("POST", "/v1/workers", { runId: spec.runId, ...(spec.taskId ? { taskId: spec.taskId } : {}), project: this.#project(spec.projectDirectory), profile: spec.profile, environment: spec.environment ?? {}, ...(spec.baseCommit ? { baseCommit: spec.baseCommit } : {}), ...(spec.credentials ? { credentials: spec.credentials } : {}) }); }
   async exec(runId, command) { return this.#request("POST", `/v1/workers/${encodeURIComponent(runId)}/exec`, { command }); }
+  async execCapability(runId, request) { return this.#request("POST", `/v1/workers/${encodeURIComponent(runId)}/capability`, request); }
+  async invokeAgent(runId, request) { return this.#request("POST", `/v1/workers/${encodeURIComponent(runId)}/agent`, request); }
   async collectEvidence(runId) { return this.#request("GET", `/v1/workers/${encodeURIComponent(runId)}/evidence`); }
+  async getCredentials(runId) { return this.#request("GET", `/v1/workers/${encodeURIComponent(runId)}/credentials`); }
   async destroy(runId) { return this.#request("DELETE", `/v1/workers/${encodeURIComponent(runId)}`); }
   async ready() { return this.#request("GET", "/ready"); }
 }

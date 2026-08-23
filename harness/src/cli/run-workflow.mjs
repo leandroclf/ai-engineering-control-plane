@@ -4,6 +4,8 @@ import process from "node:process";
 import { parseRuntimeArguments, resolveProjectDirectory } from "./runtime-arguments.mjs";
 import { createHarnessServer } from "../runtime/http-server.mjs";
 import { createProductionRuntime } from "../runtime/production-runtime.mjs";
+import { ControlPlaneAuthorizer } from "../security/identity-authority.mjs";
+import { JwksCache, OAuthJwtVerifier } from "../security/oauth-jwt-verifier.mjs";
 
 const projectsRoot = process.env.PROJECTS_ROOT ?? "/workspace/projects";
 let resources;
@@ -15,9 +17,18 @@ async function close() {
 try {
   resources = await createProductionRuntime();
   if (process.argv[2] === "serve") {
+    const oauth = process.env.AICP_AUTH_MODE === "oauth";
+    if (process.env.AICP_RELEASE_MODE === "production" && !oauth) throw new Error("PRODUCTION_REQUIRES_OAUTH_AUTH");
+    const authorizer = oauth ? new ControlPlaneAuthorizer({ jwtVerifier: new OAuthJwtVerifier({
+      issuer: process.env.AICP_OAUTH_ISSUER,
+      audience: process.env.AICP_OAUTH_AUDIENCE,
+      jwks: new JwksCache({ uri: process.env.AICP_OAUTH_JWKS_URI }),
+      allowedAlgorithms: (process.env.AICP_OAUTH_ALGORITHMS ?? "RS256").split(","),
+    }) }) : null;
     const server = createHarnessServer({
       runtime: resources.runtime,
       token: process.env.HARNESS_SERVICE_TOKEN,
+      authorizer,
       projectsRoot,
     });
     const port = Number(process.env.HARNESS_PORT ?? 8081);

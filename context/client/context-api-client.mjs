@@ -39,6 +39,8 @@ export class ContextApiClient {
     });
   }
 
+  ready() { return this.request("/ready"); }
+
   async #fetch(path, options = {}) {
     const response = await fetch(this.baseUrl + path, {
       ...options,

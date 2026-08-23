@@ -7,6 +7,15 @@
 - branch de trabalho: `feat/govern-main-and-contracts`
 - testes da baseline: 65 Node PASS; 25 Python PASS; architecture PASS; supply-chain PASS; acceptance PASS; security abuse PASS
 
+## Ciclo AICP v1 production-certification
+
+- branch: `feat/aicp-v1-production-certification`
+- baseline HEAD: `417a4d2`
+- baseline local: unit/acceptance/security/architecture/supply-chain PASS; integração PostgreSQL executada após migração dentro da rede Docker; release `V1_NOT_YET_DEFENSIBLE`
+- entregue: `ExecutionPlane`, worker-backed handlers, worktree Git por run, command policy sem shell, credential broker per-run, fuse físico pessimista, OAuth access-token verifier, reconciliação de containers/worktrees, contrato de versões Context v3 e jobs CI dedicados
+- evidência Docker executada: worker lifecycle direto e HTTP manager com worktree Git, criação, attestation, coleta e destruição PASS; imagem Node22 contém OpenCode 1.18.21
+- bloqueios honestos: execução observada de OpenCode real + build/test/scanners no worker, ledger humano/LLM de 180 runs e findings `CRITICAL` das imagens
+
 ## PRs
 
 | PR/branch | Status | Tests | Risks |
@@ -33,8 +42,8 @@
 
 | Metric | Before | After |
 |---|---:|---:|
-| Node unit tests | 65 PASS | 78 PASS |
-| Python unit tests | 25 PASS | 34 PASS |
+| Node unit tests | 65 PASS | 83 PASS |
+| Python unit tests | 25 PASS | 36 PASS |
 | Behavioral OpenAPI create-run cases | 0 | 4 |
 | Versioned required CI checks | 5 | 9 |
 | Physical-attempt reconciliation tests | 0 | 3 |
@@ -51,4 +60,6 @@
 
 - O benchmark estrutural passou, mas o ledger LLM/humano pareado de 180 runs ainda não foi executado nem aprovado.
 - Findings HIGH/CRITICAL das imagens próprias precisam de remediação ou aceitação humana independente; não foram suprimidos.
+- O scan Trivy atual contabiliza 103 ocorrências `CRITICAL` em quatro imagens; a classificação por CVE/pacote/uso está em `docs/security/image-critical-classification.md`.
 - Providers/gateways que não entregarem telemetria física completa falham fechados quando declararem attempts sem pricing.
+- O `release/v1-contract.json` é a fonte final dos controles; nenhum agente pode transformar os bloqueios acima em PASS sem evidência externa revisável.

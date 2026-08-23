@@ -170,7 +170,7 @@ test("harness context provider compiles only task scopes allowed by stage policy
   assert.equal(calls[0].budget, 20);
   assert.equal(calls[0].task_id, "task-1:implement");
   assert.deepEqual(result.metadata, {
-    schemaVersion: 2, requestedBudget: 20, retrievalPolicyVersion: "hybrid-rrf-v1", packingPolicyVersion: "context-v2",
+    schemaVersion: 2, requestedBudget: 20, retrievalPolicyVersion: "retrieval-v3", packingPolicyVersion: "packing-v3",
     embeddingModel: "text-embedding-3-small", tokenCountModel: "gpt-5", tokenizerVersion: "1",
     indexSnapshot: "commit-1", graphSnapshot: "graph-1",
   });

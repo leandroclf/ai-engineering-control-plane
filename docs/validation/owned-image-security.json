@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-08-22T21:04:15Z",
+  "capturedAt": "2026-08-23T02:12:04Z",
   "status": "scanned-with-findings",
   "scanner": "Trivy 0.74.0",
   "scannerExecution": "offline-after-governed-db-update",
   "images": [
-    {"image":"aicp-harness:latest","imageId":"sha256:881a84d71c58d84c0571dda94f22c9ad278fa6cc6fd70b2366ad5d60c25f98ca","sbomComponents":1154,"high":406,"critical":33},
-    {"image":"aicp-memory-service:latest","imageId":"sha256:dc5d8867102a0f768c594d0416713dfa3019767abd3b9d801882a8382140eec2","sbomComponents":109,"high":52,"critical":3},
-    {"image":"aicp-workspace:latest","imageId":"sha256:ef9220d47e9fbf5a522d3603d8895149888bee970289f75caafb74e9ca64a0f8","sbomComponents":619,"high":376,"critical":33}
+    {"image":"aicp-harness:latest","imageId":"sha256:c3566814267ab9593ec59bd5707bde63533fba13dc0d4c3b64c317ca34e65fef","sbomComponents":1154,"high":406,"critical":33},
+    {"image":"aicp-memory-service:latest","imageId":"sha256:4946a1aaf6cc810763c28b4ea570436b99aa4f9c54322369d7e7138431ad226c","sbomComponents":109,"high":52,"critical":3},
+    {"image":"aicp-workspace:latest","imageId":"sha256:8a29e961fe7f30c535a219b730c14cb65234fb74bb34e0c6cbc8bf80ec8c4dd0","sbomComponents":619,"high":376,"critical":33},
+    {"image":"aicp-worker-manager:latest","imageId":"sha256:710eb43796ad288ce1f9a9ca2b59cbfd4698916032394d1ce46d5430a1159776","sbomComponents":648,"high":389,"critical":34}
   ],
   "decision": "No finding was automatically suppressed. CRITICAL findings block V1_DEFENSIBLE pending remediation or independent human risk acceptance."
 }

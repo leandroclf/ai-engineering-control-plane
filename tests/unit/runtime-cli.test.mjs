@@ -115,3 +115,23 @@ test("harness HTTP server rejects oversized request bodies with 413", async (con
   assert.equal(response.status, 413);
   assert.equal((await response.json()).error.code, "PAYLOAD_TOO_LARGE");
 });
+
+test("harness exposes execution evidence, safe credential metadata and certification findings", async (context) => {
+  const runtime = {
+    getExecution: () => ({ runId: "run-1", executionMode: "ephemeral", workerId: "worker-1", imageDigest: "sha256:abc", credentials: { credentialId: "cred-1" } }),
+    getCredentials: () => ({ credentialId: "cred-1", subject: "run:run-1", revoked: true }),
+    getAttestations: () => ({ runId: "run-1", imageDigest: "sha256:abc", attestation: { nonRoot: true } }),
+  };
+  const server = createHarnessServer({ token: "test-token", runtime });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  context.after(() => new Promise((resolve) => server.close(resolve)));
+  const endpoint = `http://127.0.0.1:${server.address().port}`;
+  const headers = { Authorization: "Bearer test-token" };
+  for (const path of ["/v1/runs/run-1/execution", "/v1/runs/run-1/credentials", "/v1/runs/run-1/attestations", "/v1/certifications/v1", "/v1/certifications/v1/findings"]) {
+    const response = await fetch(`${endpoint}${path}`, { headers });
+    assert.equal(response.status, 200, path);
+  }
+  const credentials = await (await fetch(`${endpoint}/v1/runs/run-1/credentials`, { headers })).json();
+  assert.equal(credentials.revoked, true);
+  assert.equal(credentials.material, undefined);
+});

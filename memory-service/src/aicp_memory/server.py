@@ -14,6 +14,13 @@ from aicp_memory.token_counter import LiteLLMTokenCounter
 from aicp_memory.telemetry import OtlpHttpTelemetry
 
 MAX_REQUEST_BODY_BYTES = int(os.environ.get("MEMORY_SERVICE_MAX_REQUEST_BODY_BYTES", "1048576"))
+CONTEXT_VERSIONS = {
+    "contextSchema": 3,
+    "retrievalPolicy": "retrieval-v3",
+    "packingPolicy": "packing-v3",
+    "indexSchema": 3,
+    "graphSchema": 2,
+}
 
 
 class PayloadTooLargeError(ValueError):
@@ -71,7 +78,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/ready":
             try:
                 ready = self.repository.ready()
-                self._send(200 if ready else 503, {"status": "ready" if ready else "unavailable"})
+                self._send(200 if ready else 503, {"status": "ready" if ready else "unavailable", "versions": CONTEXT_VERSIONS})
             except Exception:
                 self._send(503, {"status": "unavailable"})
             return

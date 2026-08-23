@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "profiles": {
+    "node22": {
+      "capabilities": {
+        "runtime:probe": [{"executable":"node","subcommand":"--version"},{"executable":"npm","subcommand":"--version"},{"executable":"git","subcommand":"--version"},{"executable":"java","subcommand":"--version"},{"executable":"gradle","subcommand":"--version"},{"executable":"mvn","subcommand":"--version"},{"executable":"python","subcommand":"--version"},{"executable":"pip","subcommand":"--version"},{"executable":"go","subcommand":"version"}],
+        "repo:status": [{"executable":"git","subcommand":"status"}],
+        "repo:diff": [{"executable":"git","subcommand":"diff"}],
+        "build": [{"executable":"npm","subcommand":"run","allowedScripts":["build"]}],
+        "test:unit": [{"executable":"npm","subcommand":"test"}],
+        "test:integration": [{"executable":"npm","subcommand":"run","allowedScripts":["test:integration"]}],
+        "coverage": [{"executable":"npm","subcommand":"run","allowedScripts":["coverage"]}],
+        "lint": [{"executable":"npm","subcommand":"run","allowedScripts":["lint"]}],
+        "scanner:semgrep": [{"executable":"semgrep"}],
+        "scanner:gitleaks": [{"executable":"gitleaks"}],
+        "scanner:trivy": [{"executable":"trivy"}],
+        "agent:opencode": [{"executable":"opencode"}]
+      }
+    },
+    "java21-gradle": {"inherits":"node22"},
+    "java21-maven": {"inherits":"node22"},
+    "python313": {"inherits":"node22"},
+    "go124": {"inherits":"node22"}
+  }
+}

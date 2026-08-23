@@ -12,9 +12,15 @@ const execFile = promisify(execFileCallback);
 test("deployment-side HTTP manager performs an authenticated real Docker lifecycle", { skip: process.env.AICP_DOCKER_TEST !== "1", timeout: 60_000 }, async () => {
   const runId = randomUUID(); const port = 18090; const project = resolve(`.aicp/worker-http-tests/${runId}`);
   await mkdir(project, { recursive: true }); await writeFile(resolve(project, "package.json"), "{}\n");
+  await execFile("git", ["init", "-q"], { cwd: project });
+  await execFile("git", ["config", "user.email", "aicp@test.invalid"], { cwd: project });
+  await execFile("git", ["config", "user.name", "AICP Test"], { cwd: project });
+  await execFile("git", ["add", "."], { cwd: project });
+  await execFile("git", ["commit", "-qm", "base"], { cwd: project });
   const server = spawn(process.execPath, ["harness/src/workers/worker-manager-server.mjs"], { stdio: "ignore", env: {
     ...process.env, WORKER_MANAGER_PORT: String(port), WORKER_MANAGER_TOKEN: "manager-test-token",
     WORKER_IDENTITY_SIGNING_SECRET: "integration-worker-secret-material-integration", AICP_WORKER_PROJECTS_ROOT: project,
+    AICP_WORKTREE_ROOT: resolve(`.aicp/worker-http-worktrees/${runId}`),
     WORKER_LITELLM_TOKEN: "scoped-llm-test", WORKER_MEMORY_TOKEN: "scoped-memory-test",
   } });
   const manager = new HttpWorkerManager({ baseUrl: `http://127.0.0.1:${port}`, token: "manager-test-token", clientProjectRoot: project });

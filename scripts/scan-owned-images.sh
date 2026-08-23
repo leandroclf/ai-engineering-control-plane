@@ -5,7 +5,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cache="$root/.aicp/ci/trivy-cache"
 reports="$root/.aicp/ci/images"
 trivy_image="aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969"
-if (($#)); then images=("$@"); else images=(aicp-harness:latest aicp-memory-service:latest aicp-workspace:latest); fi
+if (($#)); then images=("$@"); else images=(aicp-harness:latest aicp-memory-service:latest aicp-workspace:latest aicp-worker-manager:latest); fi
 mkdir -p "$cache" "$reports"
 
 docker run --rm -v "$cache:/root/.cache/trivy" "$trivy_image" image --download-db-only

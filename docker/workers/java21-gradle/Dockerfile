@@ -1,7 +1,8 @@
 FROM gradle:8-jdk21@sha256:66e8f1cd9019bb5dbc9084ebdc1717251db6479ac810ae80fe8fcf236c8d6ce9
+ARG OPENCODE_VERSION=1.18.21
 USER root
-RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates nodejs npm && rm -rf /var/lib/apt/lists/* \
+    && npm install --global "opencode-ai@${OPENCODE_VERSION}"
 USER gradle
 WORKDIR /workspace/project
 ENTRYPOINT ["sleep", "infinity"]
-

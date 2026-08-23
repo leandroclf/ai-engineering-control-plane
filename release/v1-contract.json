@@ -15,6 +15,14 @@
     {"id":"python_worker","status":"PASS","evidence":["docker/workers/python313/Dockerfile"]},
     {"id":"go_worker","status":"PASS","evidence":["docker/workers/go124/Dockerfile"]},
     {"id":"ephemeral_worker_lifecycle","status":"PASS","evidence":["tests/integration/worker-manager-http.integration.mjs"]},
+    {"id":"execution_plane_handler_boundary","status":"PASS","evidence":["harness/src/execution/execution-plane.mjs","harness/src/execution/worker-execution-plane.mjs","tests/adversarial/execution-plane.test.mjs"]},
+    {"id":"per_run_worktree_isolation","status":"PASS","evidence":["harness/src/workers/run-worktree-manager.mjs","tests/adversarial/execution-plane.test.mjs"]},
+    {"id":"worker_command_policy","status":"PASS","evidence":["harness/config/worker-command-policy.json","harness/src/workers/worker-command-policy.mjs","tests/adversarial/execution-plane.test.mjs"]},
+    {"id":"run_scoped_credentials","status":"PASS","evidence":["harness/src/credentials/credential-broker.mjs","tests/adversarial/execution-plane.test.mjs"]},
+    {"id":"physical_budget_fuse","status":"PASS","evidence":["harness/src/budget/invocation-estimator.mjs","tests/adversarial/budget/budget-fuse.test.mjs"]},
+    {"id":"oauth_access_token_verification","status":"PASS","evidence":["harness/src/security/oauth-jwt-verifier.mjs","tests/unit/oauth-jwt-verifier.test.mjs"]},
+    {"id":"version_contract_v3","status":"PASS","evidence":["scripts/validate-version-contract.mjs","harness/src/agents/governed-context-provider.mjs","memory-service/src/aicp_memory/server.py"]},
+    {"id":"dynamic_worker_agent_gate_e2e","status":"BLOCKED","reason":"O teste Docker validado neste ciclo comprova lifecycle/worktree e o boundary; ainda falta executar OpenCode real mais build/test/scanners no worker com provider/gateway de certificação e evidência de stages.","evidence":["tests/integration/execution-plane.integration.mjs","tests/integration/worker-manager-http.integration.mjs"]},
     {"id":"worker_provider_secrets_absent","status":"PASS","evidence":["harness/src/workers/docker-worker-manager.mjs"]},
     {"id":"javascript_typescript_parser","status":"PASS","evidence":["context/parsers/parser-registry.mjs"]},
     {"id":"java_parser","status":"PASS","evidence":["context/parsers/java-parser.mjs"]},
@@ -30,7 +38,7 @@
     {"id":"encrypted_backup","status":"PASS","evidence":["tests/integration/backup-tamper.integration.sh"]},
     {"id":"clean_host_restore","status":"PASS","evidence":["tests/integration/restore-clean-host.integration.sh"]},
     {"id":"paired_llm_human_benchmark","status":"BLOCKED","reason":"O ledger observado de 180 runs baseline/candidate com aceitação humana ainda não existe.","evidence":["observability/evaluation/validate-v1-run-results.mjs"]},
-    {"id":"no_critical_regression","status":"BLOCKED","reason":"As imagens próprias têm findings CRITICAL sem aprovação ou remediação registrada.","evidence":["docs/validation/owned-image-security.json"]},
-    {"id":"documentation_adr_updated","status":"PASS","evidence":["docs/adr/ADR-005-v1-release-evidence.md","docs/implementation-progress.md"]}
+    {"id":"no_critical_regression","status":"BLOCKED","reason":"As imagens próprias têm findings CRITICAL sem aprovação ou remediação registrada.","evidence":["docs/validation/owned-image-security.json","docs/security/image-critical-classification.md"]},
+    {"id":"documentation_adr_updated","status":"PASS","evidence":["docs/adr/ADR-005-v1-release-evidence.md","docs/adr/ADR-006-execution-plane-boundary.md","docs/architecture/current.md","docs/security/invariants.md","docs/security/adversarial-certification.md","docs/operations/recovery.md","docs/evaluations/v1-roi.md","docs/implementation-progress.md"]}
   ]
 }

@@ -30,6 +30,16 @@ paths:
     get: { operationId: getRunGates, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Gate results } } }
   /v1/runs/{runId}/findings:
     get: { operationId: getRunFindings, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Normalized findings } } }
+  /v1/runs/{runId}/execution:
+    get: { operationId: getRunExecution, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Execution-plane evidence } } }
+  /v1/runs/{runId}/credentials:
+    get: { operationId: getRunCredentials, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Run-scoped credential metadata without secrets } } }
+  /v1/runs/{runId}/attestations:
+    get: { operationId: getRunAttestations, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Worker and image attestation } } }
+  /v1/certifications/v1:
+    get: { operationId: getV1Certification, responses: { '200': { description: V1 release certification contract } } }
+  /v1/certifications/v1/findings:
+    get: { operationId: getV1CertificationFindings, responses: { '200': { description: Open V1 certification findings } } }
   /v1/tasks/{taskId}:
     get: { operationId: getTask, parameters: [{ $ref: '#/components/parameters/TaskId' }], responses: { '200': { description: Task } } }
   /v1/tasks/{taskId}/budget:
@@ -70,6 +80,11 @@ components:
         idempotencyKey: { type: string, minLength: 8, description: Required unless supplied in the Idempotency-Key header. }
         exactSymbols: { type: array, items: { type: string, minLength: 1 } }
         scopes: { type: array, items: { type: string, minLength: 1 } }
+        workerProfile: { type: string, minLength: 1, description: Ephemeral worker profile selected by the trusted project attestation flow. }
+        projectKind: { type: string, minLength: 1 }
+        projectModules: { type: array, items: { type: string, minLength: 1 } }
+        projectProfile: { type: object, description: Attested project capability profile used for gate resolution. }
+        baseCommit: { type: string, minLength: 1 }
         constraints:
           type: object
           additionalProperties: false
