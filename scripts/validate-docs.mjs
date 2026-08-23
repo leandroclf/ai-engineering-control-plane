@@ -19,4 +19,4 @@ async function walk(directory) {
 }
 await walk(fileURLToPath(new URL("docs", root)));
 if (broken.length) throw new Error(broken.join("\n"));
-console.log(JSON.stringify({ status: "pass", requiredFiles: required.length }));
+process.stdout.write(`${JSON.stringify({ status: "pass", requiredFiles: required.length })}\n`);

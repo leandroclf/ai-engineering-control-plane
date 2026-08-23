@@ -12,4 +12,4 @@ for (const component of catalog.components) {
   ids.add(component.id);
 }
 for (const component of catalog.components) for (const dependency of component.dependencies) if (!ids.has(dependency) && !["docker", "project-repository", "provider-apis", "neo4j", "redis", "opencode"].includes(dependency)) throw new Error(`${component.id} references unknown component ${dependency}`);
-console.log(JSON.stringify({ schemaVersion: 1, status: "pass", components: catalog.components.length }));
+process.stdout.write(`${JSON.stringify({ schemaVersion: 1, status: "pass", components: catalog.components.length })}\n`);

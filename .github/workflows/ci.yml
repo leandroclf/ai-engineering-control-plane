@@ -36,7 +36,7 @@ jobs:
       - run: npm --workspace @aicp/console run lint
       - run: npm --workspace @aicp/console run typecheck
       - run: CI=1 npm --workspace @aicp/console run build-storybook
-      - run: npx playwright install --with-deps chromium
+      - run: npm --workspace @aicp/console exec -- playwright install --with-deps chromium
       - run: AICP_DEMO_MODE=true npm --workspace @aicp/console run e2e
 
   adversarial-certification:
