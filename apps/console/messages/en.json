@@ -1,6 +1,42 @@
 {
   "Console": {
     "ready": "Console ready",
-    "demo": "Demo mode · deterministic"
+    "demo": "Demo mode · deterministic",
+    "providerKeys": "No provider keys required",
+    "workspace": "Governed engineering workspace",
+    "language": "Language",
+    "english": "English",
+    "portugueseBrazil": "Português (Brasil)"
+  },
+  "Overview": {
+    "eyebrow": "AICP Overview",
+    "title": "Release readiness",
+    "description": "A truth-first view of governed engineering work, evidence and human attention.",
+    "startRun": "Start governed run",
+    "adminSurfaces": "Open admin surfaces",
+    "openDemo": "Open demo",
+    "releaseContract": "The Console reflects the release contract; it does not promote blocked controls.",
+    "passControls": "PASS controls",
+    "releaseSource": "from release/v1-contract.json",
+    "blockedControls": "BLOCKED controls",
+    "humanAttention": "human attention required",
+    "failedControls": "FAILED controls",
+    "noFailedControls": "no failed controls observed",
+    "activeRuns": "Active runs",
+    "workflowOrReview": "workflow or human review",
+    "recentRuns": "Recent runs",
+    "status": "Status",
+    "projectTask": "Project / task",
+    "stage": "Stage",
+    "cost": "Cost",
+    "open": "Open",
+    "unknown": "unknown",
+    "taskUnavailable": "task metadata unavailable",
+    "viewRun": "View run",
+    "requiresAttention": "Requires attention",
+    "evidenceRequired": "Evidence is required before certification.",
+    "budgetToday": "Budget today",
+    "workflowQuality": "Workflow quality",
+    "contextEfficiency": "Context efficiency"
   }
 }

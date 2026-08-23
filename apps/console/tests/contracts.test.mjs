@@ -17,13 +17,19 @@ test("architecture and documentation contracts exist", async () => {
   assert.match(docs, /Browser never receives provider credentials/);
 });
 
-test("console locale switcher accepts pt-BR and loads its messages", async () => {
+test("console locale switcher only supports EN and PT-BR, with PT-BR as the default", async () => {
   const request = await readFile(new URL("../i18n/request.ts", import.meta.url), "utf8");
   const switcher = await readFile(new URL("../app/components/command-palette.tsx", import.meta.url), "utf8");
 
   assert.match(request, /pt-BR/);
+  assert.match(request, /: "pt-BR"/);
+  assert.doesNotMatch(request, /pt-PT/);
+  assert.match(switcher, /aria-label=\{label\}/);
   assert.match(switcher, /value="pt-BR"/);
+  assert.match(switcher, /value="en"/);
+  assert.doesNotMatch(switcher, /pt-PT/);
   await readFile(new URL("../messages/pt-BR.json", import.meta.url), "utf8");
+  await readFile(new URL("../messages/en.json", import.meta.url), "utf8");
 });
 
 test("admin surfaces are discoverable without exposing data stores on host ports", async () => {
@@ -46,4 +52,12 @@ test("admin center also exposes pgAdmin and RedisInsight", async () => {
   assert.match(adminSurfaces, /RedisInsight/);
   assert.match(gateway, /location = \/pgadmin/);
   assert.match(gateway, /location = \/redisinsight/);
+});
+
+test("primary navigation is laid out horizontally on desktop", async () => {
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+
+  assert.match(css, /\.sidebar nav \{[^}]*display:\s*flex;/s);
+  assert.match(css, /\.sidebar nav \{[^}]*flex-direction:\s*row;/s);
+  assert.match(css, /\.sidebar nav \{[^}]*overflow-x:\s*auto;/s);
 });

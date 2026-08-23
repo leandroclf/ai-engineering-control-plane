@@ -1,6 +1,42 @@
 {
   "Console": {
     "ready": "Interface da Console disponível",
-    "demo": "Modo de demonstração · determinístico"
+    "demo": "Modo de demonstração · determinístico",
+    "providerKeys": "Nenhuma chave de provedor é necessária",
+    "workspace": "Espaço de trabalho de engenharia governada",
+    "language": "Idioma",
+    "english": "Inglês",
+    "portugueseBrazil": "Português (Brasil)"
+  },
+  "Overview": {
+    "eyebrow": "Visão geral do AICP",
+    "title": "Prontidão para lançamento",
+    "description": "Uma visão orientada por evidências do trabalho de engenharia governada e da atenção humana necessária.",
+    "startRun": "Iniciar execução governada",
+    "adminSurfaces": "Abrir interfaces administrativas",
+    "openDemo": "Abrir demonstração",
+    "releaseContract": "A Console reflete o contrato de lançamento; ela não promove controles bloqueados.",
+    "passControls": "Controles APROVADOS",
+    "releaseSource": "de release/v1-contract.json",
+    "blockedControls": "Controles BLOQUEADOS",
+    "humanAttention": "atenção humana necessária",
+    "failedControls": "Controles COM FALHA",
+    "noFailedControls": "nenhum controle com falha observado",
+    "activeRuns": "Execuções ativas",
+    "workflowOrReview": "workflow ou revisão humana",
+    "recentRuns": "Execuções recentes",
+    "status": "Status",
+    "projectTask": "Projeto / tarefa",
+    "stage": "Etapa",
+    "cost": "Custo",
+    "open": "Abrir",
+    "unknown": "desconhecido",
+    "taskUnavailable": "metadados da tarefa indisponíveis",
+    "viewRun": "Ver execução",
+    "requiresAttention": "Requer atenção",
+    "evidenceRequired": "A evidência é necessária antes da certificação.",
+    "budgetToday": "Orçamento de hoje",
+    "workflowQuality": "Qualidade do workflow",
+    "contextEfficiency": "Eficiência de contexto"
   }
 }

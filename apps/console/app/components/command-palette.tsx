@@ -34,7 +34,11 @@ export function ThemeToggle() {
   return <button className="button button-ghost" type="button" onClick={toggle} aria-label={`Switch to ${dark ? "light" : "dark"} theme`}>{dark ? "☼ Light" : "◐ Dark"}</button>;
 }
 
-export function LocaleSwitcher({ currentLocale }: { currentLocale: string }) {
-  const change = (value: string) => { document.documentElement.lang = value; document.documentElement.dataset.locale = value; window.localStorage.setItem("aicp-locale", value); document.cookie = `aicp-locale=${value}; Path=/; SameSite=Lax`; window.location.reload(); };
-  return <label className="locale-switcher"><span className="sr-only">Locale</span><select aria-label="Locale" value={currentLocale} onChange={(event) => change(event.target.value)}><option value="en">EN</option><option value="pt-PT">PT-PT</option><option value="pt-BR">PT-BR</option></select></label>;
+export function LocaleSwitcher({ currentLocale, label, englishLabel, brazilianPortugueseLabel }: { currentLocale: "en" | "pt-BR"; label: string; englishLabel: string; brazilianPortugueseLabel: string }) {
+  const [selectedLocale, setSelectedLocale] = useState(currentLocale);
+  const [isHydrated, setIsHydrated] = useState(false);
+  useEffect(() => setSelectedLocale(currentLocale), [currentLocale]);
+  useEffect(() => setIsHydrated(true), []);
+  const change = (value: "en" | "pt-BR") => { setSelectedLocale(value); document.documentElement.lang = value; document.documentElement.dataset.locale = value; window.localStorage.setItem("aicp-locale", value); document.cookie = `aicp-locale=${encodeURIComponent(value)}; Path=/; Max-Age=31536000; SameSite=Lax`; window.setTimeout(() => window.location.reload(), 0); };
+  return <label className="locale-switcher"><span className="sr-only">{label}</span><select aria-label={label} data-hydrated={isHydrated} value={selectedLocale} onChange={(event) => change(event.target.value as "en" | "pt-BR")}><option value="pt-BR">{brazilianPortugueseLabel}</option><option value="en">{englishLabel}</option></select></label>;
 }
