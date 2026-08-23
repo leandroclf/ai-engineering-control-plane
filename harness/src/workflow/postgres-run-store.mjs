@@ -1,4 +1,5 @@
 function mapRun(row) {
+  const metadata = row.task_metadata ?? row.metadata ?? {};
   return {
     id: row.id,
     taskId: row.task_id,
@@ -8,6 +9,8 @@ function mapRun(row) {
     version: row.version,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    ...(metadata.project ? { project: metadata.project } : {}),
+    ...(metadata.query ? { query: metadata.query } : {}),
   };
 }
 function number(value) { return Number(value ?? 0); }
@@ -80,8 +83,9 @@ export class PostgresRunStore {
     const boundedLimit = Math.min(200, Math.max(1, Number(limit) || 50));
     const boundedOffset = Math.max(0, Number(offset) || 0);
     const result = await this.#query(
-      `SELECT * FROM control.runs WHERE ($1::text IS NULL OR status=$1) AND ($2::uuid IS NULL OR task_id=$2)
-       ORDER BY created_at DESC,id DESC LIMIT $3 OFFSET $4`, [status, taskId, boundedLimit, boundedOffset],
+      `SELECT r.*, t.metadata AS task_metadata FROM control.runs r JOIN control.tasks t ON t.id = r.task_id
+       WHERE ($1::text IS NULL OR r.status=$1) AND ($2::uuid IS NULL OR r.task_id=$2)
+       ORDER BY r.created_at DESC,r.id DESC LIMIT $3 OFFSET $4`, [status, taskId, boundedLimit, boundedOffset],
     );
     return { items: result.rows.map(mapRun), limit: boundedLimit, offset: boundedOffset };
   }
