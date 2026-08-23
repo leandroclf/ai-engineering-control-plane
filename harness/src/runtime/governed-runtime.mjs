@@ -1,7 +1,7 @@
 import { WorkflowExecutor } from "../workflow/executor.mjs";
 
 export class GovernedRuntime {
-  constructor({ definition, store, handlers, contextProvider = null, telemetry = null, budgetAuthority = null, preflight = null, readiness = null, capabilities = null, workerManager = null, workerProfile = null, metadata = {} }) {
+  constructor({ definition, store, handlers, contextProvider = null, telemetry = null, budgetAuthority = null, preflight = null, readiness = null, capabilities = null, workerManager = null, workerProfile = null, executionPlane = null, metadata = {} }) {
     this.definition = definition;
     this.store = store;
     this.budgetAuthority = budgetAuthority;
@@ -10,7 +10,9 @@ export class GovernedRuntime {
     this.capabilityProvider = capabilities;
     this.workerManager = workerManager;
     this.workerProfile = workerProfile;
+    this.executionPlane = executionPlane;
     this.metadata = metadata;
+    this.executionEvidence = new Map();
     this.executor = new WorkflowExecutor({ definition, store, handlers, contextProvider, telemetry });
   }
 
@@ -46,6 +48,9 @@ export class GovernedRuntime {
   }
 
   async getRun(runId) { const run = await this.store.getRun(runId); return { run, stages: await this.store.listStages(runId) }; }
+  getExecution(runId) { const evidence = this.executionEvidence.get(runId); if (!evidence) throw new Error(`unknown execution ${runId}`); return evidence; }
+  getCredentials(runId) { const evidence = this.getExecution(runId); if (!evidence.credentials) throw new Error(`credentials unavailable ${runId}`); const { material: _material, ...safe } = evidence.credentials; return { ...safe, revoked: true }; }
+  getAttestations(runId) { const evidence = this.getExecution(runId); return { runId, workerId: evidence.workerId, image: evidence.image, imageDigest: evidence.imageDigest, attestation: evidence.attestation ?? null }; }
   listRuns(filters) { return this.store.listRuns(filters); }
   getTask(taskId) { return this.store.getTask(taskId); }
   async getAudit(runId) {
@@ -65,11 +70,25 @@ export class GovernedRuntime {
   policies() { return { items: this.metadata.policies ?? [] }; }
   models() { return { items: this.metadata.models ?? [] }; }
   getContext(contextId) { return this.store.getContext(contextId); }
-  async cancelRun(runId) { const run = await this.store.cancelRun(runId); if (this.workerManager) await this.workerManager.destroy(runId); if (this.budgetAuthority) await this.budgetAuthority.cancel(run.taskId); return { run, stages: await this.store.listStages(runId) }; }
+  async cancelRun(runId) { const run = await this.store.cancelRun(runId); if (this.executionPlane) await this.executionPlane.destroyRun(runId); else if (this.workerManager) await this.workerManager.destroy(runId); if (this.budgetAuthority) await this.budgetAuthority.cancel(run.taskId); return { run, stages: await this.store.listStages(runId) }; }
   getBudget(taskId) { if (!this.budgetAuthority) throw new Error("budget authority unavailable"); return this.budgetAuthority.get(taskId); }
   getBudgetEvents(taskId) { if (!this.budgetAuthority) throw new Error("budget authority unavailable"); return this.budgetAuthority.events(taskId); }
   cancelBudget(taskId) { if (!this.budgetAuthority) throw new Error("budget authority unavailable"); return this.budgetAuthority.cancel(taskId); }
   async #executeWithWorker(pending, task, includeTask = true) {
+    if (this.executionPlane) {
+      let execution = null;
+      try {
+        execution = await this.executionPlane.createRun({ run: pending, task });
+        const run = await this.executor.execute(pending.id);
+        const stages = await this.store.listStages(run.id);
+        const evidence = await this.executionPlane.collectEvidence(run.id);
+        const executionEvidence = Object.freeze({ ...evidence, executableStages: stages.map((stage) => ({ stage: stage.state_from ?? stage.from ?? stage.stateFrom ?? null, workerId: evidence.workerId })) });
+        this.executionEvidence.set(run.id, executionEvidence);
+        return { ...(includeTask ? { task } : {}), run, stages, ...(includeTask ? { links: this.#links(run.id) } : {}), execution: executionEvidence };
+      } finally {
+        if (execution) await this.executionPlane.destroyRun(pending.id);
+      }
+    }
     let worker = null; let workerEvidence = null;
     try {
       if (this.workerManager) {

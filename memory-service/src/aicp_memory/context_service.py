@@ -249,5 +249,7 @@ class ContextService:
             "tokenizer_version": payload.get("tokenizer_version", "1"),
             "index_snapshot": payload.get("index_snapshot") or payload.get("commit"),
             "graph_snapshot": payload.get("graph_snapshot"),
+            "index_schema_version": payload.get("index_schema_version") or 3,
+            "graph_schema_version": payload.get("graph_schema_version") or 2,
             "metrics": {"retrieved_candidates": len(candidates), "selected_candidates": len(selected), "candidate_tokens": sum(item["token_count"] for item in measured), "selected_tokens": token_count, "dedup_saved_tokens": sum(item.get("token_count", 0) for item in candidates) - sum(item["token_count"] for item in measured), "graph_hits": len(graph_rows), "memory_hits": len(memories), "retrieval_confidence": confidence, "vector_skipped": vector_skipped},
         }

@@ -16,7 +16,8 @@ export class InvocationEstimator {
     this.fixedOverheadTokens = fixedOverheadTokens;
   }
 
-  async estimate({ alias, prompt, contextTokenCount = 0, schema = {}, toolSchemas = [], maxOutputTokens = 4096 }) {
+  async estimate({ alias, prompt, contextTokenCount = 0, schema = {}, toolSchemas = [], maxOutputTokens = 4096, maxPhysicalAttempts = 1 }) {
+    if (!Number.isInteger(maxPhysicalAttempts) || maxPhysicalAttempts < 1) throw new TypeError("maxPhysicalAttempts must be a positive integer");
     const promptTokens = await this.tokenizer.count(prompt);
     const schemaTokens = await this.tokenizer.count(JSON.stringify({ response: schema, tools: toolSchemas }));
     // The rendered prompt normally contains context. max() prevents counting it twice while
@@ -30,7 +31,7 @@ export class InvocationEstimator {
     const costUsd = Math.max(...prices.map((price) =>
       inputTokens * price.inputPerToken + maxOutputTokens * price.outputPerToken
     ));
-    return normalizeUsage({ calls: 1, inputTokens, outputTokens: maxOutputTokens, costUsd });
+    return normalizeUsage({ calls: 1, inputTokens: inputTokens * maxPhysicalAttempts, outputTokens: maxOutputTokens * maxPhysicalAttempts, costUsd: costUsd * maxPhysicalAttempts });
   }
 }
 
