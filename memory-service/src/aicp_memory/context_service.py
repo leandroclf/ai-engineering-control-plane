@@ -210,8 +210,9 @@ class ContextService:
         chosen = set()
         for category, ratio in reserves.items():
             used = 0
+            category_limit = packing_limit if category == "exact_symbols" else packing_limit * ratio
             for candidate in (item for item in measured if item.get("category") == category):
-                if used + candidate["token_count"] <= packing_limit * ratio and token_count + candidate["token_count"] <= packing_limit:
+                if used + candidate["token_count"] <= category_limit and token_count + candidate["token_count"] <= packing_limit:
                     selected.append(candidate); chosen.add(candidate["id"]); used += candidate["token_count"]; token_count += candidate["token_count"]
         remaining = sorted((item for item in measured if item["id"] not in chosen), key=lambda item: (-item["score"], -item["score"] / max(item["token_count"], 1), item["id"]))
         for candidate in remaining:
