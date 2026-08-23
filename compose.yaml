@@ -54,7 +54,6 @@ services:
       - ${AICP_STATE_DIR:-./state}/neo4j/logs:/logs
       - ./docker/neo4j/entrypoint.sh:/aicp/entrypoint.sh:ro
     secrets: [neo4j_auth]
-    ports: ["127.0.0.1:7474:7474"]
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
       interval: 15s
@@ -107,7 +106,7 @@ services:
     networks: [agent-internal, provider-egress, data]
 
   pgadmin:
-    image: ${PGADMIN_IMAGE:-dpage/pgadmin4:9.17}
+    image: ${PGADMIN_IMAGE:-dpage/pgadmin4:9.17@sha256:2f4ce946ddf8360680d7eff4eaba1d91859eb6b4003e6623bad5c63a322c2f4d}
     restart: unless-stopped
     environment:
       SCRIPT_NAME: /pgadmin
@@ -120,13 +119,12 @@ services:
     volumes:
       - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
       - pgadmin-data:/var/lib/pgadmin
-    ports: ["127.0.0.1:5050:80"]
     depends_on:
       postgres: { condition: service_healthy }
     networks: [data]
 
   redisinsight:
-    image: ${REDISINSIGHT_IMAGE:-redis/redisinsight:latest}
+    image: ${REDISINSIGHT_IMAGE:-redis/redisinsight@sha256:b5e19ee240abef6edb435871b90ff8a210995422e8e018ab61c0339d318a1f84}
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/aicp/entrypoint.sh"]
     command: ["node", "redisinsight/api/dist/src/main"]
@@ -141,7 +139,6 @@ services:
     volumes:
       - ./docker/redisinsight/entrypoint.sh:/aicp/entrypoint.sh:ro
       - redisinsight-data:/data
-    ports: ["127.0.0.1:5540:5540"]
     depends_on:
       redis: { condition: service_healthy }
     networks: [data]
@@ -329,7 +326,7 @@ services:
     cpus: 2
     depends_on:
       harness: { condition: service_healthy }
-    networks: [agent-internal, data]
+    networks: [agent-internal, control-edge]
 
   worker-manager:
     build:

@@ -26,22 +26,24 @@ test("console locale switcher accepts pt-BR and loads its messages", async () =>
   await readFile(new URL("../messages/pt-BR.json", import.meta.url), "utf8");
 });
 
-test("admin surfaces are discoverable from navigation and compose exposes Neo4j Browser", async () => {
+test("admin surfaces are discoverable without exposing data stores on host ports", async () => {
   const navigation = await readFile(new URL("../app/lib/navigation.ts", import.meta.url), "utf8");
   const adminPage = await readFile(new URL("../app/admin/page.tsx", import.meta.url), "utf8");
   const compose = await readFile(new URL("../../../compose.yaml", import.meta.url), "utf8");
+  const gateway = await readFile(new URL("../../../remote/local-control.nginx.conf", import.meta.url), "utf8");
 
   assert.match(navigation, /href: "\/admin"/);
   assert.match(adminPage, /Administrative surfaces/);
-  assert.match(compose, /127\.0\.0\.1:7474:7474/);
+  assert.doesNotMatch(compose, /127\.0\.0\.1:(?:7474|5050|5540)/);
+  assert.match(gateway, /location = \/browser/);
 });
 
 test("admin center also exposes pgAdmin and RedisInsight", async () => {
   const adminSurfaces = await readFile(new URL("../app/lib/admin-surfaces.ts", import.meta.url), "utf8");
-  const compose = await readFile(new URL("../../../compose.yaml", import.meta.url), "utf8");
+  const gateway = await readFile(new URL("../../../remote/local-control.nginx.conf", import.meta.url), "utf8");
 
   assert.match(adminSurfaces, /pgAdmin/);
   assert.match(adminSurfaces, /RedisInsight/);
-  assert.match(compose, /127\.0\.0\.1:5050:80/);
-  assert.match(compose, /127\.0\.0\.1:5540:5540/);
+  assert.match(gateway, /location = \/pgadmin/);
+  assert.match(gateway, /location = \/redisinsight/);
 });

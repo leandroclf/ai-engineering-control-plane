@@ -133,7 +133,9 @@ jq -e '[.services.workspace.volumes[] | select(.target == "/home/dev/.local/stat
 jq -e '.networks["agent-internal"].internal == true' <<<"$compose_json" >/dev/null
 jq -e '.services.workspace.read_only == true and .services.workspace.pids_limit == 512' <<<"$compose_json" >/dev/null
 jq -e '.services.harness.read_only == true and .services.harness.pids_limit == 512' <<<"$compose_json" >/dev/null
+jq -e '.services["scanner-data-updater"].user == "0:0" and .services["scanner-data-updater"].read_only == true and .services["scanner-data-updater"].cap_drop == ["ALL"]' <<<"$compose_json" >/dev/null
 jq -e '(.services.workspace.networks | has("provider-egress") | not) and (.services.harness.networks | has("provider-egress") | not)' <<<"$compose_json" >/dev/null
+jq -e '(.services.console.networks | has("control-edge")) and (.services.console.networks | has("data") | not)' <<<"$compose_json" >/dev/null
 
 workspace_environment="$(jq -r '.services.workspace.environment | keys[]' <<<"$compose_json")"
 if printf '%s\n' "$workspace_environment" | rg '^(OPENAI|ANTHROPIC|GEMINI)_' ; then
@@ -159,6 +161,7 @@ fi
 
 rg -q 'smoke_alias coding-fast' scripts/smoke.sh
 rg -q 'smoke_alias coding-strong' scripts/smoke.sh
+rg -q 'worker_manager_token worker_identity_signing_secret' scripts/bootstrap.sh
 rg -q -- '--no-deps --force-recreate workspace' scripts/bootstrap.sh
 rg -q 'getent group "\$\{DEV_GID\}"' docker/harness/Dockerfile
 rg -q 'getent passwd "\$\{DEV_UID\}"' docker/harness/Dockerfile

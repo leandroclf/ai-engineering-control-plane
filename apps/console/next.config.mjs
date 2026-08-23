@@ -5,7 +5,13 @@ import createNextIntlPlugin from "next-intl/plugin";
 const nextConfig = { output: "standalone", allowedDevOrigins: ["127.0.0.1"], transpilePackages: ["@aicp/ui", "@aicp/api-client", "@aicp/architecture-catalog", "@aicp/test-fixtures", "@aicp/tutorial-engine"] };
 const withMDX = createMDX({ configPath: "./source.config.ts" });
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
-const upstream = process.env.NODE_ENV === "production" ? {
+const adminUpstream = process.env.AICP_ADMIN_UPSTREAM_URL?.replace(/\/$/, "");
+const upstream = adminUpstream ? {
+  litellm: `${adminUpstream}/litellm`,
+  neo4j: `${adminUpstream}/browser`,
+  pgadmin: `${adminUpstream}/pgadmin`,
+  redisinsight: `${adminUpstream}/redisinsight`,
+} : process.env.NODE_ENV === "production" ? {
   litellm: "http://control-gateway:8081/litellm",
   neo4j: "http://control-gateway:8081/browser",
   pgadmin: "http://control-gateway:8081/pgadmin",
