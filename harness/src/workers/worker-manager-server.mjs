@@ -18,7 +18,8 @@ const projectsRoot = resolve(required("AICP_WORKER_PROJECTS_ROOT"));
 const identities = new WorkloadIdentityService({ secret: required("WORKER_IDENTITY_SIGNING_SECRET"), ttlSeconds: Number(process.env.WORKER_IDENTITY_TTL_SECONDS ?? 900) });
 const credentials = new CredentialBroker({
   ttlSeconds: Number(process.env.WORKER_IDENTITY_TTL_SECONDS ?? 900),
-  random: () => process.env.LITELLM_API_KEY ?? "",
+  randomLitellm: () => process.env.WORKER_LITELLM_TOKEN ?? process.env.LITELLM_API_KEY ?? "",
+  randomMemory: () => process.env.WORKER_MEMORY_TOKEN ?? process.env.MEMORY_SERVICE_TOKEN ?? "",
 });
 const profiles = new WorkerProfileRegistry(JSON.parse(await readFile(process.env.WORKER_PROFILES_PATH ?? "harness/config/worker-profiles.json", "utf8")));
 const commandPolicy = new WorkerCommandPolicy(JSON.parse(await readFile(process.env.WORKER_COMMAND_POLICY_PATH ?? "harness/config/worker-command-policy.json", "utf8")));

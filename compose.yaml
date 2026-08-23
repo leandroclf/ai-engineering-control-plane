@@ -352,7 +352,7 @@ services:
       WORKER_COMMAND_POLICY_PATH: /aicp/harness/config/worker-command-policy.json
       WORKER_MANAGER_TOKEN_FILE: /run/secrets/worker_manager_token
       WORKER_IDENTITY_SIGNING_SECRET_FILE: /run/secrets/worker_identity_signing_secret
-    secrets: [worker_manager_token, worker_identity_signing_secret, litellm_api_key]
+    secrets: [worker_manager_token, worker_identity_signing_secret, litellm_api_key, memory_service_token]
     volumes:
       - ${ACTIVE_PROJECT_DIR:-./projects/site-lf-solucoes}:/repositories/project
       - ${AICP_RUNS_HOST_ROOT:-/var/lib/aicp/runs}:${AICP_RUNS_HOST_ROOT:-/var/lib/aicp/runs}

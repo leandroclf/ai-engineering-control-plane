@@ -167,7 +167,7 @@ class ContextService:
             symbol_boost = 1.0 if exact_score else 0.0
             distance = graph_distance.get(chunk["path"])
             graph_boost = {0: 1.0, 1: 0.7, 2: 0.4, 3: 0.2}.get(distance, 0.0)
-            git_boost = 1.0 if chunk["path"] in changed_paths else 0.0
+            git_boost = 1.0 if any(chunk["path"] == path or chunk["path"].startswith(path.rstrip("/") + "/") for path in changed_paths) else 0.0
             fused_score = .38 * rrf_lexical + .14 * rrf_vector + .20 * symbol_boost + .12 * graph_boost + .08 * git_boost
             category = "exact_symbols" if exact_score else "tests" if re.search(r"(^|/)(test|tests|spec)", chunk["path"], re.I) else "relevant_code"
             candidates.append({

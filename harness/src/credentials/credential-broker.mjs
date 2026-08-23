@@ -1,10 +1,11 @@
 import { randomBytes, randomUUID } from "node:crypto";
 
 export class CredentialBroker {
-  constructor({ ttlSeconds = 900, now = () => new Date(), random = () => `sk-${randomBytes(32).toString("base64url")}` } = {}) {
+  constructor({ ttlSeconds = 900, now = () => new Date(), random = () => `sk-${randomBytes(32).toString("base64url")}`, randomLitellm = random, randomMemory = random } = {}) {
     this.ttlSeconds = ttlSeconds;
     this.now = now;
-    this.random = random;
+    this.randomLitellm = randomLitellm;
+    this.randomMemory = randomMemory;
     this.credentials = new Map();
   }
 
@@ -23,7 +24,7 @@ export class CredentialBroker {
       remainingBudgetUsd: budget,
       revoked: false,
       refs: { litellm: `llm/${randomUUID()}`, memory: `memory/${randomUUID()}` },
-      material: { litellm: this.random(), memory: this.random() },
+      material: { litellm: this.randomLitellm(), memory: this.randomMemory() },
     };
     this.credentials.set(runId, record);
     return Object.freeze({ credentialId: record.credentialId, subject: record.subject, taskId, runId, expiresAt, scopes: [...record.scopes], allowedModels: [...record.allowedModels], remainingBudgetUsd: record.remainingBudgetUsd, refs: { ...record.refs } });
