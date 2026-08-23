@@ -65,6 +65,14 @@ paths:
     post: { operationId: cancelTaskBudget, parameters: [{ $ref: '#/components/parameters/TaskId' }], responses: { '200': { description: Budget cancelled } } }
   /v1/capabilities:
     get: { operationId: listCapabilities, parameters: [{ name: project, in: query, schema: { type: string } }], responses: { '200': { description: Capability evidence } } }
+  /v1/capability-providers:
+    get: { operationId: listCapabilityProviders, responses: { '200': { description: Registered capability providers } } }
+  /v1/skills:
+    get: { operationId: listSkills, responses: { '200': { description: Registered governed skills } } }
+  /v1/skills:retrieve:
+    get: { operationId: retrieveSkills, parameters: [{ name: query, in: query, schema: { type: string } }, { name: capability, in: query, schema: { type: array, items: { type: string } } }, { name: domain, in: query, schema: { type: string } }], responses: { '200': { description: Ranked skill candidates } } }
+  /v1/metrics/agent:
+    get: { operationId: getAgentMetrics, responses: { '200': { description: Agent and capability metrics } } }
   /v1/workflows:
     get: { operationId: listWorkflows, responses: { '200': { description: Workflow versions } } }
   /v1/policies:
