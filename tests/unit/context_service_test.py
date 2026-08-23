@@ -131,6 +131,22 @@ class ContextServiceTest(unittest.TestCase):
 
         self.assertIn("exact-large", [item["id"] for item in result["artifacts"]])
 
+    def test_compile_uses_file_path_as_lexical_evidence(self):
+        class PathAwareRepository(FakeRepository):
+            def retrieve_chunks(self, repository, query, exact_symbols=None, limit=50):
+                return [
+                    {"id": "a-noise", "path": "misc/unrelated.mjs", "symbol": "helper", "content": "shared content",
+                     "content_hash": "noise-path-hash", "token_count": 4, "embedding": [1, 0]},
+                    {"id": "z-relevant", "path": "harness/src/cli/project-path-traversal.mjs", "symbol": "helper", "content": "shared content",
+                     "content_hash": "relevant-path-hash", "token_count": 4, "embedding": [1, 0]},
+                ]
+
+        result = ContextService(PathAwareRepository(), FakeEmbedder(), FakeGraph()).compile({
+            "repository": "repo", "task_id": "task-path", "query": "project path traversal", "budget": 5,
+        }, [])
+
+        self.assertEqual([item["id"] for item in result["artifacts"]], ["z-relevant"])
+
     def test_context_identity_changes_with_semantic_policy_or_index_version(self):
         service = ContextService(FakeRepository(), FakeEmbedder(), FakeGraph(), FakeTokenCounter())
         base = {"repository": "repo", "task_id": "task-1", "query": "Service.run payment",
