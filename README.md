@@ -2,6 +2,45 @@
 
 Governed, reproducible engineering environment for bounded AI-assisted work.
 
+## AICP Console
+
+The repository now includes a human-facing Control Plane for understanding governed work:
+
+```text
+RUN          start and inspect bounded work
+UNDERSTAND  follow stages, budget and context provenance
+VERIFY      inspect gates, findings and release evidence
+LEARN       use Demo Mode, Academy and architecture explorer
+```
+
+The Console is a presentation layer, never a new authority. The browser talks to a server-side BFF; the BFF talks to Harness. It does not expose provider credentials, worker-manager credentials, databases, Docker or raw source by default.
+
+Run the deterministic experience without provider credentials:
+
+```bash
+npm run dev:console
+# http://localhost:3000
+```
+
+Build it with strict TypeScript:
+
+```bash
+npm run build:console
+npm run generate:api
+npm run validate:api-drift
+npm run validate:architecture-catalog
+npm run validate:docs
+```
+
+The release view intentionally shows the current contract as `35 PASS · 3 BLOCKED · 0 FAILED`. The blocked controls are not promoted because a UI exists.
+
+### Console screenshots
+
+![AICP Console overview](docs/assets/screenshots/overview.png)
+
+Generated views for the run detail, architecture explorer and release
+certification are available in [docs/assets/screenshots](docs/assets/screenshots/).
+
 ## Current status
 
 Pre-v1 Control Plane evolved to the v1 review contract. The environment includes
@@ -179,7 +218,7 @@ local-only and ignored by Git.
   authority-ordered memory evidence inside a model-aware token envelope.
 - CI and human review retain final authority.
 
-See [the OpenSpec change](openspec/changes/bootstrap-ai-engineering-control-plane/proposal.md),
+See [the OpenSpec change](openspec/changes/build-aicp-console-and-documentation-experience/proposal.md),
 [the detailed design](openspec/changes/bootstrap-ai-engineering-control-plane/design.md),
 [compatibility evidence](docs/compatibility.md) and [documentation index](docs/README.md).
 

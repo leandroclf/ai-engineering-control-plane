@@ -1,0 +1,11 @@
+# Tasks
+- [x] Create product contracts, personas, terminology and information architecture.
+- [x] Introduce npm workspaces without moving runtime components.
+- [x] Add OpenAPI response schemas and generated API client.
+- [x] Build accessible design-system primitives and Console shell.
+- [x] Build Overview, Runs, Run Detail, New Run, governance, knowledge, security and release views.
+- [x] Add deterministic Demo Mode and Academy manifests.
+- [x] Add architecture catalog, validator, generated component documentation and Mermaid diagrams.
+- [x] Add full Storybook and Playwright execution in CI on the Node 22 runner.
+- [x] Add live, bounded SSE event delivery against the production Harness store.
+- [x] Add the Fumadocs MDX source/content pipeline, generated `/docs/[slug]` pages, Marp HTML/PDF/PPTX outputs and run the presentation build in CI.
