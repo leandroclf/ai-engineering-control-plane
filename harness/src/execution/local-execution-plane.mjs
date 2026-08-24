@@ -1,12 +1,13 @@
 import { ExecutionPlane } from "./execution-plane.mjs";
 
 export class LocalExecutionPlane extends ExecutionPlane {
-  constructor({ controller, gateRunner }) {
+  constructor({ controller, gateRunner, agentProviderDispatcher = null }) {
     super();
     if (!controller?.run && !controller?.runDetailed) throw new TypeError("local execution controller is required");
     if (!gateRunner?.run) throw new TypeError("local execution gate runner is required");
     this.controller = controller;
     this.gateRunner = gateRunner;
+    this.agentProviderDispatcher = agentProviderDispatcher;
     this.runs = new Map();
   }
 
@@ -26,6 +27,7 @@ export class LocalExecutionPlane extends ExecutionPlane {
 
   async invokeAgent(runId, request) {
     const run = this.#run(runId);
+    if (this.agentProviderDispatcher && request.providerId) return this.agentProviderDispatcher.execute({ ...request, worktree: request.worktree ?? { root: run.projectDirectory, checkpoint: run.projectDirectory } }, request.agentRouting);
     return this.controller.runDetailed
       ? this.controller.runDetailed({ ...request, directory: run.projectDirectory })
       : { structured: await this.controller.run({ ...request, directory: run.projectDirectory }), usage: null };

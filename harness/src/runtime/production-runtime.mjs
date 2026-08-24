@@ -29,6 +29,8 @@ import { HttpBrowserCapabilityProvider } from "../capabilities/http-browser-prov
 import { SkillRegistry } from "../skills/registry.mjs";
 import { AgentMetrics } from "../telemetry/agent-metrics.mjs";
 import { AgentHarnessMemoryClient } from "../memory/agent-harness-memory-client.mjs";
+import { createAgentProviderLayer } from "../providers/provider-layer.mjs";
+import { createProviderDescriptor, sanitizeProvider } from "../providers/provider-contract.mjs";
 
 const { Pool } = pg;
 
@@ -44,6 +46,7 @@ export async function createProductionRuntime({ environment = process.env } = {}
   ));
   const gateConfiguration = JSON.parse(await readFile(environment.HARNESS_GATES_PATH ?? "harness/config/gates.yaml", "utf8"));
   const routingConfiguration = JSON.parse(await readFile(environment.HARNESS_MODEL_ROUTING_PATH ?? "harness/config/model-routing.json", "utf8"));
+  const agentProviderConfiguration = JSON.parse(await readFile(environment.HARNESS_AGENT_PROVIDERS_PATH ?? "harness/config/agent-providers.json", "utf8"));
   const scannerBundle = JSON.parse(await readFile(environment.HARNESS_SCANNER_BUNDLE_PATH ?? "security/scanner-bundle.json", "utf8"));
   const workerProfiles = new WorkerProfileRegistry(JSON.parse(await readFile(environment.WORKER_PROFILES_PATH ?? "harness/config/worker-profiles.json", "utf8")));
   const ephemeral = environment.AICP_EXECUTION_MODE === "ephemeral";
@@ -72,6 +75,8 @@ export async function createProductionRuntime({ environment = process.env } = {}
       port: Number(environment.OPENCODE_SERVER_PORT ?? 4096),
       timeout: Number(environment.OPENCODE_START_TIMEOUT_MS ?? 30_000),
     });
+    const providerLayer = !ephemeral ? await createAgentProviderLayer({ environment, database, controller: new OpenCodeController(opencode.client) }) : null;
+    const providerLayerEnabled = ["1", "true", "yes", "on"].includes(String(environment.AICP_AGENT_PROVIDER_LAYER_ENABLED ?? "false").toLowerCase());
     const store = new PostgresRunStore(database);
     const budgetAuthority = new BudgetAuthority({
       store: new PostgresBudgetStore(database),
@@ -92,7 +97,7 @@ export async function createProductionRuntime({ environment = process.env } = {}
       .register("trivy", new ScannerGateProvider("trivy", ephemeral ? {} : { runner: processRunner, bundleAttestor: scannerBundleAttestor }));
     const executionPlane = ephemeral
       ? new WorkerExecutionPlane({ workerManager, profileRegistry: workerProfiles })
-      : new LocalExecutionPlane({ controller: new OpenCodeController(opencode.client), gateRunner: new ProjectGateRunner({ runner: processRunner }) });
+      : new LocalExecutionPlane({ controller: new OpenCodeController(opencode.client), gateRunner: new ProjectGateRunner({ runner: processRunner }), agentProviderDispatcher: providerLayerEnabled ? providerLayer.dispatcher : null });
     const handlers = createWorkflowHandlers({
       definition,
       store,
@@ -103,6 +108,8 @@ export async function createProductionRuntime({ environment = process.env } = {}
       gateRegistry,
       budgetAuthority,
       routingPolicy: new RoutingPolicy(routingConfiguration, environment),
+      agentRoutingPolicy: providerLayerEnabled ? providerLayer.routingPolicy : null,
+      providerLayerEnabled,
     });
     const runtime = new GovernedRuntime({
       definition,
@@ -117,10 +124,12 @@ export async function createProductionRuntime({ environment = process.env } = {}
       telemetry: new OtlpHttpTelemetry({ endpoint: environment.OTEL_EXPORTER_OTLP_ENDPOINT }),
       budgetAuthority,
       executionPlane,
+      providerLayer,
       metadata: {
         versions: { workflow: `${definition.name}-v${definition.version}`, policy: "policy-v1", context: `context-schema-v${environment.AICP_CONTEXT_SCHEMA_VERSION ?? "3"}` },
         policies: [{ name: "control-plane", version: "policy-v1" }, { name: "workspace", version: "workspace-v1" }],
         models: Object.entries(routingConfiguration.aliases).map(([alias, route]) => ({ alias, capabilityClass: route.class, deployments: route.deployments.map(({ id, provider, modelEnv }) => ({ id, provider, configured: Boolean(environment[modelEnv]) })) })),
+        providers: providerLayer?.registry.sanitized() ?? Object.entries(agentProviderConfiguration.providers ?? {}).map(([id, value]) => sanitizeProvider(createProviderDescriptor({ id, ...value }))),
       },
       readiness: async () => {
         const checks = { postgres: "ok", memory: "ok", litellm: "ok", opencode: "ok", workflow: "ok", gateRegistry: "ok", workerManager: ephemeral ? "ok" : "local-long-lived", browserWorker: "unconfigured" };
@@ -159,7 +168,7 @@ export async function createProductionRuntime({ environment = process.env } = {}
       executionPlane,
     });
     return {
-      runtime, capabilityRouter, skillRegistry, metrics,
+      runtime, capabilityRouter, skillRegistry, metrics, providerLayer,
       async close() {
         opencode?.server.close();
         await database.end();

@@ -10,6 +10,7 @@ export const navigation: NavigationItem[] = [
   { label: "Workflows", href: "/governance/workflows", group: "Governance", keywords: ["stages"] },
   { label: "Policies", href: "/governance/policies", group: "Governance", keywords: ["authority"] },
   { label: "Models", href: "/governance/models", group: "Governance", keywords: ["routing", "litellm"] },
+  { label: "Agent Providers", href: "/governance/providers", group: "Governance", keywords: ["codex", "claude", "opencode", "runtime"] },
   { label: "Context", href: "/knowledge/context", group: "Knowledge", keywords: ["retrieval", "provenance"] },
   { label: "Memory", href: "/knowledge/memory", group: "Knowledge", keywords: ["scope", "postgres"] },
   { label: "Graph", href: "/knowledge/graph", group: "Knowledge", keywords: ["neo4j", "derived"] },

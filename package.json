@@ -14,10 +14,15 @@
     "test:e2e:mock-gateway": "bash scripts/mock-gateway-e2e.sh",
     "test:adversarial": "node --test tests/adversarial/*.test.mjs && bash tests/adversarial/runtime-boundary.sh",
     "test:budget-adversarial": "node --test tests/adversarial/budget/*.test.mjs",
+    "test:providers": "node --test tests/unit/providers/*.test.mjs",
+    "test:providers:integration": "node --test tests/integration/providers.integration.mjs",
+    "test:providers:adversarial": "node --test tests/adversarial/providers.test.mjs",
+    "test:providers:live": "node harness/src/cli/providers.mjs providers test ${AICP_LIVE_PROVIDER_ID:-codex-subscription} --read-only",
     "test:worker-e2e": "AICP_DOCKER_TEST=1 node --test tests/integration/execution-plane.integration.mjs && AICP_DOCKER_TEST=1 node --test tests/integration/worker-docker.integration.mjs && AICP_DOCKER_TEST=1 node --test tests/integration/worker-manager-http.integration.mjs",
     "test:multistack": "node --test tests/integration/multistack.integration.mjs",
     "test:acceptance": "bash tests/acceptance/config_test.sh && bash tests/acceptance/harness_test.sh && bash tests/acceptance/backup_contract_test.sh",
     "harness": "node harness/src/cli/run-workflow.mjs",
+    "aicp": "node harness/src/cli/providers.mjs",
     "worker-manager": "node harness/src/workers/worker-manager-server.mjs",
     "smoke:fallback": "bash scripts/fallback-smoke.sh",
     "evaluate:baseline": "node observability/evaluation/run-baseline.mjs",
@@ -51,7 +56,7 @@
     "presentations:pptx": "node scripts/build-presentations.mjs --format pptx",
     "test:ui": "npm --workspace @aicp/console run test && node --experimental-strip-types --test packages/ui/tests/*.test.ts packages/tutorial-engine/tests/*.test.ts packages/architecture-catalog/tests/*.test.ts",
     "screenshots:docs": "npm --workspace @aicp/console run screenshots",
-    "validate": "npm test && npm run test:python && npm run validate:suppressions && npm run test:security && npm run test:acceptance"
+    "validate": "npm test && npm run test:python && npm run test:providers && npm run test:providers:integration && npm run test:providers:adversarial && npm run validate:suppressions && npm run test:security && npm run test:acceptance"
   },
   "engines": {
     "node": ">=18"

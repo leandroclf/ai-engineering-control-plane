@@ -8,6 +8,17 @@ function finiteNonNegative(value, name) {
 
 export function reconcilePhysicalUsage(logicalUsage = {}, providerAttempts = []) {
   if (!Array.isArray(providerAttempts)) throw new TypeError("providerAttempts must be an array");
+  const accountingMode = logicalUsage.accountingMode ?? (["subscription", "subscription-credit"].includes(logicalUsage.billingMode) ? logicalUsage.billingMode : "metered-api");
+  if (["subscription", "subscription-credit"].includes(accountingMode)) {
+    const seen = new Set();
+    const normalized = providerAttempts.map((attempt, index) => {
+      const attemptNumber = Number(attempt.attempt ?? index + 1);
+      if (!Number.isInteger(attemptNumber) || attemptNumber < 1 || seen.has(attemptNumber)) throw new TypeError("provider attempt numbers must be unique positive integers");
+      seen.add(attemptNumber);
+      return Object.freeze({ attempt: attemptNumber, provider: String(attempt.provider ?? "subscription"), model: String(attempt.model ?? attempt.runtime ?? "agent-runtime"), providerRequestId: String(attempt.providerRequestId ?? attempt.executionId ?? `subscription-${attemptNumber}`), fallback: attemptNumber > 1 || attempt.fallback === true, inputTokens: finiteNonNegative(attempt.inputTokens, "inputTokens"), outputTokens: finiteNonNegative(attempt.outputTokens, "outputTokens"), cachedInputTokens: finiteNonNegative(attempt.cachedInputTokens, "cachedInputTokens"), costUsd: 0, durationMs: finiteNonNegative(attempt.durationMs, "durationMs"), status: attempt.status === "failed" ? "failed" : "succeeded", pricingKnown: false });
+    });
+    return { actualUsage: { ...normalizeUsage({ calls: 1, inputTokens: normalized.reduce((sum, item) => sum + item.inputTokens, 0), outputTokens: normalized.reduce((sum, item) => sum + item.outputTokens, 0), costUsd: 0 }), billingMode: accountingMode, monetaryCostKnown: logicalUsage.monetaryCostKnown === true, providerReportedCostUsd: logicalUsage.providerReportedCostUsd ?? null }, physicalAttempts: normalized, fallbackCostDelta: 0 };
+  }
   if (!providerAttempts.length) return {
     actualUsage: normalizeUsage(logicalUsage),
     physicalAttempts: [],
@@ -46,4 +57,3 @@ export function reconcilePhysicalUsage(logicalUsage = {}, providerAttempts = [])
     fallbackCostDelta: normalized.slice(1).reduce((sum, item) => sum + item.costUsd, 0),
   };
 }
-

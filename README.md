@@ -15,6 +15,31 @@ LEARN       use Demo Mode, Academy and architecture explorer
 
 The Console is a presentation layer, never a new authority. The browser talks to a server-side BFF; the BFF talks to Harness. It does not expose provider credentials, worker-manager credentials, databases, Docker or raw source by default.
 
+## Agent Providers
+
+LiteLLM providers and Agent Providers are different extension points. LiteLLM
+continues as the Model Gateway for OpenCode and API-metered models; the Harness
+can optionally route to separate agent runtimes:
+
+```mermaid
+flowchart LR
+    H["AICP Harness"] --> R["Agent Provider Router"]
+    R --> O["OpenCodeAgentProvider"]
+    R --> C["CodexAgentProvider"]
+    R --> A["ClaudeCodeAgentProvider"]
+    O --> L["LiteLLM Model Gateway"]
+    L --> APIs["Model APIs"]
+    C --> CH["Codex CLI / subscription"]
+    A --> CL["Claude Code CLI / subscription"]
+```
+
+The safe default is `AICP_AGENT_PROVIDER_LAYER_ENABLED=false`, preserving
+`Harness → OpenCode → LiteLLM`. Codex and Claude Code are opt-in, local-personal
+subscription adapters in a separate Agent Provider Host; they are never added
+to `models/catalog.json` or `litellm/config.template.yaml`, never exposed as a
+shared OAuth service, and remain blocked from shared production. See
+`docs/architecture/current.md` and `docs/governance/provider-usage-policy.md`.
+
 Run the deterministic experience without provider credentials:
 
 ```bash

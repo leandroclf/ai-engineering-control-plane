@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "agent-provider-certification-v1",
+  "status": "BLOCKED",
+  "controls": [
+    { "id": "agent-provider-default-opencode", "status": "PASS", "evidence": ["npm test", "npm run test:architecture"] },
+    { "id": "provider-fake-adapters", "status": "PASS", "evidence": ["npm run test:providers", "npm run test:providers:integration"] },
+    { "id": "provider-adversarial-bounds", "status": "PASS", "evidence": ["npm run test:providers:adversarial"] },
+    { "id": "subscription-shared-production-deny", "status": "PASS", "evidence": ["tests/unit/providers/agent-routing-policy.test.mjs"] },
+    { "id": "vendor-credential-isolation", "status": "BLOCKED", "reason": "OS/vendor child-process credential isolation is not proven in this environment", "evidence": ["docs/security/credential-exfiltration.md"] },
+    { "id": "live-vendor-smoke", "status": "NOT_APPLICABLE", "reason": "explicit opt-in only; no vendor credentials used in normal CI" }
+  ]
+}

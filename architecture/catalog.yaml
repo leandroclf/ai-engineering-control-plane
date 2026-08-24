@@ -120,3 +120,54 @@ components:
     securityBoundary: provider-egress
     observability: [cost, tokens, fallback-spans]
     docs: /docs/model-routing
+  - id: agent-provider-router
+    name: Agent Provider Router
+    plane: control
+    purpose: Select a governed agent runtime above model routing.
+    why: Keeps OpenCode, Codex and Claude Code at the correct abstraction level.
+    benefits: [runtime-interchangeability, auditability, provider-family-diversity]
+    authority: Harness
+    owns: [agent-routing-decision, provider-eligibility, fallback-policy]
+    doesNotOwn: [workflow-transition, provider-credentials, model-catalog]
+    state: { canonical: postgres }
+    dataSensitivity: restricted
+    dependencies: [harness, postgres, provider-quota-authority]
+    interfaces: [agent-provider-contract, http-api]
+    failureMode: fail-closed
+    securityBoundary: trusted-control-plane
+    observability: [route-decision, provider-family, fallback]
+    docs: /docs/architecture/providers/routing
+  - id: agent-provider-host
+    name: Agent Provider Host
+    plane: execution
+    purpose: Run credential-bearing official vendor CLIs in a separate trust zone.
+    why: Subscription sessions cannot be placed in ordinary workers.
+    benefits: [credential-boundary, process-supervision, checkpointed-fallback]
+    authority: Harness
+    owns: [provider-process, argv-boundary, output-boundary, cancellation]
+    doesNotOwn: [workflow, budget, quota-policy, gate-approval, credentials]
+    state: { ephemeral: [provider-process, schema-temp-file] }
+    dataSensitivity: vendor-session-sensitive
+    dependencies: [codex-cli, claude-code-cli, run-worktree]
+    interfaces: [agent-execution-envelope]
+    failureMode: fail-closed
+    securityBoundary: provider-host-trust-zone
+    observability: [bounded-status, duration, termination-reason]
+    docs: /docs/architecture/providers/provider-host
+  - id: provider-quota-authority
+    name: Provider Quota Authority
+    plane: control
+    purpose: Enforce AICP shadow quotas for subscription-backed runtimes.
+    why: Vendor subscription remaining quota is not treated as a stable API.
+    benefits: [bounded-concurrency, retry-fuse, principal-scope]
+    authority: Harness
+    owns: [quota-reservations, quota-settlement]
+    doesNotOwn: [vendor-entitlement, monetary-budget]
+    state: { canonical: postgres, ephemeral: [memory-tests] }
+    dataSensitivity: restricted
+    dependencies: [postgres, agent-provider-router]
+    interfaces: [quota-ledger]
+    failureMode: fail-closed
+    securityBoundary: trusted-control-plane
+    observability: [quota-reserve, quota-commit, exhaustion]
+    docs: /docs/architecture/providers/routing

@@ -15,6 +15,7 @@ and agent inference.
 - Local host to remote Control Plane.
 - Repository content to agent context.
 - Scanner/provider telemetry to external services.
+- Vendor CLI session to Agent Provider Host child tools.
 
 ## Primary threats and controls
 
@@ -29,6 +30,10 @@ and agent inference.
 | Malicious dependency/image | OCI digests, SHA-pinned Actions, SBOM/provenance and floating-tag rejection | Supply-chain contract |
 | Unapproved suppression | Versioned approval metadata/expiry | Gate contract test |
 | Remote API interception | Authenticated TLS/VPN | Phase 4 acceptance |
+| Subscription credential exfiltration | Separate Provider Host, allowlisted environment, vendor sandbox flags, no auth-file parsing | `npm run test:providers:adversarial`; real vendor isolation remains BLOCKED until OS evidence |
+| Dirty fallback after provider crash | Per-attempt checkpoint, restore and attestation before alternate provider | `tests/unit/providers/agent-provider-dispatcher.test.mjs` |
+| Subscription cost misrepresented | Explicit billing mode and monetary-cost-known semantics | `tests/unit/providers/provider-usage.test.mjs` |
+| Adapter bypasses reviewer diversity | Compare provider family, not runtime name | `tests/unit/providers/agent-routing-policy.test.mjs` |
 
 Enterprise OIDC/PKI, external secret manager, encrypted backup backend and paid-scanner data policies remain
 release decisions. Until approved, those capabilities are disabled rather than

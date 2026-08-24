@@ -7,7 +7,7 @@ import { ControlPlaneAuthorizer } from "../security/identity-authority.mjs";
 
 export const API_OPERATIONS = Object.freeze([
   "health", "readiness", "createRun", "listRuns", "getRun", "listRunStages", "resumeRun", "cancelRun", "getRunAudit", "getRunGates", "getRunFindings",
-  "getTask", "getTaskBudget", "listBudgetEvents", "cancelTaskBudget", "listCapabilities", "listCapabilityProviders", "listSkills", "retrieveSkills", "getAgentMetrics", "listWorkflows", "listPolicies", "listModels", "getContext", "getRunExecution", "getRunCredentials", "getRunAttestations", "getV1Certification", "getV1CertificationFindings", "getOverview", "getSystemStatus", "getCurrentActor", "listProjects", "getProject", "streamRunEvents",
+  "getTask", "getTaskBudget", "listBudgetEvents", "cancelTaskBudget", "listCapabilities", "listCapabilityProviders", "listSkills", "retrieveSkills", "getAgentMetrics", "listWorkflows", "listPolicies", "listModels", "getContext", "getRunExecution", "getRunCredentials", "getRunAttestations", "getV1Certification", "getV1CertificationFindings", "getOverview", "getSystemStatus", "getCurrentActor", "listProjects", "getProject", "streamRunEvents", "listProviders", "getProvider", "getProviderHealth", "getProviderQuota", "probeProvider", "getRunProviderAttempts", "getTaskProviderQuota", "getProviderPolicies",
 ]);
 
 export const MAX_REQUEST_BODY_BYTES = 1_048_576;
@@ -101,7 +101,7 @@ export function createHarnessServer({ runtime, token, authorizer = null, project
         send(response, 401, { error: { code: "UNAUTHORIZED", message: "Authentication is required.", retryable: false, requestId, details: {} } });
         return;
       }
-      principal.require(request.method === "GET" ? (url.pathname.startsWith("/v1/tasks") ? "tasks:read" : url.pathname.startsWith("/v1/runs") ? "runs:read" : "platform:read") : url.pathname.includes("budget") ? "budgets:write" : "runs:write");
+      principal.require(request.method === "GET" ? (url.pathname.startsWith("/v1/tasks") ? "tasks:read" : url.pathname.startsWith("/v1/runs") ? "runs:read" : "platform:read") : url.pathname.includes("budget") ? "budgets:write" : url.pathname.includes("/providers/") && url.pathname.endsWith(":probe") ? "platform:read" : "runs:write");
       if (request.method === "POST" && url.pathname === "/v1/runs") {
         send(response, 201, await runtime.start(startRequest(await jsonBody(request), projectsRoot, request.headers["idempotency-key"])));
         return;
@@ -121,6 +121,16 @@ export function createHarnessServer({ runtime, token, authorizer = null, project
       if (request.method === "GET" && url.pathname === "/v1/workflows") { send(response, 200, runtime.workflows()); return; }
       if (request.method === "GET" && url.pathname === "/v1/policies") { send(response, 200, runtime.policies()); return; }
       if (request.method === "GET" && url.pathname === "/v1/models") { send(response, 200, runtime.models()); return; }
+      if (request.method === "GET" && url.pathname === "/v1/providers") { send(response, 200, runtime.providers()); return; }
+      const provider = request.method === "GET" && url.pathname.match(/^\/v1\/providers\/([^/:]+)$/);
+      if (provider) { send(response, 200, await runtime.provider(decodeURIComponent(provider[1]))); return; }
+      const providerHealth = request.method === "GET" && url.pathname.match(/^\/v1\/providers\/([^/]+)\/health$/);
+      if (providerHealth) { send(response, 200, await runtime.providerHealth(decodeURIComponent(providerHealth[1]))); return; }
+      const providerQuota = request.method === "GET" && url.pathname.match(/^\/v1\/providers\/([^/]+)\/quota$/);
+      if (providerQuota) { send(response, 200, await runtime.providerQuota(decodeURIComponent(providerQuota[1]))); return; }
+      const providerProbe = request.method === "POST" && url.pathname.match(/^\/v1\/providers\/([^/]+):probe$/);
+      if (providerProbe) { send(response, 200, await runtime.providerProbe(decodeURIComponent(providerProbe[1]), { live: url.searchParams.get("live") === "true" })); return; }
+      if (request.method === "GET" && url.pathname === "/v1/provider-policies") { send(response, 200, runtime.providerPolicies()); return; }
       const storedContext = request.method === "GET" && url.pathname.match(/^\/v1\/contexts\/([^/]+)$/);
       if (storedContext) { send(response, 200, await runtime.getContext(decodeURIComponent(storedContext[1]))); return; }
       const resume = request.method === "POST" && url.pathname.match(/^\/v1\/runs\/([^/]+):resume$/);
@@ -168,6 +178,8 @@ export function createHarnessServer({ runtime, token, authorizer = null, project
         await emit();
         return;
       }
+      const providerAttempts = request.method === "GET" && url.pathname.match(/^\/v1\/runs\/([^/]+)\/provider-attempts$/);
+      if (providerAttempts) { send(response, 200, await runtime.providerAttempts(decodeURIComponent(providerAttempts[1]))); return; }
       if (request.method === "GET" && url.pathname === "/v1/certifications/v1") {
         const contract = JSON.parse(await readFile("release/v1-contract.json", "utf8"));
         send(response, 200, contract); return;
@@ -183,6 +195,8 @@ export function createHarnessServer({ runtime, token, authorizer = null, project
       if (budget) { send(response, 200, await runtime.getBudget(decodeURIComponent(budget[1]))); return; }
       const budgetEvents = request.method === "GET" && url.pathname.match(/^\/v1\/tasks\/([^/]+)\/budget\/events$/);
       if (budgetEvents) { send(response, 200, await runtime.getBudgetEvents(decodeURIComponent(budgetEvents[1]))); return; }
+      const taskProviderQuota = request.method === "GET" && url.pathname.match(/^\/v1\/tasks\/([^/]+)\/provider-quota$/);
+      if (taskProviderQuota) { send(response, 200, await runtime.providerTaskQuota(decodeURIComponent(taskProviderQuota[1]))); return; }
       const cancelBudget = request.method === "POST" && url.pathname.match(/^\/v1\/tasks\/([^/]+)\/budget:cancel$/);
       if (cancelBudget) { send(response, 200, await runtime.cancelBudget(decodeURIComponent(cancelBudget[1]))); return; }
       send(response, 404, { error: { code: "NOT_FOUND", message: "The requested resource was not found.", retryable: false, requestId, details: {} } });
