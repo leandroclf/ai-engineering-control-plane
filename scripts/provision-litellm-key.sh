@@ -12,7 +12,7 @@ set +a
 : "${LITELLM_MASTER_KEY:?LITELLM_MASTER_KEY is required}"
 
 gateway="http://127.0.0.1:4000"
-models='["coding-strong","coding-fast","architecture","security","review","embeddings"]'
+models='["coding-strong","coding-strong-openai","coding-strong-anthropic","coding-fast","coding-fast-openai","architecture","architecture-openai","architecture-anthropic","security","security-openai","security-anthropic","review","review-openai","review-anthropic","embeddings"]'
 if test -n "${LITELLM_API_KEY:-}"; then
   key_info="$(curl -fsS -G \
   --data-urlencode "key=${LITELLM_API_KEY}" \
@@ -34,7 +34,7 @@ fi
 
 payload="$(jq -n '{
   key_alias: "aicp-workspace",
-  models: ["coding-strong", "coding-fast", "architecture", "security", "review", "embeddings"],
+  models: ["coding-strong", "coding-strong-openai", "coding-strong-anthropic", "coding-fast", "coding-fast-openai", "architecture", "architecture-openai", "architecture-anthropic", "security", "security-openai", "security-anthropic", "review", "review-openai", "review-anthropic", "embeddings"],
   max_budget: 10,
   budget_duration: "30d",
   rpm_limit: 60,

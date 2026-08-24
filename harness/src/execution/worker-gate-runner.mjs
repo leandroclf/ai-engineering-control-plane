@@ -5,7 +5,7 @@ function capabilityFor(command) {
   if (tool === "semgrep" || tool === "gitleaks" || tool === "trivy") return `scanner:${tool}`;
   if (tool === "npm" && args[0] === "test") return "test:unit";
   if (tool === "npm" && args[0] === "run" && args[1]) return args[1] === "build" ? "build" : args[1] === "lint" ? "lint" : args[1] === "coverage" ? "coverage" : args[1] === "test:integration" ? "test:integration" : "unknown";
-  if (tool === "gradle" || tool === "mvn" || tool === "python" || tool === "go") return "build";
+  if (tool === "gradle" || tool === "mvn" || tool === "python" || tool === "python3" || tool === "go") return "build";
   return "unknown";
 }
 

@@ -1,6 +1,6 @@
 ---
 description: Analisa arquitetura, impacto, contratos e ADRs sem editar
-mode: subagent
+mode: primary
 model: controlplane/architecture
 steps: 6
 permission:

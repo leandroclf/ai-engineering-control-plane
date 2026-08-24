@@ -14,13 +14,18 @@ implementação vive em
 - Gateway local com proxy para os componentes administrativos.
 - Arquitetura canónica, contratos de referência, segurança, validação e
   evidência já indexados em `docs/README.md`.
+- Agent Harness adaptativo com Capability Router, lifecycle de skills,
+  evaluation/recovery governados e métricas.
+- Browser worker isolado com Chromium/CDP, sessões persistentes por perfil,
+  autenticação interna e persistência de lifecycle no memory-service.
+- API/OpenAPI para providers, skills, retrieval e métricas.
 - OpenSpec já contém a base de bootstrap, console/UX e a consolidação
   documental.
 
 ## Ainda aberto
 
 - Consolidação completa do legado histórico dentro do arquivo de docs.
-- Revisão final de cobertura do OpenSpec para o que ainda falta implementar.
+- Jornada E2E contra uma aplicação web real em staging.
 - Fechamento dos bloqueios de release, supply-chain e governança operacional
   descritos no ledger canónico do bootstrap.
 

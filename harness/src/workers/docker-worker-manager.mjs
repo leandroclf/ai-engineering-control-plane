@@ -8,10 +8,10 @@ const PHYSICAL_PROVIDER_CREDENTIAL = /^(?:OPENAI|ANTHROPIC|GEMINI|GOOGLE)_.*(?:K
 function workerName(runId) { return `aicp-run-${createHash("sha256").update(runId).digest("hex").slice(0, 20)}`; }
 
 export class DockerWorkerManager extends WorkerManager {
-  constructor({ docker, profiles, identityService, network = "none", secretResolver = async () => null, commandPolicy = null, credentials = null }) {
+  constructor({ docker, profiles, identityService, network = "none", secretResolver = async () => null, commandPolicy = null, credentials = null, opencodeConfigSource = process.env.AICP_OPENCODE_CONFIG_SOURCE ?? null }) {
     super();
     if (!docker || !profiles || !identityService) throw new TypeError("docker control, profiles and identity service are required");
-    this.docker = docker; this.profiles = profiles; this.identityService = identityService; this.network = network; this.secretResolver = secretResolver; this.commandPolicy = commandPolicy; this.credentials = credentials; this.workers = new Map();
+    this.docker = docker; this.profiles = profiles; this.identityService = identityService; this.network = network; this.secretResolver = secretResolver; this.commandPolicy = commandPolicy; this.credentials = credentials; this.opencodeConfigSource = opencodeConfigSource; this.workers = new Map();
   }
 
   async create(spec) {
@@ -25,10 +25,15 @@ export class DockerWorkerManager extends WorkerManager {
     const environment = {
       ...spec.environment,
       AICP_RUN_ID: spec.runId,
+      LITELLM_BASE_URL: process.env.LITELLM_BASE_URL ?? "http://litellm:4000/v1",
+      MEMORY_SERVICE_URL: process.env.MEMORY_SERVICE_URL ?? "http://memory-service:8080",
       LITELLM_API_KEY: litellmToken,
       MEMORY_SERVICE_TOKEN: memoryToken,
+      ...(this.opencodeConfigSource ? { OPENCODE_CONFIG_DIR: "/opt/aicp/opencode" } : {}),
     };
-    const containerId = await this.docker.create({ name: workerName(spec.runId), runId: spec.runId, image: profile.image, network: this.network, environment, mounts: [{ source: resolve(spec.projectDirectory), target: "/workspace/project", readOnly: false }], tmpfs: ["/tmp:rw,noexec,nosuid,size=512m", "/home/worker/.cache:rw,nosuid,size=512m"] });
+    const workerMounts = [{ source: resolve(spec.projectDirectory), target: "/workspace/project", readOnly: false }];
+    if (this.opencodeConfigSource) workerMounts.push({ source: resolve(this.opencodeConfigSource), target: "/opt/aicp/opencode", readOnly: true });
+    const containerId = await this.docker.create({ name: workerName(spec.runId), runId: spec.runId, image: profile.image, network: this.network, environment, mounts: workerMounts, tmpfs: ["/tmp:rw,noexec,nosuid,size=512m", "/home/worker/.cache:rw,nosuid,size=512m", "/home/node/.cache:rw,nosuid,size=512m", "/home/node/.config:rw,nosuid,size=32m", "/home/node/.local:rw,nosuid,size=128m", "/home/node/.semgrep:rw,nosuid,size=32m"] });
     const inspected = await this.docker.inspect(containerId);
     const mounts = inspected.Mounts ?? [];
     const envNames = (inspected.Config?.Env ?? []).map((value) => value.split("=", 1)[0]);

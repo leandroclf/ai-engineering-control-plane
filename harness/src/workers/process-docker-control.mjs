@@ -31,7 +31,7 @@ export class ProcessDockerControl {
     return id;
   }
   async inspect(id) { const result = await run(["inspect", id]); if (result.exitCode !== 0) throw new Error("WORKER_INSPECT_FAILED"); return JSON.parse(result.stdout)[0]; }
-  exec(id, command) { return run(["exec", id, ...command]); }
+  exec(id, command) { return run(["exec", "--workdir", "/tmp", id, ...command]); }
   execCapability(id, capability, { cwd = null } = {}) {
     const args = ["exec", ...(cwd ? ["--workdir", cwd] : []), id, capability.tool, ...capability.args];
     return run(args);

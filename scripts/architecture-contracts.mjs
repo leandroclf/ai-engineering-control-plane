@@ -20,6 +20,11 @@ if (harnessCompose.includes("/var/run/docker.sock")) throw new Error("Docker soc
 if (!compose.includes("worker-manager:") || !compose.includes("/var/run/docker.sock")) throw new Error("deployment-side worker manager boundary is required");
 if (!compose.includes("agent-internal:\n    internal: true")) throw new Error("agent network must be internal");
 if (!compose.includes("read_only: true")) throw new Error("executor root filesystem must be read-only");
+const browserCompose = compose.slice(compose.indexOf("\n  browser-worker:"), compose.indexOf("\n  scanner-data-updater:"));
+if (!browserCompose.includes("docker/browser-worker/Dockerfile")) throw new Error("browser worker image is required");
+if (browserCompose.includes("/var/run/docker.sock")) throw new Error("browser worker must not mount Docker socket");
+if (!browserCompose.includes("browser_worker_token")) throw new Error("browser worker token boundary is required");
+if (!browserCompose.includes("browser-profiles:/var/lib/aicp/browser-profiles")) throw new Error("browser profiles must be persistent");
 if (!handlers.includes("budgetAuthority.reserve") || !handlers.includes("budgetAuthority.commit")) throw new Error("agents must be wrapped by budget authority");
 if (!executor.includes("this.workflow.transition")) throw new Error("Harness must own workflow transitions");
 for (const operation of httpServer.API_OPERATIONS) if (!openapi.includes(`operationId: ${operation}`)) throw new Error(`OpenAPI missing runtime operation: ${operation}`);

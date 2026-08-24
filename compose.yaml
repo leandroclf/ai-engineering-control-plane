@@ -154,7 +154,7 @@ services:
     environment:
       PORT: 8080
       MEMORY_SERVICE_TOKEN_FILE: /run/secrets/memory_service_token
-      MEMORY_AUTHORIZED_SCOPES: ${MEMORY_AUTHORIZED_SCOPES:-GLOBAL:local,ORGANIZATION:local,SOLUTION:local,PROJECT:local,REPOSITORY:site-lf-solucoes,REPOSITORY:ai-engineering-control-plane,AGENT:opencode,TASK:local,RUN:local,EXECUTION:local}
+      MEMORY_AUTHORIZED_SCOPES: ${MEMORY_AUTHORIZED_SCOPES:-GLOBAL:local,ORGANIZATION:local,SOLUTION:local,PROJECT:local,PROJECT:site-lf-solucoes,REPOSITORY:site-lf-solucoes,REPOSITORY:ai-engineering-control-plane,AGENT:opencode,TASK:local,RUN:local,EXECUTION:local}
       LITELLM_BASE_URL: http://litellm:4000/v1
       LITELLM_API_KEY_FILE: /run/secrets/litellm_api_key
       EMBEDDING_ALIAS: embeddings
@@ -201,8 +201,6 @@ services:
       OPENCODE_CONFIG_DIR: /home/dev/.config/opencode
       LITELLM_BASE_URL: http://litellm:4000/v1
       LITELLM_API_KEY_FILE: /run/secrets/litellm_api_key
-      MEMORY_SERVICE_URL: http://memory-service:8080
-      MEMORY_SERVICE_TOKEN_FILE: /run/secrets/memory_service_token
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     volumes:
       - ${ACTIVE_PROJECT_DIR:-./projects/site-lf-solucoes}:/workspace/project
@@ -243,12 +241,15 @@ services:
       AICP_RELEASE_MODE: ${AICP_RELEASE_MODE:-development}
       WORKER_MANAGER_URL: http://worker-manager:8090
       WORKER_MANAGER_TOKEN_FILE: /run/secrets/worker_manager_token
+      BROWSER_WORKER_URL: http://browser-worker:8091
+      BROWSER_WORKER_TOKEN_FILE: /run/secrets/browser_worker_token
+      MEMORY_SERVICE_URL: http://memory-service:8080
+      MEMORY_SERVICE_TOKEN_FILE: /run/secrets/memory_service_token
+      AICP_BROWSER_REQUIRED: ${AICP_BROWSER_REQUIRED:-true}
       WORKER_CLIENT_PROJECT_ROOT: /workspace/project
       OPENCODE_CONFIG_DIR: /home/dev/.config/opencode
       LITELLM_BASE_URL: http://litellm:4000/v1
       LITELLM_API_KEY_FILE: /run/secrets/litellm_api_key
-      MEMORY_SERVICE_URL: http://memory-service:8080
-      MEMORY_SERVICE_TOKEN_FILE: /run/secrets/memory_service_token
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       CODING_STRONG_MODEL: ${CODING_STRONG_MODEL:-}
       CODING_STRONG_SECONDARY_MODEL: ${CODING_STRONG_SECONDARY_MODEL:-}
@@ -267,7 +268,7 @@ services:
       AICP_ANTHROPIC_STRONG_OUTPUT_PRICE: ${AICP_ANTHROPIC_STRONG_OUTPUT_PRICE:-}
       SEMGREP_SEND_METRICS: "off"
       SEMGREP_ENABLE_VERSION_CHECK: "0"
-    secrets: [postgres_password, harness_service_token, litellm_api_key, memory_service_token, worker_manager_token]
+    secrets: [postgres_password, harness_service_token, litellm_api_key, memory_service_token, worker_manager_token, browser_worker_token]
     volumes:
       - ./opencode:/home/dev/.config/opencode:ro
       - harness-opencode-state:/home/dev/.local/share/opencode
@@ -293,6 +294,7 @@ services:
       postgres: { condition: service_healthy }
       litellm: { condition: service_healthy }
       memory-service: { condition: service_healthy }
+      browser-worker: { condition: service_healthy }
       scanner-data-updater: { condition: service_completed_successfully }
     networks: [agent-internal, data]
 
@@ -340,17 +342,20 @@ services:
     user: "0:0"
     environment:
       WORKER_MANAGER_PORT: 8090
+      WORKER_MANAGER_HOST: 0.0.0.0
       AICP_WORKER_PROJECTS_ROOT: /repositories/project
-      AICP_WORKTREE_ROOT: /var/lib/aicp/runs
+      AICP_WORKTREE_ROOT: ${AICP_RUNS_HOST_ROOT:-/var/lib/aicp/runs}
       WORKER_NETWORK: aicp_agent-internal
+      LITELLM_BASE_URL: http://litellm:4000/v1
+      MEMORY_SERVICE_URL: http://memory-service:8080
       WORKER_PROFILES_PATH: /aicp/harness/config/worker-profiles.json
       WORKER_COMMAND_POLICY_PATH: /aicp/harness/config/worker-command-policy.json
       WORKER_MANAGER_TOKEN_FILE: /run/secrets/worker_manager_token
       WORKER_IDENTITY_SIGNING_SECRET_FILE: /run/secrets/worker_identity_signing_secret
-    secrets: [worker_manager_token, worker_identity_signing_secret]
+    secrets: [worker_manager_token, worker_identity_signing_secret, litellm_api_key, memory_service_token]
     volumes:
       - ${ACTIVE_PROJECT_DIR:-./projects/site-lf-solucoes}:/repositories/project
-      - aicp-runs:/var/lib/aicp/runs
+      - ${AICP_RUNS_HOST_ROOT:-/var/lib/aicp/runs}:${AICP_RUNS_HOST_ROOT:-/var/lib/aicp/runs}
       - /var/run/docker.sock:/var/run/docker.sock
     read_only: true
     tmpfs: ["/tmp:size=128m,mode=1777"]
@@ -359,6 +364,40 @@ services:
     pids_limit: 256
     mem_limit: 1g
     networks: [agent-internal]
+
+  browser-worker:
+    build:
+      context: .
+      dockerfile: docker/browser-worker/Dockerfile
+      args:
+        NODE_IMAGE: "${NODE_IMAGE:-node:22-bookworm@sha256:0557ac14e0d45d02ed563067b82856ca5e7aa3437fa28d98d4350ea9c3d9494a}"
+        CHROMIUM_DEB_VERSION: "${CHROMIUM_DEB_VERSION:-151.0.7922.137-1~deb12u1}"
+      sbom: true
+      provenance: mode=max
+    restart: unless-stopped
+    environment:
+      BROWSER_WORKER_PORT: 8091
+      BROWSER_WORKER_HOST: 0.0.0.0
+      BROWSER_WORKER_TOKEN_FILE: /run/secrets/browser_worker_token
+      MEMORY_SERVICE_URL: http://memory-service:8080
+      MEMORY_SERVICE_TOKEN_FILE: /run/secrets/memory_service_token
+    secrets: [browser_worker_token, memory_service_token]
+    volumes: [browser-profiles:/var/lib/aicp/browser-profiles]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8091/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    read_only: true
+    tmpfs: ["/tmp:size=512m,mode=1777", "/home/node/.cache:size=128m,uid=1000,gid=1000"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    pids_limit: 512
+    mem_limit: 2g
+    cpus: 2
+    depends_on:
+      memory-service: { condition: service_healthy }
+    networks: [agent-internal, provider-egress]
 
   scanner-data-updater:
     build:
@@ -429,6 +468,8 @@ secrets:
     file: ./secrets/worker_manager_token
   worker_identity_signing_secret:
     file: ./secrets/worker_identity_signing_secret
+  browser_worker_token:
+    file: ./secrets/browser_worker_token
 
 volumes:
   opencode-state: {}
@@ -437,5 +478,6 @@ volumes:
   harness-opencode-state: {}
   scanner-data: {}
   aicp-runs: {}
+  browser-profiles: {}
   pgadmin-data: {}
   redisinsight-data: {}

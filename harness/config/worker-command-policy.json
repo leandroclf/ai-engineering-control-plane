@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
   "profiles": {
+    "static-site": {"inherits":"node22"},
     "node22": {
       "capabilities": {
-        "runtime:probe": [{"executable":"node","subcommand":"--version"},{"executable":"npm","subcommand":"--version"},{"executable":"git","subcommand":"--version"},{"executable":"java","subcommand":"--version"},{"executable":"gradle","subcommand":"--version"},{"executable":"mvn","subcommand":"--version"},{"executable":"python","subcommand":"--version"},{"executable":"pip","subcommand":"--version"},{"executable":"go","subcommand":"version"}],
+        "runtime:probe": [{"executable":"node","subcommand":"--version"},{"executable":"npm","subcommand":"--version"},{"executable":"git","subcommand":"--version"},{"executable":"java","subcommand":"--version"},{"executable":"gradle","subcommand":"--version"},{"executable":"mvn","subcommand":"--version"},{"executable":"python","subcommand":"--version"},{"executable":"python3","subcommand":"--version"},{"executable":"pip","subcommand":"--version"},{"executable":"go","subcommand":"version"}],
         "repo:status": [{"executable":"git","subcommand":"status"}],
         "repo:diff": [{"executable":"git","subcommand":"diff"}],
         "build": [{"executable":"npm","subcommand":"run","allowedScripts":["build"]}],

@@ -1,6 +1,6 @@
 ---
 description: Revisa o diff final de forma independente e sem editar
-mode: subagent
+mode: primary
 model: controlplane/review
 steps: 6
 permission:

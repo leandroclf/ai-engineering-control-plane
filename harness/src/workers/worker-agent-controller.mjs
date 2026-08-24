@@ -36,7 +36,11 @@ export class WorkerAgentController {
     const args = ["run", "--format", "json", "--agent", agent, "--dir", "/workspace/project", ...(modelAlias ? ["--model", `controlplane/${modelAlias}`] : []), instruction];
     const capability = this.commandPolicy.validate({ profile, capability: "agent:opencode", tool: "opencode", args });
     const result = await this.docker.execCapability(workerId, capability, { cwd: "/workspace/project" });
-    if (result.exitCode !== 0) throw new Error(`WORKER_AGENT_FAILED:${String(result.stderr ?? "").slice(0, 500)}`);
+    if (result.exitCode !== 0) {
+      const rawDiagnostic = String(result.stderr || result.stdout || "");
+      const diagnostic = rawDiagnostic ? rawDiagnostic.slice(0, 500) : `exitCode=${result.exitCode};outputUnavailable`;
+      throw new Error(`WORKER_AGENT_FAILED:${diagnostic}`);
+    }
     return { structured: structuredFromOutput(result.stdout), usage: result.usage ?? null };
   }
 }

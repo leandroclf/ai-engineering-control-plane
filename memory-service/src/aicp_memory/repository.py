@@ -45,6 +45,69 @@ class PostgresMemoryRepository:
         with self._connect() as connection, connection.cursor() as cursor:
             return cursor.execute("SELECT 1 AS ready").fetchone()["ready"] == 1
 
+    def create_skill(self, skill):
+        from aicp_memory.domain.ledger import MemoryLedger
+        MemoryLedger._reject_sensitive(skill["name"], skill)
+        with self._connect() as connection, connection.cursor() as cursor:
+            row = cursor.execute("""INSERT INTO agent_harness.skills(name,version,domain,capabilities,metadata,created_by,fingerprint)
+              VALUES(%s,%s,%s,%s::jsonb,%s::jsonb,%s,%s)
+              ON CONFLICT(name,version) DO UPDATE SET updated_at=now() RETURNING *""",
+              (skill["name"], skill["version"], skill.get("domain"), json.dumps(skill.get("capabilities", [])), json.dumps(skill.get("metadata", {})), skill["created_by"], skill["fingerprint"])).fetchone()
+        return dict(row)
+
+    def list_skills(self, status=None, capability=None):
+        query = "SELECT * FROM agent_harness.skills WHERE (%s::text IS NULL OR status=%s::text) AND (%s::text IS NULL OR capabilities @> %s::jsonb) ORDER BY name,version"
+        with self._connect() as connection, connection.cursor() as cursor:
+            return [dict(row) for row in cursor.execute(query, (status, status, capability, json.dumps([capability]) if capability else json.dumps([]))).fetchall()]
+
+    def transition_skill(self, name, version, status, actor, evidence):
+        with self._connect() as connection, connection.cursor() as cursor:
+            row = cursor.execute("""UPDATE agent_harness.skills SET status=%s, lifecycle=lifecycle || %s::jsonb, updated_at=now()
+              WHERE name=%s AND version=%s AND ((status='EXPERIMENTAL' AND %s IN ('VALIDATED','REJECTED')) OR (status='VALIDATED' AND %s IN ('PROMOTED','DEPRECATED')) OR (status='PROMOTED' AND %s='DEPRECATED')) RETURNING *""",
+              (status, json.dumps([{ "status": status, "actor": actor, "evidence": evidence }]), name, version, status, status, status)).fetchone()
+            if not row: raise ValueError("invalid skill transition")
+        return dict(row)
+
+    def record_episode(self, episode):
+        from aicp_memory.domain.ledger import MemoryLedger
+        MemoryLedger._reject_sensitive(episode["trace_id"], episode)
+        with self._connect() as connection, connection.cursor() as cursor:
+            row = cursor.execute("""INSERT INTO agent_harness.execution_episodes(task_id,trace_id,agent_id,project_id,status,retries,duration_ms,evaluation,actions,observations)
+              VALUES(%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb) ON CONFLICT(trace_id) DO UPDATE SET status=EXCLUDED.status,evaluation=EXCLUDED.evaluation RETURNING *""",
+              (episode.get("task_id"), episode["trace_id"], episode["agent_id"], episode["project_id"], episode["status"], episode.get("retries", 0), episode.get("duration_ms"), json.dumps(episode.get("evaluation", {})), json.dumps(episode.get("actions", [])), json.dumps(episode.get("observations", [])))).fetchone()
+        return dict(row)
+
+    def list_episodes(self, project_id=None):
+        with self._connect() as connection, connection.cursor() as cursor:
+            return [dict(row) for row in cursor.execute("SELECT * FROM agent_harness.execution_episodes WHERE %s::text IS NULL OR project_id=%s::text ORDER BY created_at DESC", (project_id, project_id)).fetchall()]
+
+    def record_failure_pattern(self, pattern):
+        from aicp_memory.domain.ledger import MemoryLedger
+        MemoryLedger._reject_sensitive(pattern["name"], pattern)
+        with self._connect() as connection, connection.cursor() as cursor:
+            row = cursor.execute("""INSERT INTO agent_harness.failure_patterns(name,signature,symptoms,diagnostics,recovery,confidence,status,source_trace_id)
+              VALUES(%s,%s,%s::jsonb,%s::jsonb,%s::jsonb,%s,%s,%s) ON CONFLICT(name) DO UPDATE SET confidence=EXCLUDED.confidence,recovery=EXCLUDED.recovery,updated_at=now() RETURNING *""",
+              (pattern["name"], pattern["signature"], json.dumps(pattern.get("symptoms", [])), json.dumps(pattern.get("diagnostics", [])), json.dumps(pattern.get("recovery", {})), pattern.get("confidence", 0), pattern.get("status", "EXPERIMENTAL"), pattern.get("source_trace_id"))).fetchone()
+        return dict(row)
+
+    def list_failure_patterns(self, status=None):
+        with self._connect() as connection, connection.cursor() as cursor:
+            return [dict(row) for row in cursor.execute("SELECT * FROM agent_harness.failure_patterns WHERE %s::text IS NULL OR status=%s::text ORDER BY confidence DESC,name", (status, status)).fetchall()]
+
+    def upsert_browser_session(self, session):
+        safe = {key: value for key, value in session.items() if key not in {"token", "password", "secret", "credentials"}}
+        from aicp_memory.domain.ledger import MemoryLedger
+        MemoryLedger._reject_sensitive(safe["session_id"], safe)
+        with self._connect() as connection, connection.cursor() as cursor:
+            row = cursor.execute("""INSERT INTO agent_harness.browser_sessions(session_id,profile_id,agent_id,project_id,status,metadata,expires_at)
+              VALUES(%s,%s,%s,%s,%s,%s::jsonb,%s) ON CONFLICT(session_id) DO UPDATE SET status=EXCLUDED.status,metadata=EXCLUDED.metadata,expires_at=EXCLUDED.expires_at RETURNING *""",
+              (safe["session_id"], safe.get("profile_id"), safe["agent_id"], safe["project_id"], safe.get("status", "ACTIVE"), json.dumps(safe.get("metadata", {})), safe.get("expires_at"))).fetchone()
+        return dict(row)
+
+    def list_browser_sessions(self, agent_id=None, project_id=None):
+        with self._connect() as connection, connection.cursor() as cursor:
+            return [dict(row) for row in cursor.execute("SELECT * FROM agent_harness.browser_sessions WHERE (%s::text IS NULL OR agent_id=%s::text) AND (%s::text IS NULL OR project_id=%s::text) ORDER BY created_at DESC", (agent_id, agent_id, project_id, project_id)).fetchall()]
+
     @staticmethod
     def _scope_id(cursor, scope, parent_scope=None):
         scope_type, scope_key = _scope_parts(scope)

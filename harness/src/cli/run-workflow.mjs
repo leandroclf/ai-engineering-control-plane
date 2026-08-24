@@ -30,6 +30,9 @@ try {
       token: process.env.HARNESS_SERVICE_TOKEN,
       authorizer,
       projectsRoot,
+      capabilityRouter: resources.capabilityRouter,
+      skillRegistry: resources.skillRegistry,
+      metrics: resources.metrics,
     });
     const port = Number(process.env.HARNESS_PORT ?? 8081);
     server.listen(port, "0.0.0.0", () => process.stdout.write(`aicp harness listening on 0.0.0.0:${port}\n`));

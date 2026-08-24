@@ -26,6 +26,9 @@ class MemoryPromotionPolicy:
 SECRET_PATTERNS = (
     re.compile(r"\bsk-[A-Za-z0-9_-]{12,}\b"),
     re.compile(r"\bgh[opusr]_[A-Za-z0-9]{12,}\b"),
+    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{12,}\b"),
+    re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{16,}\b", re.IGNORECASE),
     re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
 )
 
@@ -154,6 +157,69 @@ class MemoryLedger:
 
     def get(self, memory_id):
         return self._memories[memory_id]
+
+    def create_skill(self, *, name, version, created_by, capabilities=None, domain=None, metadata=None, fingerprint=""):
+        if not name or not version or not created_by:
+            raise ValueError("skill name, version and created_by are required")
+        self._reject_sensitive(name, {"metadata": metadata or {}, "capabilities": capabilities or []})
+        skill = {"name": name, "version": version, "created_by": created_by, "capabilities": capabilities or [],
+                 "domain": domain, "metadata": metadata or {}, "status": "EXPERIMENTAL", "fingerprint": fingerprint,
+                 "lifecycle": []}
+        self._skills = getattr(self, "_skills", {})
+        self._skills[f"{name}@{version}"] = skill
+        return skill
+
+    def list_skills(self, *, status=None, capability=None):
+        skills = list(getattr(self, "_skills", {}).values())
+        return [skill for skill in skills if (status is None or skill["status"] == status) and
+                (capability is None or capability in skill["capabilities"])]
+
+    def transition_skill(self, name, version, status, actor, evidence=None):
+        transitions = {"EXPERIMENTAL": {"VALIDATED", "REJECTED"}, "VALIDATED": {"PROMOTED", "DEPRECATED"},
+                       "PROMOTED": {"DEPRECATED"}, "DEPRECATED": set(), "REJECTED": set()}
+        skill = getattr(self, "_skills", {}).get(f"{name}@{version}")
+        if not skill or status not in transitions[skill["status"]]:
+            raise ValueError("invalid skill transition")
+        if status in {"VALIDATED", "PROMOTED"} and not evidence:
+            raise ValueError("skill transition requires evidence")
+        skill["status"] = status
+        skill["lifecycle"].append({"status": status, "actor": actor, "evidence": evidence or []})
+        return skill
+
+    def record_episode(self, episode):
+        self._reject_sensitive(episode.get("trace_id", ""), episode)
+        self._episodes = getattr(self, "_episodes", {})
+        if not episode.get("trace_id"):
+            raise ValueError("trace_id is required")
+        self._episodes[episode["trace_id"]] = dict(episode)
+        return self._episodes[episode["trace_id"]]
+
+    def list_episodes(self, project_id=None):
+        return [item for item in getattr(self, "_episodes", {}).values() if project_id is None or item.get("project_id") == project_id]
+
+    def record_failure_pattern(self, pattern):
+        if not pattern.get("name") or not pattern.get("signature"):
+            raise ValueError("failure pattern name and signature are required")
+        self._reject_sensitive(pattern["name"], pattern)
+        self._failure_patterns = getattr(self, "_failure_patterns", {})
+        self._failure_patterns[pattern["name"]] = {**pattern, "status": pattern.get("status", "EXPERIMENTAL")}
+        return self._failure_patterns[pattern["name"]]
+
+    def list_failure_patterns(self, status=None):
+        return [item for item in getattr(self, "_failure_patterns", {}).values() if status is None or item["status"] == status]
+
+    def upsert_browser_session(self, session):
+        if not session.get("session_id") or not session.get("agent_id") or not session.get("project_id"):
+            raise ValueError("session_id, agent_id and project_id are required")
+        safe = {key: value for key, value in session.items() if key not in {"token", "password", "secret", "credentials"}}
+        self._reject_sensitive(safe["session_id"], safe)
+        self._browser_sessions = getattr(self, "_browser_sessions", {})
+        self._browser_sessions[safe["session_id"]] = safe
+        return safe
+
+    def list_browser_sessions(self, agent_id=None, project_id=None):
+        return [item for item in getattr(self, "_browser_sessions", {}).values()
+                if (agent_id is None or item.get("agent_id") == agent_id) and (project_id is None or item.get("project_id") == project_id)]
 
     def _append(self, memory_id, event_type, actor, reason=None):
         self.events.append(MemoryEvent(memory_id, event_type, actor, self._clock(), reason))

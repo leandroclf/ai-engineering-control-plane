@@ -7,7 +7,7 @@ import { ControlPlaneAuthorizer } from "../security/identity-authority.mjs";
 
 export const API_OPERATIONS = Object.freeze([
   "health", "readiness", "createRun", "listRuns", "getRun", "listRunStages", "resumeRun", "cancelRun", "getRunAudit", "getRunGates", "getRunFindings",
-  "getTask", "getTaskBudget", "listBudgetEvents", "cancelTaskBudget", "listCapabilities", "listWorkflows", "listPolicies", "listModels", "getContext", "getRunExecution", "getRunCredentials", "getRunAttestations", "getV1Certification", "getV1CertificationFindings", "getOverview", "getSystemStatus", "getCurrentActor", "listProjects", "getProject", "streamRunEvents",
+  "getTask", "getTaskBudget", "listBudgetEvents", "cancelTaskBudget", "listCapabilities", "listCapabilityProviders", "listSkills", "retrieveSkills", "getAgentMetrics", "listWorkflows", "listPolicies", "listModels", "getContext", "getRunExecution", "getRunCredentials", "getRunAttestations", "getV1Certification", "getV1CertificationFindings", "getOverview", "getSystemStatus", "getCurrentActor", "listProjects", "getProject", "streamRunEvents",
 ]);
 
 export const MAX_REQUEST_BODY_BYTES = 1_048_576;
@@ -80,7 +80,7 @@ export function startRequest(body, projectsRoot, idempotencyHeader = null) {
   };
 }
 
-export function createHarnessServer({ runtime, token, authorizer = null, projectsRoot = "/workspace/projects" }) {
+export function createHarnessServer({ runtime, token, authorizer = null, projectsRoot = "/workspace/projects", capabilityRouter = null, skillRegistry = null, metrics = null }) {
   const identityAuthority = authorizer ?? new ControlPlaneAuthorizer({ staticToken: token });
   if (!authorizer && !token) throw new TypeError("HARNESS_SERVICE_TOKEN is required");
   return createServer(async (request, response) => {
@@ -114,6 +114,10 @@ export function createHarnessServer({ runtime, token, authorizer = null, project
       const project = request.method === "GET" && url.pathname.match(/^\/v1\/projects\/([^/]+)$/);
       if (project) { send(response, 200, await runtime.project(decodeURIComponent(project[1]))); return; }
       if (request.method === "GET" && url.pathname === "/v1/capabilities") { const project = url.searchParams.get("project"); send(response, 200, await runtime.capabilities({ project: project ? resolveProjectDirectory(projectsRoot, project) : null })); return; }
+      if (request.method === "GET" && url.pathname === "/v1/capability-providers") { send(response, 200, (capabilityRouter?.list?.() ?? []).map(({ name, version, capabilities }) => ({ name, version, capabilities }))); return; }
+      if (request.method === "GET" && url.pathname === "/v1/skills") { send(response, 200, skillRegistry?.list?.() ?? await runtime.skills?.() ?? []); return; }
+      if (request.method === "GET" && url.pathname === "/v1/skills:retrieve") { send(response, 200, skillRegistry?.retrieve?.({ query: url.searchParams.get("query") ?? "", capabilities: url.searchParams.getAll("capability"), domain: url.searchParams.get("domain") }) ?? []); return; }
+      if (request.method === "GET" && url.pathname === "/v1/metrics/agent") { send(response, 200, metrics?.snapshot?.() ?? {}); return; }
       if (request.method === "GET" && url.pathname === "/v1/workflows") { send(response, 200, runtime.workflows()); return; }
       if (request.method === "GET" && url.pathname === "/v1/policies") { send(response, 200, runtime.policies()); return; }
       if (request.method === "GET" && url.pathname === "/v1/models") { send(response, 200, runtime.models()); return; }

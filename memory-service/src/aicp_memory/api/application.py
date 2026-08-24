@@ -18,11 +18,49 @@ class MemoryApplication:
         self.authorizer = authorizer
         self.context_service = context_service
 
+    def _agent_harness_route(self, method, path, principal, payload, query):
+        if path == "/v1/agent-harness/skills" and method == "POST":
+            principal.require("create", payload.get("scope", "PROJECT:local"))
+            skill_payload = {key: value for key, value in payload.items() if key != "scope"}
+            return Response(201, self.ledger.create_skill(**skill_payload))
+        if path == "/v1/agent-harness/skills" and method == "GET":
+            principal.require("read", query.get("scope", ["PROJECT:local"])[0])
+            return Response(200, {"items": self.ledger.list_skills(query.get("status", [None])[0], query.get("capability", [None])[0])})
+        if path.startswith("/v1/agent-harness/skills/") and path.endswith(":transition") and method == "POST":
+            name, version = path.removeprefix("/v1/agent-harness/skills/").removesuffix(":transition").rsplit("@", 1)
+            principal.require("promote", payload.get("scope", "PROJECT:local"))
+            return Response(200, self.ledger.transition_skill(name, version, payload["status"], principal.actor_id, payload.get("evidence", [])))
+        if path == "/v1/agent-harness/episodes" and method == "POST":
+            principal.require("create", f"PROJECT:{payload['project_id']}")
+            return Response(201, self.ledger.record_episode(payload))
+        if path == "/v1/agent-harness/episodes" and method == "GET":
+            project_id = query.get("project_id", [None])[0]
+            principal.require("read", f"PROJECT:{project_id or 'local'}")
+            return Response(200, {"items": self.ledger.list_episodes(project_id)})
+        if path == "/v1/agent-harness/failure-patterns" and method == "POST":
+            principal.require("create", payload.get("scope", "PROJECT:local"))
+            pattern_payload = {key: value for key, value in payload.items() if key != "scope"}
+            return Response(201, self.ledger.record_failure_pattern(pattern_payload))
+        if path == "/v1/agent-harness/failure-patterns" and method == "GET":
+            principal.require("read", query.get("scope", ["PROJECT:local"])[0])
+            return Response(200, {"items": self.ledger.list_failure_patterns(query.get("status", [None])[0])})
+        if path == "/v1/agent-harness/browser-sessions" and method == "POST":
+            principal.require("create", f"PROJECT:{payload['project_id']}")
+            return Response(201, self.ledger.upsert_browser_session(payload))
+        if path == "/v1/agent-harness/browser-sessions" and method == "GET":
+            project_id = query.get("project_id", [None])[0]
+            principal.require("read", f"PROJECT:{project_id or 'local'}")
+            return Response(200, {"items": self.ledger.list_browser_sessions(query.get("agent_id", [None])[0], project_id)})
+        return None
+
     def handle(self, method, target, headers, raw_body):
         try:
             principal = self.authorizer.authenticate({key.lower(): value for key, value in headers.items()})
             parsed = urlsplit(target)
             payload = json.loads(raw_body or b"{}")
+            harness_response = self._agent_harness_route(method, parsed.path, principal, payload, parse_qs(parsed.query))
+            if harness_response is not None:
+                return harness_response
             if method == "POST" and parsed.path == "/v1/memories":
                 return self._create(principal, payload)
             if method == "GET" and parsed.path == "/v1/memories/search":

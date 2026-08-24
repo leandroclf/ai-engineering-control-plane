@@ -9,7 +9,7 @@ command -v openssl >/dev/null || { echo 'openssl not found' >&2; exit 1; }
 
 mkdir -p secrets state/postgres state/neo4j/data state/neo4j/logs state/cache state/opencode projects .aicp/otel
 chmod 700 secrets state
-for name in postgres_password redis_password backup_passphrase harness_service_token worker_manager_token worker_identity_signing_secret; do
+for name in postgres_password redis_password backup_passphrase harness_service_token worker_manager_token worker_identity_signing_secret browser_worker_token; do
   if test ! -s "secrets/$name"; then
     openssl rand -hex 32 > "secrets/$name"
     chmod 600 "secrets/$name"
@@ -38,7 +38,8 @@ docker compose up -d --wait litellm memory-service
 set -a
 source .env.runtime
 set +a
-docker compose up -d --no-deps --force-recreate workspace harness
+docker compose up -d --wait browser-worker
+docker compose up -d --wait worker-manager workspace harness
 ./scripts/doctor.sh
 ./scripts/smoke.sh
 ./scripts/telemetry-smoke.sh

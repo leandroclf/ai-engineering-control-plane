@@ -1,6 +1,6 @@
 ---
 description: Implementa apenas alterações aprovadas pelo Harness
-mode: subagent
+mode: primary
 model: controlplane/coding-strong
 steps: 12
 permission:

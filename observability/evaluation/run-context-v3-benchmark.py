@@ -68,7 +68,8 @@ for repetition in range(1, 4):
         baseline, baseline_tokens = pack_baseline(retrieved, 4096)
         embedder = Embedder(); service = ContextService(repository, embedder, Graph(), Counter())
         candidate = service.compile({"repository": "aicp", "task_id": task["taskId"], "query": task["description"], "budget": 4096,
-                                     "exact_symbols": task.get("exactSymbols", []), "index_snapshot": dataset["baseCommit"], "graph_snapshot": "deterministic-none"}, [])
+                                     "exact_symbols": task.get("exactSymbols", []), "changed_paths": task.get("expectedScope", []),
+                                     "index_snapshot": dataset["baseCommit"], "graph_snapshot": "deterministic-none"}, [])
         for arm, selected, selected_tokens, embedded in [
             ("baseline", baseline, baseline_tokens, True),
             ("candidate", candidate["artifacts"], candidate["token_count"], not candidate["metrics"]["vector_skipped"]),
