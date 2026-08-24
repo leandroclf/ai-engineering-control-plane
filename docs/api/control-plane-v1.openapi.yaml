@@ -79,6 +79,22 @@ paths:
     get: { operationId: listPolicies, responses: { '200': { description: Policy versions } } }
   /v1/models:
     get: { operationId: listModels, responses: { '200': { description: Model aliases without credentials } } }
+  /v1/providers:
+    get: { operationId: listProviders, responses: { '200': { description: Sanitized agent provider catalog, content: { application/json: { schema: { $ref: '#/components/schemas/ProviderPage' } } } } } }
+  /v1/providers/{providerId}:
+    get: { operationId: getProvider, parameters: [{ $ref: '#/components/parameters/ProviderId' }], responses: { '200': { description: Sanitized provider descriptor, content: { application/json: { schema: { $ref: '#/components/schemas/AgentProvider' } } } } } }
+  /v1/providers/{providerId}/health:
+    get: { operationId: getProviderHealth, parameters: [{ $ref: '#/components/parameters/ProviderId' }], responses: { '200': { description: Provider liveness/readiness without credentials, content: { application/json: { schema: { $ref: '#/components/schemas/ProviderHealth' } } } } } }
+  /v1/providers/{providerId}/quota:
+    get: { operationId: getProviderQuota, parameters: [{ $ref: '#/components/parameters/ProviderId' }], responses: { '200': { description: AICP shadow quota, content: { application/json: { schema: { $ref: '#/components/schemas/ProviderQuota' } } } } } }
+  /v1/providers/{providerId}:probe:
+    post: { operationId: probeProvider, parameters: [{ $ref: '#/components/parameters/ProviderId' }, { name: live, in: query, schema: { type: boolean, default: false } }], responses: { '200': { description: Sanitized provider probe } } }
+  /v1/provider-policies:
+    get: { operationId: getProviderPolicies, responses: { '200': { description: Effective agent routing policy } } }
+  /v1/runs/{runId}/provider-attempts:
+    get: { operationId: getRunProviderAttempts, parameters: [{ $ref: '#/components/parameters/RunId' }], responses: { '200': { description: Sanitized provider attempts } } }
+  /v1/tasks/{taskId}/provider-quota:
+    get: { operationId: getTaskProviderQuota, parameters: [{ $ref: '#/components/parameters/TaskId' }], responses: { '200': { description: AICP shadow quota ledger for a task } } }
   /v1/contexts/{contextId}:
     get:
       operationId: getContext
@@ -90,6 +106,7 @@ components:
     RunId: { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
     TaskId: { name: taskId, in: path, required: true, schema: { type: string, format: uuid } }
     ProjectId: { name: projectId, in: path, required: true, schema: { type: string, minLength: 1 } }
+    ProviderId: { name: providerId, in: path, required: true, schema: { type: string, minLength: 1 } }
   responses:
     Error: { description: Structured error, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
   schemas:
@@ -178,6 +195,49 @@ components:
     ContextProvenance:
       type: object
       additionalProperties: true
+    AgentProvider:
+      type: object
+      required: [id, kind, providerFamily, runtime, authMode, billingMode, executionZone, enabled, capabilities]
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        kind: { type: string, enum: [agent-runtime, model-gateway] }
+        transport: { type: string }
+        providerFamily: { type: string }
+        runtime: { type: string }
+        authMode: { type: string }
+        billingMode: { type: string }
+        executionZone: { type: string }
+        enabled: { type: boolean }
+        localOnly: { type: boolean }
+        featureFlag: { type: [string, 'null'] }
+        maxConcurrency: { type: [integer, 'null'] }
+        capabilities: { type: array, items: { type: string } }
+    ProviderPage:
+      type: object
+      required: [items]
+      properties: { items: { type: array, items: { $ref: '#/components/schemas/AgentProvider' } } }
+    ProviderHealth:
+      type: object
+      additionalProperties: true
+      properties:
+        id: { type: string }
+        liveness: { type: string }
+        readiness: { type: string }
+        binary: { type: object, additionalProperties: true }
+        auth: { type: object, additionalProperties: true }
+        policy: { type: object, additionalProperties: true }
+        quota: { type: object, additionalProperties: true }
+        liveInference: { type: object, additionalProperties: true }
+    ProviderQuota:
+      type: object
+      additionalProperties: true
+      properties:
+        source: { type: string, enum: [aicp-shadow-ledger] }
+        providerId: { type: string }
+        policy: { type: object, additionalProperties: true }
+        items: { type: array, items: { type: object, additionalProperties: true } }
+        reservations: { type: array, items: { type: object, additionalProperties: true } }
     CreateRunRequest:
       type: object
       additionalProperties: false

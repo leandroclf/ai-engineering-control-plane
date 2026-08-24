@@ -14,6 +14,6 @@ for (const component of catalog.components) {
   if (ids.has(component.id)) throw new Error(`duplicate component: ${component.id}`);
   ids.add(component.id);
 }
-for (const component of catalog.components) for (const dependency of component.dependencies) if (!ids.has(dependency) && !["docker", "project-repository", "provider-apis", "neo4j", "redis", "opencode"].includes(dependency)) throw new Error(`${component.id} references unknown component ${dependency}`);
+for (const component of catalog.components) for (const dependency of component.dependencies) if (!ids.has(dependency) && !["docker", "project-repository", "provider-apis", "neo4j", "redis", "opencode", "codex-cli", "claude-code-cli", "run-worktree"].includes(dependency)) throw new Error(`${component.id} references unknown component ${dependency}`);
 await promisify(execFile)("node", ["scripts/generate-architecture-catalog.mjs", "--check"], { cwd: fileURLToPath(root) });
 process.stdout.write(`${JSON.stringify({ schemaVersion: 1, status: "pass", components: catalog.components.length })}\n`);

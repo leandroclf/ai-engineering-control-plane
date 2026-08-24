@@ -14,5 +14,12 @@ Cada violação abaixo deve falhar fechada e produzir evidência auditável:
 - conteúdo sensível não entra em telemetry por padrão;
 - run terminal não deixa worker, worktree ou credential ativo após reconciliação;
 - CI protegido e revisão humana continuam as autoridades finais de merge/release.
+- Codex e Claude Code não executam no ordinary worker; subscription runtime só roda no Agent Provider Host.
+- O AICP não lê, copia, persiste ou exibe vendor OAuth material; login é delegado ao CLI oficial via TTY.
+- Provider Host usa ambiente allowlisted sem `DATABASE_URL`, Harness/cloud/SSH/API credentials e nunca usa `danger-full-access`.
+- Agent routing compara `providerFamily` real; runtime diversity isolada não satisfaz reviewer diversity.
+- Subscription accounting mantém `billingMode` e `monetaryCostKnown`; custo desconhecido nunca vira custo real zero.
+- Fallback após mutation exige checkpoint restore + attestation clean; falha bloqueia a etapa.
+- Credential isolation real é release-blocking e permanece `BLOCKED` quando a prova OS/vendor não existe.
 
-Evidência executável: `npm run test:adversarial`, `npm run test:budget-adversarial`, `npm run test:worker-e2e` e `npm run test:architecture`.
+Evidência executável: `npm run test:adversarial`, `npm run test:budget-adversarial`, `npm run test:worker-e2e`, `npm run test:architecture`, `npm run test:providers`, `npm run test:providers:integration` e `npm run test:providers:adversarial`.
