@@ -8,7 +8,7 @@ import { GoProjectAdapter } from "./go-project-adapter.mjs";
 import { capabilityMap, CapabilityStatus } from "./capability.mjs";
 
 async function exists(path) { try { await access(path); return true; } catch { return false; } }
-const IGNORED = new Set([".git", ".idea", ".aicp", "node_modules", "target", "build", "dist", ".venv", "venv", "__pycache__", "fixtures"]);
+const IGNORED = new Set([".git", ".idea", ".aicp", "node_modules", "target", "build", "dist", ".next", ".turbo", ".cache", ".venv", "venv", "__pycache__", "fixtures"]);
 const MANIFESTS = new Map([["package.json", "node"], ["build.gradle", "gradle"], ["build.gradle.kts", "gradle"], ["pom.xml", "maven"], ["pyproject.toml", "python"], ["requirements.txt", "python"], ["go.mod", "go"]]);
 const staticSiteScripts = [["structure", "validate_site_structure.py"], ["quality-smoke", "quality_smoke.py"], ["security-smoke", "security_smoke.py"], ["performance-budget", "budget_check.py"], ["accountability", "validate_product_accountability_gate.py"]];
 

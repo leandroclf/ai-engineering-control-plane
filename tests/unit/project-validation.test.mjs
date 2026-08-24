@@ -24,6 +24,18 @@ test("project adapter detects static-site validation scripts without package.jso
   assert.ok(profile.gates.every((gate) => gate.required));
 });
 
+test("project adapter ignores generated build directories", async () => {
+  const project = await mkdtemp(join(tmpdir(), "aicp-generated-output-"));
+  await writeFile(join(project, "package.json"), JSON.stringify({ scripts: { build: "node -e 0" } }));
+  await mkdir(join(project, ".next", "server"), { recursive: true });
+  await writeFile(join(project, ".next", "server", "package.json"), JSON.stringify({ scripts: { build: "node -e 1" } }));
+
+  const profile = await new ProjectAdapter().detect(project);
+
+  assert.equal(profile.kind, "node");
+  assert.equal(profile.path, ".");
+});
+
 test("project gate runner blocks when one detected command fails", async () => {
   const project = await mkdtemp(join(tmpdir(), "aicp-gates-"));
   const profile = {
