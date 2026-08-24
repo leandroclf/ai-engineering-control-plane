@@ -29,7 +29,10 @@ export class OtlpHttpTelemetry {
     if (metadata.usage) {
       attributes.push(rawAttribute("gen_ai.usage.input_tokens", metadata.usage.inputTokens ?? 0, "intValue"));
       attributes.push(rawAttribute("gen_ai.usage.output_tokens", metadata.usage.outputTokens ?? 0, "intValue"));
-      attributes.push(rawAttribute("aicp.cost_usd", Number(metadata.usage.costUsd ?? 0), "doubleValue"));
+      if (metadata.usage.monetaryCostKnown !== false) attributes.push(rawAttribute("aicp.cost_usd", Number(metadata.usage.costUsd ?? 0), "doubleValue"));
+      attributes.push(attribute("billingMode", metadata.usage.billingMode ?? "unknown"));
+      attributes.push(attribute("monetaryCostKnown", metadata.usage.monetaryCostKnown !== false));
+      if (metadata.usage.providerReportedCostUsd !== null && metadata.usage.providerReportedCostUsd !== undefined) attributes.push(rawAttribute("aicp.provider_reported_cost_usd", Number(metadata.usage.providerReportedCostUsd), "doubleValue"));
     }
     if (metadata.budget) {
       attributes.push(attribute("budgetReservationId", metadata.budget.reservationId));
@@ -65,9 +68,19 @@ export class OtlpHttpTelemetry {
         rawAttribute("gen_ai.usage.input_tokens", metadata.usage.inputTokens ?? 0, "intValue"),
         rawAttribute("gen_ai.usage.output_tokens", metadata.usage.outputTokens ?? 0, "intValue"),
         ...(metadata.usage.provider ? [rawAttribute("gen_ai.provider.name", String(metadata.usage.provider))] : []),
+        ...(metadata.usage.providerId ? [attribute("providerId", metadata.usage.providerId)] : []),
+        ...(metadata.usage.providerFamily ? [attribute("providerFamily", metadata.usage.providerFamily)] : []),
+        ...(metadata.usage.runtime ? [attribute("runtime", metadata.usage.runtime)] : []),
+        ...(metadata.usage.billingMode ? [attribute("billingMode", metadata.usage.billingMode)] : []),
+        ...(metadata.usage.authMode ? [attribute("authMode", metadata.usage.authMode)] : []),
         ...(metadata.usage.model ? [rawAttribute("gen_ai.response.model", String(metadata.usage.model))] : []),
       ]);
       spans.push(agent, generation);
+      if (metadata.usage.providerId) {
+        const route = span("aicp.provider.route", "provider-route", stageSpanId, [attribute("providerId", metadata.usage.providerId), attribute("providerFamily", metadata.usage.providerFamily ?? "unknown"), attribute("runtime", metadata.usage.runtime ?? "unknown")]);
+        const execute = span("aicp.provider.execute", "provider-execute", route.spanId, [attribute("providerId", metadata.usage.providerId), attribute("billingMode", metadata.usage.billingMode ?? "unknown"), attribute("authMode", metadata.usage.authMode ?? "unknown")]);
+        spans.push(route, execute, span(`aicp.provider.${metadata.usage.runtime ?? "agent"}`, "provider-runtime", execute.spanId, [attribute("providerId", metadata.usage.providerId)]));
+      }
       for (const attempt of metadata.usage.providerAttempts ?? []) {
         spans.push(span(attempt.fallback ? "aicp.provider.fallback" : "aicp.provider.attempt", `provider:${attempt.attempt}`, generation.spanId, [
           attribute("physicalAttempt", attempt.attempt), attribute("logicalInvocationId", metadata.budget?.logicalInvocationId ?? "unknown"),
@@ -92,7 +105,7 @@ export class OtlpHttpTelemetry {
       const metrics = [
         sum("aicp_agent_calls_total", metadata.usage ? 1 : 0), histogram("aicp_stage_duration_seconds", Number(finished - started) / 1e9, "s"),
         sum("aicp_task_input_tokens", metadata.usage?.inputTokens ?? 0, "token"), sum("aicp_task_output_tokens", metadata.usage?.outputTokens ?? 0, "token"),
-        sum("aicp_task_cost_usd", metadata.usage?.costUsd ?? 0, "USD"), sum("aicp_budget_overshoot_total", metadata.budget?.drift?.exceeded ? 1 : 0),
+        ...(metadata.usage?.monetaryCostKnown === false ? [] : [sum("aicp_task_cost_usd", metadata.usage?.costUsd ?? 0, "USD")]), sum("aicp_task_monetary_cost_known", metadata.usage ? (metadata.usage.monetaryCostKnown === false ? 0 : 1) : 0), sum("aicp_budget_overshoot_total", metadata.budget?.drift?.exceeded ? 1 : 0),
         histogram("aicp_budget_reservation_drift_ratio", metadata.budget?.drift?.costRatio ?? 0, "1"),
         sum("aicp_context_candidate_tokens", metadata.contextMetrics?.candidate_tokens ?? 0, "token"), sum("aicp_context_selected_tokens", metadata.contextMetrics?.selected_tokens ?? 0, "token"),
         sum("aicp_context_dedup_saved_tokens", metadata.contextMetrics?.dedup_saved_tokens ?? 0, "token"), sum("aicp_context_vector_skipped_total", metadata.contextMetrics?.vector_skipped ? 1 : 0),

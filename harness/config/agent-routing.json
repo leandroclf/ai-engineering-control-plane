@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "agent-routing-v1",
+  "default": "opencode-litellm",
+  "roles": {
+    "architect": ["opencode-litellm", "codex-subscription", "claude-code-subscription"],
+    "implementer": ["opencode-litellm", "codex-subscription", "claude-code-subscription"],
+    "security-reviewer": ["opencode-litellm", "claude-code-subscription"],
+    "code-reviewer": ["opencode-litellm", "codex-subscription", "claude-code-subscription"]
+  }
+}

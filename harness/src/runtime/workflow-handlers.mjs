@@ -73,10 +73,11 @@ function repairEvidence(stages) {
 }
 
 function implementationProvider(stages) {
-  return [...stages].reverse().find((stage) => stageFrom(stage) === "implement")?.evidence?.handler?.usage?.provider ?? null;
+  const evidence = [...stages].reverse().find((stage) => stageFrom(stage) === "implement")?.evidence?.handler ?? {};
+  return evidence.usage?.providerFamily ?? evidence.provider?.providerFamily ?? evidence.routing?.selectedProviderFamily ?? evidence.usage?.provider ?? null;
 }
 
-export function createWorkflowHandlers({ definition, store = null, controller, projectAdapter, gateRunner, executionPlane = null, gateRegistry = null, budgetAuthority = null, routingPolicy = null }) {
+export function createWorkflowHandlers({ definition, store = null, controller, projectAdapter, gateRunner, executionPlane = null, gateRegistry = null, budgetAuthority = null, routingPolicy = null, agentRoutingPolicy = null, providerLayerEnabled = false }) {
   if (!definition?.states) throw new TypeError("workflow definition is required");
   const plane = executionPlane ?? new LocalExecutionPlane({ controller, gateRunner });
   const handlers = {};
@@ -92,9 +93,10 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
           const alias = modelAlias(stateDefinition);
           const priorStages = routingPolicy && store?.listStages ? await store.listStages(run.id) : [];
           const routing = routingPolicy?.decide({ alias, role: stateDefinition.agent?.includes("reviewer") ? "reviewer" : "producer", producerProvider: implementationProvider(priorStages) }) ?? null;
+          const agentRouting = agentRoutingPolicy ? await agentRoutingPolicy.decide({ role: stateDefinition.agent, capability: stateDefinition.agent?.includes("reviewer") ? "code-review" : stateDefinition.agent === "architect" ? "architecture" : "coding", producerProviderFamily: implementationProvider(priorStages), mutation: stateDefinition.agent === "implementer" ? "workspace-write" : "read-only", executionMode: plane.remote ? "ephemeral" : "local" }) : null;
           reservation = budgetAuthority ? await budgetAuthority.reserve({
             taskId: task.id, runId: run.id, stage: state, contextBudget: context?.budget ?? 0, attempt: run.version,
-            invocation: { alias, prompt, contextTokenCount: context?.tokenCount ?? 0, schema, maxOutputTokens: stateDefinition.maxOutputTokens ?? 4096, maxPhysicalAttempts: Math.max(1, routing?.deployments?.length ?? 1) },
+            invocation: { alias, prompt, contextTokenCount: context?.tokenCount ?? 0, schema, maxOutputTokens: stateDefinition.maxOutputTokens ?? 4096, maxPhysicalAttempts: Math.max(1, routing?.deployments?.length ?? 1), accountingMode: agentRouting?.selected ? (agentRouting.selected === "claude-code-subscription" ? "subscription-credit" : agentRouting.selected === "codex-subscription" ? "subscription" : "metered-api") : "metered-api" },
           }) : null;
           if (reservation?.idempotentReplay) throw Object.assign(new Error("invocation reservation is already active"), { name: "InvocationInProgressError" });
           const execution = await plane.invokeAgent(runId, {
@@ -102,8 +104,9 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
           prompt,
           schema,
           maxOutputTokens: reservation ? Number(reservation.reserved_output_tokens) : undefined,
-          invocation: reservation ? { taskId: task.id, runId: run.id, stage: state, reservationId: reservation.id, logicalInvocationId: reservation.logical_invocation_id, modelAlias: reservation.model_alias } : null,
-          modelAlias: routing?.selected.gatewayAlias ?? alias,
+            invocation: reservation ? { taskId: task.id, runId: run.id, stage: state, reservationId: reservation.id, logicalInvocationId: reservation.logical_invocation_id, modelAlias: reservation.model_alias } : null,
+            modelAlias: routing?.selected.gatewayAlias ?? alias,
+            ...(agentRouting ? { providerId: agentRouting.selected, agentRouting, worktree: { root: requireProject(task), checkpoint: requireProject(task) }, constraints: { timeoutMs: Number(task.metadata?.providerTimeoutMs ?? 900000), maxOutputTokens: reservation ? Number(reservation.reserved_output_tokens) : stateDefinition.maxOutputTokens ?? 4096, maxTurns: stateDefinition.maxTurns ?? 20, mutation: stateDefinition.agent === "implementer" ? "workspace-write" : "read-only", network: "provider-only" } } : {}),
           });
           const settlement = reservation ? await budgetAuthority.commit({ reservationId: reservation.id, actualUsage: execution.usage ?? {} }) : null;
           if (settlement?.drift?.exceeded) throw Object.assign(new Error("BUDGET_RESERVATION_DRIFT"), { name: "BudgetReservationDriftError", drift: settlement.drift });
@@ -111,8 +114,10 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
           outcome: execution.structured.outcome,
           evidence: {
             ...normalizeAgentEvidence(execution.structured),
-            ...(execution.usage ? { usage: execution.usage } : {}),
+            ...(execution.usage ? { usage: { ...execution.usage, ...(execution.provider ?? {}) } } : {}),
             ...(routing ? { routing } : {}),
+            ...(agentRouting ? { provider: { providerId: agentRouting.selected, providerFamily: agentRouting.selectedProviderFamily }, agentRouting } : {}),
+            ...(execution.providerAttempts ? { providerAttempts: execution.providerAttempts } : {}),
             ...(reservation ? { budget: { reservationId: reservation.id, logicalInvocationId: reservation.logical_invocation_id, reservedInputTokens: Number(reservation.reserved_input_tokens), reservedOutputTokens: Number(reservation.reserved_output_tokens), reservedCostUsd: Number(reservation.reserved_cost_usd), actual: execution.usage ?? {}, drift: settlement?.drift ?? null } } : {}),
           },
           };
@@ -170,7 +175,7 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
           ].join("\n\n");
           const schema = agentSchema(Object.keys(stateDefinition.next));
           reservation = budgetAuthority ? await budgetAuthority.reserve({ taskId: task.id, runId: run.id, stage: state, attempt: run.version,
-            invocation: { alias: stateDefinition.model ?? "coding-strong", prompt, schema, maxOutputTokens: stateDefinition.maxOutputTokens ?? 4096 } }) : null;
+            invocation: { alias: stateDefinition.model ?? "coding-strong", prompt, schema, maxOutputTokens: stateDefinition.maxOutputTokens ?? 4096, accountingMode: "metered-api" } }) : null;
           if (reservation?.idempotentReplay) throw Object.assign(new Error("invocation reservation is already active"), { name: "InvocationInProgressError" });
           const execution = await plane.invokeAgent(runId, {
           agent: "implementer",
@@ -185,7 +190,7 @@ export function createWorkflowHandlers({ definition, store = null, controller, p
           outcome: execution.structured.outcome,
           evidence: {
             ...normalizeAgentEvidence(execution.structured),
-            ...(execution.usage ? { usage: execution.usage } : {}),
+            ...(execution.usage ? { usage: { ...execution.usage, ...(execution.provider ?? {}) } } : {}),
             ...(reservation ? { budget: { reservationId: reservation.id, reservedInputTokens: Number(reservation.reserved_input_tokens), reservedOutputTokens: Number(reservation.reserved_output_tokens), reservedCostUsd: Number(reservation.reserved_cost_usd), actual: execution.usage ?? {}, drift: settlement?.drift ?? null } } : {}),
             iterations: iterations + 1,
           },

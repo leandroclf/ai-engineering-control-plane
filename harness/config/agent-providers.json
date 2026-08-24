@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "policyVersion": "agent-providers-v1",
+  "providers": {
+    "opencode-litellm": {
+      "kind": "agent-runtime",
+      "transport": "worker-opencode",
+      "runtime": "opencode",
+      "providerFamily": "dynamic",
+      "authMode": "gateway",
+      "billingMode": "api-metered",
+      "executionZone": "worker",
+      "enabled": true,
+      "localOnly": false,
+      "capabilities": ["architecture", "coding", "security-review", "code-review"],
+      "maxConcurrency": 10
+    },
+    "codex-subscription": {
+      "kind": "agent-runtime",
+      "transport": "codex-cli",
+      "runtime": "codex",
+      "providerFamily": "openai",
+      "authMode": "vendor-browser-session",
+      "billingMode": "subscription",
+      "executionZone": "provider-host",
+      "enabledEnv": "AICP_CODEX_PROVIDER_ENABLED",
+      "enabled": false,
+      "localOnly": true,
+      "capabilities": ["architecture", "coding", "security-review", "code-review"],
+      "maxConcurrency": 1
+    },
+    "claude-code-subscription": {
+      "kind": "agent-runtime",
+      "transport": "claude-code",
+      "runtime": "claude-code",
+      "providerFamily": "anthropic",
+      "authMode": "vendor-browser-session",
+      "billingMode": "subscription-credit",
+      "executionZone": "provider-host",
+      "enabledEnv": "AICP_CLAUDE_CODE_PROVIDER_ENABLED",
+      "enabled": false,
+      "localOnly": true,
+      "capabilities": ["architecture", "coding", "security-review", "code-review"],
+      "maxConcurrency": 1
+    }
+  },
+  "quotas": {
+    "codex-subscription": { "maxConcurrent": 1, "maxCallsPerTask": 10, "maxCallsPerRun": 20, "maxPhysicalAttempts": 1, "maxWallTimePerInvocationMs": 900000 },
+    "claude-code-subscription": { "maxConcurrent": 1, "maxCallsPerTask": 10, "maxCallsPerRun": 20, "maxPhysicalAttempts": 1, "maxWallTimePerInvocationMs": 900000 }
+  }
+}

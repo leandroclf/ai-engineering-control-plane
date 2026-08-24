@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { redactText } from "../security/redact.mjs";
 
 export class GovernedRuntime {
-  constructor({ definition, store, handlers, contextProvider = null, telemetry = null, budgetAuthority = null, preflight = null, readiness = null, capabilities = null, workerManager = null, workerProfile = null, executionPlane = null, metadata = {} }) {
+  constructor({ definition, store, handlers, contextProvider = null, telemetry = null, budgetAuthority = null, preflight = null, readiness = null, capabilities = null, workerManager = null, workerProfile = null, executionPlane = null, metadata = {}, providerLayer = null }) {
     this.definition = definition;
     this.store = store;
     this.budgetAuthority = budgetAuthority;
@@ -14,6 +14,7 @@ export class GovernedRuntime {
     this.workerProfile = workerProfile;
     this.executionPlane = executionPlane;
     this.metadata = metadata;
+    this.providerLayer = providerLayer;
     this.executionEvidence = new Map();
     this.executor = new WorkflowExecutor({ definition, store, handlers, contextProvider, telemetry });
   }
@@ -82,6 +83,14 @@ export class GovernedRuntime {
   workflows() { return { items: [{ name: this.definition.name, version: this.definition.version, initial: this.definition.initial, terminal: this.definition.terminal }] }; }
   policies() { return { items: this.metadata.policies ?? [] }; }
   models() { return { items: this.metadata.models ?? [] }; }
+  providers() { return { items: this.metadata.providers ?? this.providerLayer?.registry?.sanitized?.() ?? [] }; }
+  async provider(id) { const item = this.providers().items.find((provider) => provider.id === id); if (!item) throw new Error(`unknown provider: ${id}`); return { ...item, policyVersion: this.providerLayer?.configuration?.policyVersion ?? "agent-providers-v1" }; }
+  async providerHealth(id) { const provider = this.providerLayer?.registry?.get(id); if (!provider) return { id, status: "not_configured", readiness: "unknown" }; return { id, ...(await provider.health({ environment: this.providerLayer.environment, live: false })) }; }
+  async providerQuota(id, filters = {}) { return this.providerLayer?.quotaAuthority?.snapshot({ providerId: id, ...filters }) ?? { source: "aicp-shadow-ledger", providerId: id, items: [], reservations: [] }; }
+  providerPolicies() { return { schemaVersion: 1, policyVersion: this.providerLayer?.routingConfiguration?.policyVersion ?? "agent-routing-v1", roles: this.providerLayer?.routingConfiguration?.roles ?? {}, default: this.providerLayer?.routingConfiguration?.default ?? "opencode-litellm" }; }
+  async providerProbe(id, { live = false } = {}) { if (live && this.providerLayer?.environment?.AICP_LIVE_PROVIDER_TESTS !== "true") throw new Error("LIVE_PROVIDER_TESTS_DISABLED"); return this.providerHealth(id); }
+  async providerAttempts(runId) { if (this.providerLayer?.executionStore?.listByRun) return { runId, items: await this.providerLayer.executionStore.listByRun(runId) }; const stages = await this.store.listStages(runId); return { runId, items: stages.flatMap((stage) => stage.evidence?.handler?.providerAttempts ?? []).map((attempt) => ({ ...attempt, stage: stage.state_from ?? stage.from ?? null })) }; }
+  async providerTaskQuota(taskId) { return { taskId, source: "aicp-shadow-ledger", items: await Promise.all(this.providers().items.map((provider) => this.providerQuota(provider.id, { taskId })))}; }
   getContext(contextId) { return this.store.getContext(contextId); }
   async cancelRun(runId) { const run = await this.store.cancelRun(runId); if (this.executionPlane) await this.executionPlane.destroyRun(runId); else if (this.workerManager) await this.workerManager.destroy(runId); if (this.budgetAuthority) await this.budgetAuthority.cancel(run.taskId); return { run, stages: await this.store.listStages(runId) }; }
   getBudget(taskId) { if (!this.budgetAuthority) throw new Error("budget authority unavailable"); return this.budgetAuthority.get(taskId); }

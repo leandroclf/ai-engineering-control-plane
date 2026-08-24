@@ -16,7 +16,7 @@ export class InvocationEstimator {
     this.fixedOverheadTokens = fixedOverheadTokens;
   }
 
-  async estimate({ alias, prompt, contextTokenCount = 0, schema = {}, toolSchemas = [], maxOutputTokens = 4096, maxPhysicalAttempts = 1 }) {
+  async estimate({ alias, prompt, contextTokenCount = 0, schema = {}, toolSchemas = [], maxOutputTokens = 4096, maxPhysicalAttempts = 1, accountingMode = "metered-api" }) {
     if (!Number.isInteger(maxPhysicalAttempts) || maxPhysicalAttempts < 1) throw new TypeError("maxPhysicalAttempts must be a positive integer");
     const promptTokens = await this.tokenizer.count(prompt);
     const schemaTokens = await this.tokenizer.count(JSON.stringify({ response: schema, tools: toolSchemas }));
@@ -24,6 +24,9 @@ export class InvocationEstimator {
     // still reserving the compiler's authoritative token count if the rendering estimate is low.
     const knownInput = Math.max(promptTokens, Number(contextTokenCount) || 0) + schemaTokens + this.fixedOverheadTokens;
     const inputTokens = Math.ceil(knownInput * this.safetyMargin);
+    if (["subscription", "subscription-credit"].includes(accountingMode)) {
+      return normalizeUsage({ calls: 1, inputTokens: inputTokens * maxPhysicalAttempts, outputTokens: maxOutputTokens * maxPhysicalAttempts, costUsd: 0 });
+    }
     const prices = await this.pricingCatalog.pricesFor(alias);
     if (!Array.isArray(prices) || !prices.length || prices.some((price) =>
       !Number.isFinite(price?.inputPerToken) || !Number.isFinite(price?.outputPerToken)

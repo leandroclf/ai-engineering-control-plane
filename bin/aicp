@@ -1,0 +1,3 @@
+#!/usr/bin/env node
+import { main } from "../harness/src/cli/providers.mjs";
+main().then((code) => { process.exitCode = code; }).catch((error) => { process.stderr.write(`aicp failed: ${error.message}\n`); process.exitCode = 1; });
