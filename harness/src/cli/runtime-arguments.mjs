@@ -28,7 +28,7 @@ export function parseRuntimeArguments(argv) {
   }
   if (command !== "start") throw new TypeError("command must be start or resume");
   const options = readOptions(args, new Set([
-    "--project", "--query", "--idempotency-key", "--repository", "--scope",
+    "--project", "--query", "--idempotency-key", "--repository", "--provider", "--scope",
   ]));
   const project = required(options, "--project");
   return {
@@ -36,6 +36,7 @@ export function parseRuntimeArguments(argv) {
     project,
     query: required(options, "--query"),
     idempotencyKey: required(options, "--idempotency-key"),
+    ...(options.get("--provider")?.at(-1) ? { providerId: options.get("--provider").at(-1) } : {}),
     repository: options.get("--repository")?.at(-1) ?? project,
     scopes: options.get("--scope") ?? [`REPOSITORY:${project}`],
   };

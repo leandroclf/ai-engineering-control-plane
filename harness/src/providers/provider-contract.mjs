@@ -115,6 +115,7 @@ export function assertStructuredOutput(value, schema, path = "output") {
     for (const [name, childSchema] of Object.entries(schema.properties ?? {})) if (name in value) assertStructuredOutput(value[name], childSchema, `${path}.${name}`);
   } else if (schema.type === "array") {
     if (!Array.isArray(value)) throw new ProviderError(PROVIDER_ERROR_CODES.PROVIDER_INVALID_OUTPUT, `${path} must be an array`);
+    if (schema.minItems !== undefined && value.length < schema.minItems) throw new ProviderError(PROVIDER_ERROR_CODES.PROVIDER_INVALID_OUTPUT, `${path} has fewer than minItems`);
     if (schema.maxItems !== undefined && value.length > schema.maxItems) throw new ProviderError(PROVIDER_ERROR_CODES.PROVIDER_INVALID_OUTPUT, `${path} exceeds maxItems`);
     for (const [index, item] of value.entries()) assertStructuredOutput(item, schema.items ?? {}, `${path}[${index}]`);
   } else if (schema.type === "string") {

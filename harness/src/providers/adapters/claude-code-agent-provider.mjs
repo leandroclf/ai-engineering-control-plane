@@ -13,14 +13,21 @@ export class ClaudeCodeAgentProvider extends AgentProvider {
   async health() {
     try {
       const version = await this.host.supervisor.execute({ executionId: `health-claude-${Date.now()}`, executable: this.executable, args: ["--version"], cwd: process.cwd(), env: providerEnvironment(this.environment), timeoutMs: 5000 });
-      return healthStatus({ binary: { available: version.code === 0, version: version.stdout.trim().slice(0, 100) }, auth: { status: "unknown", mode: "vendor-browser-session" }, policy: { allowed: true }, quota: { status: "available", source: "aicp-shadow-ledger" }, liveInference: { status: "not_probed" } });
+      let auth = { status: "unknown", mode: "vendor-browser-session" };
+      try {
+        const status = await this.host.supervisor.execute({ executionId: `health-claude-auth-${Date.now()}`, executable: this.executable, args: ["auth", "status", "--json"], cwd: process.cwd(), env: providerEnvironment(this.environment), timeoutMs: 5000 });
+        const parsed = JSON.parse(status.stdout);
+        auth = { status: parsed.loggedIn === true ? "authenticated" : "unauthenticated", mode: "vendor-browser-session" };
+      } catch { auth = { status: "unknown", mode: "vendor-browser-session" }; }
+      return healthStatus({ binary: { available: version.code === 0, version: version.stdout.trim().slice(0, 100) }, auth, policy: { allowed: true }, quota: { status: "available", source: "aicp-shadow-ledger" }, liveInference: { status: "not_probed" } });
     } catch { return healthStatus({ binary: { available: false }, auth: { status: "unknown", mode: "vendor-browser-session" }, policy: { allowed: true }, quota: { status: "unknown", source: "aicp-shadow-ledger" }, liveInference: { status: "not_probed" } }); }
   }
 
   async estimate() { return { billingMode: this.descriptor.billingMode, monetaryCostKnown: false, providerReportedCostUsd: null }; }
 
   async execute(request) {
-    const args = ["-p", request.prompt, "--output-format", "json", "--json-schema", "{{schemaPath}}"];
+    const args = ["-p", request.prompt, "--output-format", "json", "--json-schema", JSON.stringify(request.schema)];
+    if (request.constraints.mutation !== "workspace-write") args.push("--permission-mode", "plan", "--tools", "Read,Glob,Grep", "--no-session-persistence");
     const result = await this.host.execute({ providerId: this.id, executable: this.executable, args, request, parser: parseClaudeJson, environment: this.environment });
     return { structured: result.structured, provider: { providerId: this.id, providerFamily: this.descriptor.providerFamily, runtime: this.descriptor.runtime, authMode: this.descriptor.authMode, billingMode: this.descriptor.billingMode }, usage: { ...result.usage, wallTimeMs: result.durationMs }, mutation: { started: request.constraints.mutation === "workspace-write" }, terminationReason: result.terminationReason ?? "completed", providerAttempts: [{ attempt: 1, provider: this.id, model: this.descriptor.runtime, providerRequestId: result.requestId ?? result.executionId, pricingKnown: false, status: "succeeded", durationMs: result.durationMs }] };
   }

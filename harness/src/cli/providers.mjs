@@ -15,7 +15,8 @@ const providerIds = Object.freeze({ codex: "codex-subscription", "claude-code": 
 export function officialAuthCommand(provider, action) {
   const executable = binaries[provider];
   if (!executable || !["login", "logout"].includes(action)) throw new TypeError("unsupported vendor auth command");
-  return Object.freeze({ executable, args: action === "login" ? ["login"] : ["logout"] });
+  const args = provider === "claude-code" ? ["auth", action] : [action];
+  return Object.freeze({ executable, args });
 }
 
 function usage() { process.stderr.write("Usage: aicp providers <list|show|doctor|login|logout|test> [provider-id|codex|claude-code] [--read-only]\n"); }
@@ -42,7 +43,7 @@ export async function main(argv = process.argv.slice(2), io = process) {
     if (!argv.includes("--read-only")) { io.stderr.write("Provider test requires --read-only.\n"); return 2; }
     if (process.env.AICP_LIVE_PROVIDER_TESTS !== "true") { io.stderr.write("Live provider tests are disabled; set AICP_LIVE_PROVIDER_TESTS=true explicitly.\n"); return 2; }
     const root = process.env.PROJECTS_ROOT ?? process.cwd();
-    const request = { agent: "code-reviewer", prompt: "Return a minimal structured health result without modifying files.", schema: { type: "object", additionalProperties: true }, worktree: { root, checkpoint: root }, constraints: { timeoutMs: 120000, mutation: "read-only", network: "provider-only" }, invocation: { taskId: "provider-test", runId: "provider-test", stage: "provider-test", reservationId: "provider-test", logicalInvocationId: `provider-test-${Date.now()}` } };
+    const request = { agent: "code-reviewer", prompt: "Return a minimal structured health result without modifying files.", schema: { type: "object", properties: { status: { type: "string" } }, required: ["status"], additionalProperties: false }, worktree: { root, checkpoint: root }, constraints: { timeoutMs: 120000, mutation: "read-only", network: "provider-only" }, invocation: { taskId: "provider-test", runId: "provider-test", stage: "provider-test", reservationId: "provider-test", logicalInvocationId: `provider-test-${Date.now()}` } };
     const result = await provider.execute(request);
     io.stdout.write(`${JSON.stringify({ id: subject, status: "completed", usage: result.usage, terminationReason: result.terminationReason }, null, 2)}\n`);
     return 0;

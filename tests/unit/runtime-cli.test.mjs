@@ -7,7 +7,7 @@ import { createHarnessServer } from "../../harness/src/runtime/http-server.mjs";
 test("runtime CLI parses a governed start request", () => {
   const parsed = parseRuntimeArguments([
     "start", "--project", "site-lf-solucoes", "--query", "Improve navigation",
-    "--idempotency-key", "issue-91", "--scope", "PROJECT:site", "--scope", "REPOSITORY:site-lf-solucoes",
+    "--idempotency-key", "issue-91", "--provider", "claude-code-subscription", "--scope", "PROJECT:site", "--scope", "REPOSITORY:site-lf-solucoes",
   ]);
 
   assert.deepEqual(parsed, {
@@ -15,6 +15,7 @@ test("runtime CLI parses a governed start request", () => {
     project: "site-lf-solucoes",
     query: "Improve navigation",
     idempotencyKey: "issue-91",
+    providerId: "claude-code-subscription",
     repository: "site-lf-solucoes",
     scopes: ["PROJECT:site", "REPOSITORY:site-lf-solucoes"],
   });
