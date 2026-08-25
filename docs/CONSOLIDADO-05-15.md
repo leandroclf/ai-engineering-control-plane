@@ -122,20 +122,17 @@ Gateway para chamadas HTTP e para o caminho OpenCode.
 
 ### 4.2 Compatibilidade sem segunda autoridade
 
-Os antigos nomes foram mantidos como shims para reduzir risco de migração:
+Os consumidores internos foram migrados para os módulos canônicos e as
+fachadas históricas foram removidas. Não há uma segunda autoridade para
+runtime, routing, quota, telemetria ou evidência:
 
-| Caminho histórico | Destino efetivo |
+| Responsabilidade | Caminho efetivo |
 |---|---|
-| `providers/provider-layer.mjs` | `providers/agent-runtime.mjs` |
-| `providers/agent-provider-dispatcher.mjs` | `providers/agent-launcher.mjs` |
-| `providers/agent-routing-policy.mjs` | `routing/agent-routing-policy.mjs` |
-| `providers/provider-usage.mjs` | `telemetry/provider-usage.mjs` |
-| `providers/provider-execution-store.mjs` | evidência anexada ao `workflow/PostgresRunStore` |
-| `providers/provider-quota-authority.mjs` | ledger composto pelo domínio `budget` |
-
-Esses shims não devem receber nova lógica. A remoção física definitiva fica
-para uma mudança posterior, depois de migrados consumidores externos e
-confirmada a ausência de imports.
+| Composição e launcher | `providers/agent-runtime.mjs`, `providers/agent-launcher.mjs` |
+| Routing | `routing/agent-routing-policy.mjs` |
+| Quota | `budget/provider-quota-ledger.mjs` |
+| Uso | `telemetry/provider-usage.mjs` |
+| Evidência | `workflow/provider-execution-evidence-store.mjs` |
 
 ### 4.3 Fallback
 
@@ -242,12 +239,12 @@ opt-in.
 |---|---|---|
 | Harness authority | KEEP | manter contracts e abuse tests |
 | Agent launcher/adapters | KEEP, fino | ampliar caracterização por contrato |
-| Provider façade/dispatcher | MERGE via shims | migrar consumidores e remover shims |
+| Provider façade/dispatcher | REMOVED | consumidores internos usam launcher canônico |
 | Agent routing | MERGE no domínio routing | adicionar cobertura de eligibility |
 | Quota | MERGE sob BudgetAuthority | testar concorrência PostgreSQL e crash reconciliation |
 | Provider execution evidence | KEEP como evidência, não estado | ligar consulta à API sem duplicar run state |
 | LiteLLM | KEEP para model gateway | validar custo/latência em benchmark real |
-| Neo4j | OPTIONAL | benchmark Context ROI e decisão ADR |
+| Neo4j | OPTIONAL | `ADR-009`; benchmark de grafo populado antes de alterar o default |
 | Redis | KEEP no default atual | remover apenas se LiteLLM/runtime deixar de exigir |
 | Memory sofisticada | KEEP + MEASURE | poisoning, autoridade e ROI |
 | Browser capability | KEEP isolado | production readiness e recovery drill |
@@ -260,11 +257,11 @@ Esta consolidação só deve ser promovida a `MERGE_ELIGIBLE` quando os gates
 protegidos aplicáveis terminarem com sucesso e as lacunas acima estiverem
 registradas com evidência. O próximo ciclo deve priorizar:
 
-1. concluir a matriz adversarial de 20 cenários;
-2. executar `npm run validate` e os testes de worker;
-3. medir benchmark pareado e ROI de Context/Graph/Memory;
-4. migrar consumidores dos shims e removê-los em mudança isolada;
-5. obter evidência OS/vendor para credential isolation;
+1. executar os drills LIMITED da matriz adversarial, sem promovê-los a PASS;
+2. manter `npm run validate`, os testes de worker e o benchmark estrutural como gates locais;
+3. executar benchmark pareado com grafo populado antes de qualquer mudança do default;
+4. obter evidência OS/vendor para credential isolation;
+5. substituir o bind direto do Docker socket por proxy ou Docker rootless em deployment dedicado;
 6. atualizar esta consolidação somente com resultados reproduzíveis.
 
 Nenhuma nova componente deve entrar sem demonstrar problema concreto,

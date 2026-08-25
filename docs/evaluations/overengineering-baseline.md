@@ -12,7 +12,7 @@ local não foi trocada porque continha os documentos 14 e 15 não rastreados.
 
 | Item | Estado observado |
 |---|---|
-| Implementação de providers | `harness/src/providers/` com 871 linhas em 24 módulos; a composição nova e os donos naturais somam 270 linhas, sem contar compatibilidade e a implementação histórica do ledger PostgreSQL |
+| Implementação de providers | `harness/src/providers/` com 871 linhas em 24 módulos; a composição nova e os donos naturais foram consolidados sem fachadas de compatibilidade em produção |
 | Serviços Compose padrão | 12 (`docker compose config --services`) |
 | Serviços opcionais | Neo4j no profile `graph`; pgAdmin e RedisInsight no profile `admin` |
 | Bancos persistentes | PostgreSQL é o estado canônico de controle, runs, budget e memória |
@@ -62,10 +62,9 @@ harness/src/telemetry/provider-usage.mjs
 harness/src/workflow/provider-execution-evidence-store.mjs
 ```
 
-Os arquivos `provider-layer.mjs`, `agent-provider-dispatcher.mjs`,
-`agent-routing-policy.mjs`, `provider-usage.mjs` e
-`provider-execution-store.mjs` permanecem como shims de compatibilidade. Eles
-não são mais composição de produção nem autoridade independente.
+As fachadas históricas foram removidas após a migração dos consumidores internos.
+Os pontos de entrada efetivos são os módulos canônicos de runtime, routing,
+budget, telemetria e evidência listados acima.
 
 ## Limites e riscos que permanecem
 
@@ -74,14 +73,16 @@ não são mais composição de produção nem autoridade independente.
   provam o comportamento interno de uma CLI oficial autenticada.
 - O benchmark de providers live continua opt-in; nenhum número de latência,
   custo ou sucesso real foi inventado.
-- A escolha de manter ou remover definitivamente o grafo ainda depende de
-  benchmark de ROI; a mudança atual apenas remove Neo4j do startup padrão.
+- A decisão operacional do grafo foi registrada em
+  `docs/adr/ADR-009-graph-default.md`: Neo4j permanece opcional e desligado
+  por padrão; o ROI específico do grafo ainda não foi medido.
 - `worker-manager` continua sendo um componente privilegiado de implantação e
-  monta o socket Docker; isso é uma fronteira operacional existente e exige
-  hardening separado, não foi mascarado como resolvido nesta consolidação.
-- A suíte adversarial existente cobre contratos importantes, mas o conjunto
-  completo de 20 cenários do documento 15 ainda precisa de uma matriz de
-  cobertura explícita antes de qualquer declaração de certificação integral.
+  monta o socket Docker. Foi adicionado limite de workers ativos, mas a
+  substituição do socket por proxy/rootless Docker exige uma mudança de
+  deployment e não foi mascarada como resolvida.
+- A matriz dos 20 cenários agora é executável em
+  `security/adversarial-matrix.json`; 17 controles estão PASS e 3 permanecem
+  LIMITED por ausência de prova OS/vendor ou drill de crash/repositório hostil.
 
 ## Comandos de coleta
 
