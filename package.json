@@ -12,7 +12,7 @@
     "test:python": "PYTHONPATH=memory-service/src python3 -m unittest discover -s tests/unit -p '*_test.py'",
     "test:integration": "node --test tests/integration/*.integration.mjs",
     "test:e2e:mock-gateway": "bash scripts/mock-gateway-e2e.sh",
-    "test:adversarial": "node --test tests/adversarial/*.test.mjs && bash tests/adversarial/runtime-boundary.sh",
+    "test:adversarial": "node --test tests/adversarial/*.test.mjs && bash tests/adversarial/runtime-boundary.sh && node scripts/validate-adversarial-matrix.mjs",
     "test:budget-adversarial": "node --test tests/adversarial/budget/*.test.mjs",
     "test:providers": "node --test tests/unit/providers/*.test.mjs",
     "test:providers:integration": "node --test tests/integration/providers.integration.mjs",
