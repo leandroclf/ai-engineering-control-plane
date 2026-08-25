@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AgentRoutingPolicy } from "../../../harness/src/providers/agent-routing-policy.mjs";
+import { AgentRoutingPolicy } from "../../../harness/src/routing/agent-routing-policy.mjs";
 import { AgentProviderRegistry } from "../../../harness/src/providers/provider-registry.mjs";
 import { AgentProvider } from "../../../harness/src/providers/provider-contract.mjs";
 

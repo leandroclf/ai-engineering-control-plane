@@ -9,7 +9,7 @@ import { ProviderQuotaAuthority, PostgresProviderQuotaAuthority } from "../budge
 import { ProviderHost } from "./host/provider-host.mjs";
 import { ProviderProcessSupervisor } from "./host/provider-process-supervisor.mjs";
 import { ProviderCommandPolicy } from "./host/provider-command-policy.mjs";
-import { PostgresAgentProviderExecutionStore } from "./provider-execution-store.mjs";
+import { PostgresAgentProviderExecutionStore } from "../workflow/provider-execution-evidence-store.mjs";
 
 /**
  * Composition root for agent adapters. It deliberately exposes primitives,

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeProviderUsage } from "../../../harness/src/providers/provider-usage.mjs";
+import { normalizeProviderUsage } from "../../../harness/src/telemetry/provider-usage.mjs";
 import { reconcilePhysicalUsage } from "../../../harness/src/budget/physical-usage.mjs";
 
 test("subscription usage never becomes a canonical monetary zero", () => {

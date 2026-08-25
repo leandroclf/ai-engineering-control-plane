@@ -7,7 +7,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { AgentProvider } from "../../../harness/src/providers/provider-contract.mjs";
 import { AgentProviderRegistry } from "../../../harness/src/providers/provider-registry.mjs";
-import { AgentProviderDispatcher } from "../../../harness/src/providers/agent-provider-dispatcher.mjs";
+import { AgentLauncher } from "../../../harness/src/providers/agent-launcher.mjs";
 import { ProviderError } from "../../../harness/src/providers/provider-errors.mjs";
 
 const run = promisify(execFile);
@@ -21,7 +21,7 @@ test("fallback restores a mutation before alternate provider execution", async (
     class FailingProvider extends AgentProvider { constructor() { super({ id: "first", transport: "codex-cli", runtime: "fake", providerFamily: "openai", authMode: "api-key", billingMode: "subscription", executionZone: "provider-host", capabilities: ["coding"] }); } async execute() { await writeFile(join(root, "file.txt"), "dirty\n"); throw new ProviderError("PROVIDER_UNAVAILABLE", "crash", { retryable: true }); } }
     class SuccessProvider extends AgentProvider { constructor() { super({ id: "second", transport: "codex-cli", runtime: "fake", providerFamily: "anthropic", authMode: "api-key", billingMode: "subscription", executionZone: "provider-host", capabilities: ["coding"] }); } async execute(request) { assert.equal(await readFile(join(request.worktree.root, "file.txt"), "utf8"), "before\n"); return { structured: { outcome: "pass", summary: "ok", artifacts: [] }, usage: { calls: 1, inputTokens: 1, outputTokens: 1, monetaryCostKnown: false }, provider: { providerId: this.id, providerFamily: "anthropic", runtime: "fake", authMode: "api-key", billingMode: "subscription" }, mutation: { started: false }, terminationReason: "completed" }; } }
     const registry = new AgentProviderRegistry({ configuration: { providers: {} } }).register(new FailingProvider()).register(new SuccessProvider());
-    const dispatcher = new AgentProviderDispatcher({ registry, environment: { AICP_PROVIDER_FALLBACK_ENABLED: "true" } });
+    const dispatcher = new AgentLauncher({ registry, environment: { AICP_PROVIDER_FALLBACK_ENABLED: "true" } });
     const result = await dispatcher.execute(request(root), { fallback: ["first", "second"] });
     assert.equal(result.structured.outcome, "pass");
     assert.equal(result.provider.providerId, "second");
@@ -36,7 +36,7 @@ test("read-only provider mutation is rejected and restored", async () => {
     await writeFile(join(root, "file.txt"), "before\n"); await run("git", ["-C", root, "add", "."]); await run("git", ["-C", root, "commit", "-qm", "initial"]);
     const provider = new class extends AgentProvider { constructor() { super({ id: "read-only", transport: "codex-cli", runtime: "fake", providerFamily: "openai", authMode: "api-key", billingMode: "subscription", executionZone: "provider-host", capabilities: ["coding"] }); } async execute() { await writeFile(join(root, "file.txt"), "forbidden\n"); return { structured: { outcome: "pass" }, usage: {}, mutation: { started: false }, provider: { providerId: this.id, providerFamily: "openai", runtime: "fake", authMode: "api-key", billingMode: "subscription" }, terminationReason: "completed" }; } }();
     const registry = new AgentProviderRegistry({ configuration: { providers: {} } }).register(provider);
-    const dispatcher = new AgentProviderDispatcher({ registry });
+    const dispatcher = new AgentLauncher({ registry });
     await assert.rejects(dispatcher.execute({ ...request(root), constraints: { ...request(root).constraints, mutation: "read-only" } }, { fallback: ["read-only"] }), (error) => error.code === "POLICY_DENIED");
     assert.equal(await readFile(join(root, "file.txt"), "utf8"), "before\n");
   } finally { await rm(root, { recursive: true, force: true }); }
@@ -48,7 +48,7 @@ test("fallback is blocked when checkpoint restoration fails", async () => {
     const provider = new class extends AgentProvider { constructor() { super({ id: "first", transport: "codex-cli", runtime: "fake", providerFamily: "openai", authMode: "api-key", billingMode: "subscription", executionZone: "provider-host", capabilities: ["coding"] }); } async execute() { throw new Error("failed"); } }();
     const registry = new AgentProviderRegistry({ configuration: { providers: {} } }).register(provider);
     const checkpoint = { create: async () => ({ root, clean: true, head: "x", beforeTree: "x" }), attest: async () => ({ clean: false }), restore: async () => { throw new Error("restore failed"); } };
-    const dispatcher = new AgentProviderDispatcher({ registry, checkpoint, environment: { AICP_PROVIDER_FALLBACK_ENABLED: "true" } });
+    const dispatcher = new AgentLauncher({ registry, checkpoint, environment: { AICP_PROVIDER_FALLBACK_ENABLED: "true" } });
     await assert.rejects(dispatcher.execute(request(root), { fallback: ["first"] }), (error) => error.code === "PROVIDER_FALLBACK_CHECKPOINT_FAILED");
   } finally { await rm(root, { recursive: true, force: true }); }
 });
@@ -68,7 +68,7 @@ test("fallback does not hide policy or validation failures", async () => {
       async execute() { alternateCalls += 1; return { structured: { outcome: "pass" }, usage: {}, provider: { providerId: this.id }, mutation: { started: false } }; }
     }();
     const registry = new AgentProviderRegistry({ configuration: { providers: {} } }).register(first).register(second);
-    const dispatcher = new AgentProviderDispatcher({ registry, environment: { AICP_PROVIDER_FALLBACK_ENABLED: "true" } });
+    const dispatcher = new AgentLauncher({ registry, environment: { AICP_PROVIDER_FALLBACK_ENABLED: "true" } });
     await assert.rejects(dispatcher.execute(request(root), { fallback: ["policy", "alternate"] }), (error) => error.code === "POLICY_DENIED");
     assert.equal(alternateCalls, 0);
   } finally { await rm(root, { recursive: true, force: true }); }

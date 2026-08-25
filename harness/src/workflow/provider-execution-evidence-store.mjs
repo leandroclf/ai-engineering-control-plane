@@ -10,3 +10,9 @@ export function providerExecutionRecord(database, { request, result, status = "c
 export function providerExecutionsByRun(database, runId) {
   return database.query("SELECT execution_id,logical_invocation_id,task_id,run_id,stage,provider_id,provider_family,runtime,auth_mode,billing_mode,status,termination_reason,input_tokens,output_tokens,cached_input_tokens,provider_reported_cost_usd,monetary_cost_known,agent_turns,wall_time_ms,mutation_started,before_tree,after_tree,created_at,completed_at FROM control.agent_provider_executions WHERE run_id=$1 ORDER BY created_at", [runId]);
 }
+
+export class PostgresAgentProviderExecutionStore {
+  constructor(database) { if (!database?.query) throw new TypeError("database query function is required"); this.database = database; }
+  record(input) { return providerExecutionRecord(this.database, input); }
+  async listByRun(runId) { return (await providerExecutionsByRun(this.database, runId)).rows; }
+}
