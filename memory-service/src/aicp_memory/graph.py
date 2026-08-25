@@ -8,6 +8,19 @@ import urllib.request
 RELATION_TYPES = {"IMPORTS", "CALLS", "IMPLEMENTS", "EXTENDS", "DEPENDS_ON", "TESTS", "GOVERNS", "AFFECTS"}
 
 
+class NullGraphProjection:
+    """Deterministic no-op projection used when graph retrieval is optional."""
+
+    def apply(self, repository, payload, rebuild=False):
+        return None
+
+    def impact(self, repository, path):
+        return []
+
+    def retrieve(self, repository, symbols=None, paths=None, limit=25, max_hops=2):
+        return []
+
+
 class Neo4jGraphProjection:
     def __init__(self, endpoint, auth, opener=urllib.request.urlopen):
         self.endpoint = endpoint.rstrip("/") + "/db/neo4j/tx/commit"

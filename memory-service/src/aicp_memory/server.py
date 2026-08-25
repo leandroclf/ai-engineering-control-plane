@@ -8,7 +8,7 @@ from aicp_memory.api.application import MemoryApplication
 from aicp_memory.auth import Principal, StaticAuthorizer
 from aicp_memory.context_service import ContextService
 from aicp_memory.embedding import LiteLLMEmbedder
-from aicp_memory.graph import Neo4jGraphProjection
+from aicp_memory.graph import Neo4jGraphProjection, NullGraphProjection
 from aicp_memory.repository import PostgresMemoryRepository
 from aicp_memory.token_counter import LiteLLMTokenCounter
 from aicp_memory.telemetry import OtlpHttpTelemetry
@@ -56,7 +56,7 @@ def build_application():
         model=os.environ.get("EMBEDDING_ALIAS", "embeddings"),
         dimensions=int(os.environ.get("EMBEDDING_DIMENSIONS", "1536")),
     )
-    graph = Neo4jGraphProjection(os.environ["NEO4J_HTTP_URL"], os.environ["NEO4J_AUTH"])
+    graph = Neo4jGraphProjection(os.environ["NEO4J_HTTP_URL"], os.environ["NEO4J_AUTH"]) if os.environ.get("AICP_GRAPH_ENABLED", "false").lower() in {"1", "true", "yes", "on"} else NullGraphProjection()
     token_counter = LiteLLMTokenCounter(
         os.environ["LITELLM_BASE_URL"], os.environ["LITELLM_API_KEY"],
         model=os.environ.get("CONTEXT_TOKEN_MODEL", "coding-fast"),

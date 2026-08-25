@@ -4,7 +4,7 @@ import json
 import unittest
 import urllib.error
 
-from aicp_memory.graph import Neo4jGraphProjection
+from aicp_memory.graph import Neo4jGraphProjection, NullGraphProjection
 
 
 class Response(io.BytesIO):
@@ -16,6 +16,12 @@ class Response(io.BytesIO):
 
 
 class Neo4jGraphProjectionTest(unittest.TestCase):
+    def test_optional_graph_projection_is_deterministic_noop(self):
+        graph = NullGraphProjection()
+        self.assertIsNone(graph.apply("repo", {"files": []}))
+        self.assertEqual(graph.impact("repo", "app.js"), [])
+        self.assertEqual(graph.retrieve("repo", ["Service.run"], ["app.js"]), [])
+
     def test_http_error_exposes_neo4j_response_without_credentials(self):
         def failing_open(request, timeout):
             self.assertNotIn("password", request.full_url)
