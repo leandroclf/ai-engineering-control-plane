@@ -15,6 +15,6 @@ for (const item of matrix.cases ?? []) {
     try { await readFile(evidence); } catch { errors.push(`case ${item.id} evidence does not exist: ${evidence}`); }
   }
 }
-if (errors.length) { console.error(errors.join("\n")); process.exit(1); }
+if (errors.length) { process.stderr.write(`${errors.join("\n")}\n`); process.exit(1); }
 const summary = Object.fromEntries(["PASS", "LIMITED", "BLOCKED"].map((status) => [status, matrix.cases.filter((item) => item.status === status).length]));
-console.log(JSON.stringify({ schemaVersion: 1, status: matrix.status, cases: matrix.cases.length, summary }));
+process.stdout.write(`${JSON.stringify({ schemaVersion: 1, status: matrix.status, cases: matrix.cases.length, summary })}\n`);
