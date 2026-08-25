@@ -140,3 +140,19 @@ test("ephemeral worker is scoped to one run and destroy revokes its identity", a
   assert.throws(() => identities.verify(token, "run-a"), /WORKLOAD_IDENTITY_INVALID/);
   assert.deepEqual(calls.at(-1), ["remove", "worker-a"]);
 });
+
+test("worker manager refuses capacity exhaustion before creating another container", async () => {
+  const identities = new WorkloadIdentityService({ secret: "x".repeat(32) });
+  const token = identities.issue("run-a");
+  const inspect = { Config: { User: "worker", Labels: { "aicp.run_id": "run-a" } }, HostConfig: { ReadonlyRootfs: true, CapDrop: ["ALL"], SecurityOpt: ["no-new-privileges"] }, Mounts: [] };
+  let creates = 0;
+  const docker = { create: async () => { creates += 1; return "worker-a"; }, inspect: async () => inspect, exec: async () => ({ exitCode: 0, stdout: "v1" }), remove: async () => undefined };
+  const profiles = new WorkerProfileRegistry({ schemaVersion: 1, profiles: { node: { projectKinds: ["node"], image: "node", dockerfile: "Dockerfile", probes: [["node", "--version"]] } } });
+  const manager = new DockerWorkerManager({ docker, profiles, identityService: identities, maxActiveWorkers: 1, secretResolver: async () => "scoped" });
+  const spec = (runId, identityToken) => new EphemeralWorkerSpec({ runId, projectDirectory: "/workspace/project", profile: "node", identity: new WorkloadIdentity({ runId, litellmKeyRef: `llm/${runId}`, memoryTokenRef: `memory/${runId}`, expiresAt: new Date(Date.now() + 60_000) }), identityToken });
+  await manager.create(spec("run-a", token));
+  const secondToken = identities.issue("run-b");
+  await assert.rejects(manager.create(spec("run-b", secondToken)), /WORKER_CAPACITY_EXHAUSTED/);
+  assert.equal(creates, 1);
+  await manager.destroy("run-a");
+});

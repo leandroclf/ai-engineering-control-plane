@@ -353,6 +353,7 @@ services:
       MEMORY_SERVICE_URL: http://memory-service:8080
       WORKER_PROFILES_PATH: /aicp/harness/config/worker-profiles.json
       WORKER_COMMAND_POLICY_PATH: /aicp/harness/config/worker-command-policy.json
+      AICP_MAX_ACTIVE_WORKERS: ${AICP_MAX_ACTIVE_WORKERS:-16}
       WORKER_MANAGER_TOKEN_FILE: /run/secrets/worker_manager_token
       WORKER_IDENTITY_SIGNING_SECRET_FILE: /run/secrets/worker_identity_signing_secret
     secrets: [worker_manager_token, worker_identity_signing_secret, litellm_api_key, memory_service_token]
