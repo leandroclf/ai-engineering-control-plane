@@ -29,7 +29,7 @@ import { HttpBrowserCapabilityProvider } from "../capabilities/http-browser-prov
 import { SkillRegistry } from "../skills/registry.mjs";
 import { AgentMetrics } from "../telemetry/agent-metrics.mjs";
 import { AgentHarnessMemoryClient } from "../memory/agent-harness-memory-client.mjs";
-import { createAgentProviderLayer } from "../providers/provider-layer.mjs";
+import { createAgentProviderRuntime } from "../providers/agent-runtime.mjs";
 import { createProviderDescriptor, sanitizeProvider } from "../providers/provider-contract.mjs";
 
 const { Pool } = pg;
@@ -75,9 +75,8 @@ export async function createProductionRuntime({ environment = process.env } = {}
       port: Number(environment.OPENCODE_SERVER_PORT ?? 4096),
       timeout: Number(environment.OPENCODE_START_TIMEOUT_MS ?? 30_000),
     });
-    const providerLayer = !ephemeral ? await createAgentProviderLayer({ environment, database, controller: new OpenCodeController(opencode.client) }) : null;
-    const providerLayerEnabled = ["1", "true", "yes", "on"].includes(String(environment.AICP_AGENT_PROVIDER_LAYER_ENABLED ?? "false").toLowerCase());
     const store = new PostgresRunStore(database);
+    const providerLayerEnabled = ["1", "true", "yes", "on"].includes(String(environment.AICP_AGENT_PROVIDER_LAYER_ENABLED ?? "false").toLowerCase());
     const budgetAuthority = new BudgetAuthority({
       store: new PostgresBudgetStore(database),
       estimator: new InvocationEstimator({
@@ -85,7 +84,10 @@ export async function createProductionRuntime({ environment = process.env } = {}
         safetyMargin: Number(environment.HARNESS_RESERVATION_SAFETY_MARGIN ?? 1.2),
       }),
       reservation: { maxOutputTokens: Number(environment.HARNESS_RESERVATION_OUTPUT_TOKENS ?? 4096) },
+      providerQuotaPolicies: agentProviderConfiguration.quotas ?? {},
+      database,
     });
+    const providerLayer = !ephemeral ? await createAgentProviderRuntime({ environment, database, budgetAuthority, executionStore: store, controller: new OpenCodeController(opencode.client) }) : null;
     const processRunner = new ProcessRunner();
     const scannerBundleAttestor = new ScannerBundleAttestor({ manifest: scannerBundle, root: environment.AICP_ROOT ?? "/aicp" });
     const projectAdapter = new ProjectAdapter();
@@ -97,7 +99,7 @@ export async function createProductionRuntime({ environment = process.env } = {}
       .register("trivy", new ScannerGateProvider("trivy", ephemeral ? {} : { runner: processRunner, bundleAttestor: scannerBundleAttestor }));
     const executionPlane = ephemeral
       ? new WorkerExecutionPlane({ workerManager, profileRegistry: workerProfiles })
-      : new LocalExecutionPlane({ controller: new OpenCodeController(opencode.client), gateRunner: new ProjectGateRunner({ runner: processRunner }), agentProviderDispatcher: providerLayerEnabled ? providerLayer.dispatcher : null });
+      : new LocalExecutionPlane({ controller: new OpenCodeController(opencode.client), gateRunner: new ProjectGateRunner({ runner: processRunner }), agentProviderDispatcher: providerLayerEnabled && providerLayer ? providerLayer.launcher : null });
     const handlers = createWorkflowHandlers({
       definition,
       store,
@@ -108,7 +110,7 @@ export async function createProductionRuntime({ environment = process.env } = {}
       gateRegistry,
       budgetAuthority,
       routingPolicy: new RoutingPolicy(routingConfiguration, environment),
-      agentRoutingPolicy: providerLayerEnabled ? providerLayer.routingPolicy : null,
+      agentRoutingPolicy: providerLayerEnabled && providerLayer ? providerLayer.routingPolicy : null,
       providerLayerEnabled,
     });
     const runtime = new GovernedRuntime({

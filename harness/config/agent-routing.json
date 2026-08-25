@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "policyVersion": "agent-routing-v1",
   "default": "opencode-litellm",
+  "maxProviderAttempts": 2,
   "roles": {
     "architect": ["opencode-litellm", "codex-subscription", "claude-code-subscription"],
     "implementer": ["opencode-litellm", "codex-subscription", "claude-code-subscription"],
