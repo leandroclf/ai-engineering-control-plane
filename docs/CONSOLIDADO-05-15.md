@@ -1,5 +1,9 @@
 # AI Engineering Control Plane — consolidação coerente dos documentos 05–15
 
+> Arquivo legado. A consolidação canônica atual dos documentos 06–15 está em
+> [`CONSOLIDADO-06-15.md`](CONSOLIDADO-06-15.md). Este arquivo é preservado
+> apenas para manter a proveniência da consolidação que também incluía o guia 05.
+
 Data: 25 de agosto de 2026
 Baseline de código: `origin/main` em `c3126201893882a72796f45ae29d207896254617`
 Status desta consolidação: implementação parcial validada localmente; não é

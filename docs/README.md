@@ -16,7 +16,7 @@ proveniência, não como requisito atual.
 | Validação e evidência | `docs/validation/*.md`, `release/v1-contract.json`, `docs/evaluations/v1-roi.md` |
 | Operação e recuperação | `docs/runbook.md`, `docs/operations/recovery.md`, `docs/compatibility.md`, `docs/external-dependencies.md`, `docs/memory-model.md` |
 | Estado de implementação | `docs/implementation-progress.md` e `openspec/changes/bootstrap-ai-engineering-control-plane/implementation-status.md` |
-| Consolidação dos guias 05–15 | `docs/CONSOLIDADO-05-15.md` |
+| Consolidação dos guias 06–15 | `docs/CONSOLIDADO-06-15.md` |
 
 ## OpenSpec e planejamento
 
@@ -36,7 +36,7 @@ proveniência, mas não são mais a fonte de verdade para planejamento atual.
 | `docs/01-05` | pacote de prompts e template OpenSpec | histórico |
 | `docs/06-10` | guias de visão e evolução do control plane | histórico |
 | `docs/11-12` | revisão UX/documentação e evolução do console | histórico |
-| `docs/13-15` | Browser Harness, CLI adapters e des-overengineering | histórico consolidado em `CONSOLIDADO-05-15.md` |
+| `docs/13-15` | Browser Harness, CLI adapters e des-overengineering | histórico consolidado em `CONSOLIDADO-06-15.md` |
 
 Para o índice completo do material legado, leia `docs/archive/README.md`.
 
