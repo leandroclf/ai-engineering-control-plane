@@ -52,3 +52,24 @@ test("fallback is blocked when checkpoint restoration fails", async () => {
     await assert.rejects(dispatcher.execute(request(root), { fallback: ["first"] }), (error) => error.code === "PROVIDER_FALLBACK_CHECKPOINT_FAILED");
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test("fallback does not hide policy or validation failures", async () => {
+  const root = await mkdtemp(`${tmpdir()}/aicp-dispatcher-`);
+  try {
+    await run("git", ["init", "-q", root]); await run("git", ["-C", root, "config", "user.email", "aicp@example.test"]); await run("git", ["-C", root, "config", "user.name", "AICP"]);
+    await writeFile(join(root, "file.txt"), "before\n"); await run("git", ["-C", root, "add", "."]); await run("git", ["-C", root, "commit", "-qm", "initial"]);
+    let alternateCalls = 0;
+    const first = new class extends AgentProvider {
+      constructor() { super({ id: "policy", transport: "codex-cli", runtime: "fake", providerFamily: "openai", authMode: "api-key", billingMode: "subscription", executionZone: "provider-host", capabilities: ["coding"] }); }
+      async execute() { throw new ProviderError("POLICY_DENIED", "policy blocked"); }
+    }();
+    const second = new class extends AgentProvider {
+      constructor() { super({ id: "alternate", transport: "codex-cli", runtime: "fake", providerFamily: "anthropic", authMode: "api-key", billingMode: "subscription", executionZone: "provider-host", capabilities: ["coding"] }); }
+      async execute() { alternateCalls += 1; return { structured: { outcome: "pass" }, usage: {}, provider: { providerId: this.id }, mutation: { started: false } }; }
+    }();
+    const registry = new AgentProviderRegistry({ configuration: { providers: {} } }).register(first).register(second);
+    const dispatcher = new AgentProviderDispatcher({ registry, environment: { AICP_PROVIDER_FALLBACK_ENABLED: "true" } });
+    await assert.rejects(dispatcher.execute(request(root), { fallback: ["policy", "alternate"] }), (error) => error.code === "POLICY_DENIED");
+    assert.equal(alternateCalls, 0);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
