@@ -8,14 +8,16 @@ const PHYSICAL_PROVIDER_CREDENTIAL = /^(?:OPENAI|ANTHROPIC|GEMINI|GOOGLE)_.*(?:K
 function workerName(runId) { return `aicp-run-${createHash("sha256").update(runId).digest("hex").slice(0, 20)}`; }
 
 export class DockerWorkerManager extends WorkerManager {
-  constructor({ docker, profiles, identityService, network = "none", secretResolver = async () => null, commandPolicy = null, credentials = null, opencodeConfigSource = process.env.AICP_OPENCODE_CONFIG_SOURCE ?? null }) {
+  constructor({ docker, profiles, identityService, network = "none", secretResolver = async () => null, commandPolicy = null, credentials = null, opencodeConfigSource = process.env.AICP_OPENCODE_CONFIG_SOURCE ?? null, maxActiveWorkers = Number(process.env.AICP_MAX_ACTIVE_WORKERS ?? 16) }) {
     super();
     if (!docker || !profiles || !identityService) throw new TypeError("docker control, profiles and identity service are required");
-    this.docker = docker; this.profiles = profiles; this.identityService = identityService; this.network = network; this.secretResolver = secretResolver; this.commandPolicy = commandPolicy; this.credentials = credentials; this.opencodeConfigSource = opencodeConfigSource; this.workers = new Map();
+    if (!Number.isInteger(maxActiveWorkers) || maxActiveWorkers < 1) throw new TypeError("maxActiveWorkers must be a positive integer");
+    this.docker = docker; this.profiles = profiles; this.identityService = identityService; this.network = network; this.secretResolver = secretResolver; this.commandPolicy = commandPolicy; this.credentials = credentials; this.opencodeConfigSource = opencodeConfigSource; this.maxActiveWorkers = maxActiveWorkers; this.workers = new Map();
   }
 
   async create(spec) {
     if (this.workers.has(spec.runId)) throw new Error(`WORKER_ALREADY_EXISTS:${spec.runId}`);
+    if (this.workers.size >= this.maxActiveWorkers) throw new Error("WORKER_CAPACITY_EXHAUSTED");
     this.identityService.verify(spec.identityToken, spec.runId);
     if (Object.keys(spec.environment).some((name) => PHYSICAL_PROVIDER_CREDENTIAL.test(name))) throw new Error("PROVIDER_CREDENTIAL_FORBIDDEN");
     const profile = this.profiles.get(spec.profile);

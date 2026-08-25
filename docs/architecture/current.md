@@ -39,9 +39,12 @@ Harness → Agent Provider Router
 ## Agent Provider Layer
 
 `harness/src/providers/` contém o contrato `AIProvider`/`AgentProvider`, registry,
-`AgentRoutingPolicy`, quota authority, adapters, parsers e Provider Host. A
-decisão é determinística e evidenciada com `decisionId`, `policyVersion`,
-candidates, rejection reasons, selected provider e provider family.
+`AgentLauncher`, adapters, parsers e Provider Host. O routing de runtimes é
+Harness-owned em `harness/src/routing/agent-routing-policy.mjs`; quota é
+composto pelo `BudgetAuthority`; tentativas de provider são evidência anexada
+ao `PostgresRunStore`. A decisão é determinística e evidenciada com
+`decisionId`, `policyVersion`, candidates, rejection reasons, selected provider
+e provider family.
 
 `AICP_AGENT_PROVIDER_LAYER_ENABLED=false` mantém o caminho legado. Subscription
 providers exigem opt-in, classe `LOCAL_PERSONAL`, feature flag individual e
@@ -50,9 +53,9 @@ providers exigem opt-in, classe `LOCAL_PERSONAL`, feature flag individual e
 
 ## Budget and quota authority
 
-Budget continua reservando antes da chamada e fazendo settlement depois. Quota é
-um ledger shadow AICP separado para concorrência, calls, tentativas físicas e
-wall time por provider/principal/task/run. Subscription usage mantém
+Budget continua reservando antes da chamada e fazendo settlement depois. O
+`BudgetAuthority` compõe o ledger shadow de quota para concorrência, calls,
+tentativas físicas e wall time por provider/principal/task/run. Subscription usage mantém
 `billingMode`, `monetaryCostKnown=false` e `providerReportedCostUsd` opcional;
 `costUsd=0` de migração não é apresentado como custo real zero.
 
@@ -75,6 +78,10 @@ irrestrito nunca entram em telemetry.
 `LOCAL_PERSONAL` pode habilitar adapters por flag. `TRUSTED_CI` mantém
 subscription providers desabilitados; API/WIF/LiteLLM é o caminho recomendado.
 `SHARED_PRODUCTION` proíbe subscription adapters.
+
+Neo4j é uma projeção opcional no profile Compose `graph`; PostgreSQL continua
+sendo a fonte canônica e o Memory Service usa uma projeção nula determinística
+quando `AICP_GRAPH_ENABLED=false`.
 
 O contrato de certificação está em `release/agent-provider-contract.json`.
 Credential isolation de uma sessão vendor precisa de prova OS/vendor específica;

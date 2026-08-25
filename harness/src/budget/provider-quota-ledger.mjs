@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { ProviderError, PROVIDER_ERROR_CODES } from "./provider-errors.mjs";
+import { ProviderError, PROVIDER_ERROR_CODES } from "../providers/provider-errors.mjs";
 
 function keyOf({ providerId, principalId = "local", taskId = "unknown", runId = "unknown" }) { return `${providerId}:${principalId}:${taskId}:${runId}`; }
 function limit(value, fallback) { return Number.isInteger(value) && value > 0 ? value : fallback; }

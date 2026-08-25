@@ -56,6 +56,7 @@ export function statusForWorkerManagerError(error) {
   if (error.name === "WorkerCapabilityError") return 422;
   if (error.message?.startsWith("COMMAND_NOT_ALLOWED")) return 422;
   if (error.message?.startsWith("WORKER_ALREADY_EXISTS")) return 409;
+  if (error.message?.startsWith("WORKER_CAPACITY_EXHAUSTED")) return 429;
   if (error.message?.startsWith("WORKER_NOT_FOUND")) return 404;
   if (error.message?.startsWith("WORKER_PROJECT_OUTSIDE_SERVER_ROOT")) return 400;
   if (error.message?.startsWith("WORKER_PROJECT_OUTSIDE_CLIENT_ROOT")) return 400;

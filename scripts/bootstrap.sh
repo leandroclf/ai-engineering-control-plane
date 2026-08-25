@@ -31,7 +31,10 @@ export LOCAL_UID="$(id -u)"
 export LOCAL_GID="$(id -g)"
 docker compose config --quiet
 docker compose build
-docker compose up -d --wait postgres redis neo4j otel-collector
+docker compose up -d --wait postgres redis otel-collector
+if [[ "${AICP_GRAPH_ENABLED:-false}" =~ ^(1|true|yes|on)$ ]]; then
+  docker compose --profile graph up -d --wait neo4j
+fi
 ./scripts/migrate.sh
 docker compose up -d --wait litellm memory-service
 ./scripts/provision-litellm-key.sh

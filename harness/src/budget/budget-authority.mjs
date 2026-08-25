@@ -1,8 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { DEFAULT_BUDGET_LIMITS, reservationUpperBound } from "./budget-policy.mjs";
+import { PostgresProviderQuotaAuthority, ProviderQuotaAuthority } from "./provider-quota-ledger.mjs";
 
 export class BudgetAuthority {
-  constructor({ store, limits = DEFAULT_BUDGET_LIMITS, reservation = {}, estimator = null }) { this.store = store; this.limits = limits; this.reservation = reservation; this.estimator = estimator; }
+  constructor({ store, limits = DEFAULT_BUDGET_LIMITS, reservation = {}, estimator = null, providerQuotaPolicies = {}, database = null }) {
+    this.store = store;
+    this.limits = limits;
+    this.reservation = reservation;
+    this.estimator = estimator;
+    this.providerQuotaAuthority = database
+      ? new PostgresProviderQuotaAuthority({ database, policies: providerQuotaPolicies })
+      : new ProviderQuotaAuthority({ policies: providerQuotaPolicies });
+  }
   ensure(taskId, overrides = {}) { return this.store.ensure(taskId, { ...this.limits, ...overrides }); }
   get(taskId) { return this.store.get(taskId); }
   events(taskId) { return this.store.events(taskId); }

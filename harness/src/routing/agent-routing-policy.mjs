@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { environmentClass } from "./provider-contract.mjs";
-import { ProviderError, PROVIDER_ERROR_CODES } from "./provider-errors.mjs";
+import { environmentClass } from "../providers/provider-contract.mjs";
+import { ProviderError, PROVIDER_ERROR_CODES } from "../providers/provider-errors.mjs";
 
 const ROLE_ALIASES = Object.freeze({ architect: "architect", implementer: "implementer", "security-reviewer": "security-reviewer", "code-reviewer": "code-reviewer", reviewer: "code-reviewer" });
 
@@ -9,8 +9,14 @@ function flag(environment, name, fallback = false) {
   return ["1", "true", "yes", "on"].includes(String(environment[name] ?? "").toLowerCase());
 }
 
-function digest(value) { return `apr_${createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 24)}`; }
+function digest(value) {
+  return `apr_${createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 24)}`;
+}
 
+/**
+ * Harness-owned routing for agent runtimes. Providers only expose capabilities
+ * and availability; they never decide workflow, policy or budget.
+ */
 export class AgentRoutingPolicy {
   constructor({ configuration, registry, quotaAuthority = null, environment = process.env } = {}) {
     if (!configuration?.roles || !registry) throw new TypeError("agent routing configuration and provider registry are required");
@@ -56,6 +62,7 @@ export class AgentRoutingPolicy {
       decisionId: digest({ policyVersion: this.configuration.policyVersion, role: normalizedRole, capability, mutation, executionMode, requestedProvider: preferred, candidates }),
       policyVersion: this.configuration.policyVersion,
       role: normalizedRole,
+      maxProviderAttempts: Math.max(1, Number(this.configuration.maxProviderAttempts ?? 2)),
       candidates,
       selected: selected?.providerId ?? null,
       selectedProviderFamily: selected?.providerFamily ?? null,

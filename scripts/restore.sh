@@ -48,7 +48,10 @@ mv opencode "$opencode_previous"
 mkdir opencode
 cp -a "$opencode_restore/." opencode/
 printf 'previous OpenCode configuration preserved at %s\n' "$opencode_previous"
-docker compose up -d --wait redis neo4j otel-collector litellm memory-service workspace harness control-gateway
+if [[ "${AICP_GRAPH_ENABLED:-false}" =~ ^(1|true|yes|on)$ ]]; then
+  docker compose --profile graph up -d --wait neo4j
+fi
+docker compose up -d --wait redis otel-collector litellm memory-service workspace harness control-gateway
 if test -n "$repository_path"; then
   ./scripts/index.sh "$repository_path" "$repository_id" --rebuild
 fi

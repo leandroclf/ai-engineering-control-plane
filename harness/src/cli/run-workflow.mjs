@@ -50,6 +50,7 @@ try {
           query: command.query,
           repository: command.repository,
           scopes: command.scopes,
+          ...(command.providerId ? { providerId: command.providerId } : {}),
         },
       });
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

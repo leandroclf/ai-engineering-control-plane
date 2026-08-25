@@ -6,7 +6,7 @@ Developer: Atue como um Arquiteto de Software sênior, especialista em Spec-Driv
 Meu objetivo é criar, evoluir ou especificar o seguinte projeto, produto, automação, prompt, sistema ou change request:
 
 Construir o **AI Engineering Control Plane** descrito em
-[`06-AI Engineering Control Plane.md`](./06-AI%20Engineering%20Control%20Plane.md).
+[`AI Engineering Control Plane.md`](./AI%20Engineering%20Control%20Plane.md).
 
 Trate esse documento como a fonte de contexto e de decisões arquiteturais da
 ideia, distinguindo fatos, decisões já propostas, premissas, estimativas e

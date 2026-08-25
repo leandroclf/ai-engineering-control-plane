@@ -7,7 +7,7 @@ Transforme a ideia abaixo em artefatos OpenSpec versionáveis, sem implementar c
 
 Ideia:
 Planejar integralmente o **AI Engineering Control Plane** descrito em
-[`06-AI Engineering Control Plane.md`](./06-AI%20Engineering%20Control%20Plane.md),
+[`AI Engineering Control Plane.md`](./AI%20Engineering%20Control%20Plane.md),
 até que este repositório possa entregar uma aplicação completa com bootstrap,
 diagnóstico, smoke test, operação segura e evolução local/multi-host. Trate o
 arquivo como fonte de contexto e decisões propostas, preserve pontos em aberto

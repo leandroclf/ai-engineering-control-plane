@@ -1,5 +1,5 @@
 import { AgentProvider } from "../provider-contract.mjs";
-import { normalizeProviderUsage } from "../provider-usage.mjs";
+import { normalizeProviderUsage } from "../../telemetry/provider-usage.mjs";
 import { healthStatus } from "../provider-health.mjs";
 
 export class OpenCodeAgentProvider extends AgentProvider {

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ProviderQuotaAuthority } from "../../../harness/src/providers/provider-quota-authority.mjs";
+import { ProviderQuotaAuthority } from "../../../harness/src/budget/provider-quota-ledger.mjs";
 
 test("shadow quota allows at most one concurrent subscription execution", async () => {
   const authority = new ProviderQuotaAuthority({ policies: { codex: { maxConcurrent: 1, maxCallsPerRun: 1, maxPhysicalAttempts: 1 } } });

@@ -41,6 +41,7 @@ services:
     networks: [data]
 
   neo4j:
+    profiles: [graph]
     image: ${NEO4J_IMAGE:-neo4j:2026.07.1@sha256:0ddfa71c8f0bfe0d780d74fb66b985de4767bbd274bab70c0806cb3a6deec101}
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/aicp/entrypoint.sh"]
@@ -106,6 +107,7 @@ services:
     networks: [agent-internal, provider-egress, data]
 
   pgadmin:
+    profiles: [admin]
     image: ${PGADMIN_IMAGE:-dpage/pgadmin4:9.17@sha256:2f4ce946ddf8360680d7eff4eaba1d91859eb6b4003e6623bad5c63a322c2f4d}
     restart: unless-stopped
     environment:
@@ -124,6 +126,7 @@ services:
     networks: [data]
 
   redisinsight:
+    profiles: [admin]
     image: ${REDISINSIGHT_IMAGE:-redis/redisinsight@sha256:b5e19ee240abef6edb435871b90ff8a210995422e8e018ab61c0339d318a1f84}
     restart: unless-stopped
     entrypoint: ["/bin/sh", "/aicp/entrypoint.sh"]
@@ -160,6 +163,7 @@ services:
       EMBEDDING_ALIAS: embeddings
       EMBEDDING_DIMENSIONS: 1536
       CONTEXT_TOKEN_MODEL: coding-fast
+      AICP_GRAPH_ENABLED: ${AICP_GRAPH_ENABLED:-false}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       NEO4J_HTTP_URL: http://neo4j:7474
       NEO4J_AUTH_FILE: /run/secrets/neo4j_auth
@@ -169,7 +173,6 @@ services:
       - ./docker/memory-service/entrypoint.sh:/aicp/entrypoint.sh:ro
     depends_on:
       postgres: { condition: service_healthy }
-      neo4j: { condition: service_healthy }
       litellm: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
@@ -350,6 +353,7 @@ services:
       MEMORY_SERVICE_URL: http://memory-service:8080
       WORKER_PROFILES_PATH: /aicp/harness/config/worker-profiles.json
       WORKER_COMMAND_POLICY_PATH: /aicp/harness/config/worker-command-policy.json
+      AICP_MAX_ACTIVE_WORKERS: ${AICP_MAX_ACTIVE_WORKERS:-16}
       WORKER_MANAGER_TOKEN_FILE: /run/secrets/worker_manager_token
       WORKER_IDENTITY_SIGNING_SECRET_FILE: /run/secrets/worker_identity_signing_secret
     secrets: [worker_manager_token, worker_identity_signing_secret, litellm_api_key, memory_service_token]

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "name": "ui-ux-assessment",
+  "initial": "inventory",
+  "terminal": ["ready-for-human-review", "human-review", "failed"],
+  "states": {
+    "inventory": {
+      "agent": "architect",
+      "output": "ui-ux-assessment",
+      "context": { "budget": 12000, "scopeTypes": ["REPOSITORY", "PROJECT", "SOLUTION", "ORGANIZATION", "GLOBAL"] },
+      "next": { "completed": "assessment", "blocked": "human-review", "failed": "failed" }
+    },
+    "assessment": {
+      "agent": "architect",
+      "output": "ui-ux-assessment",
+      "context": { "budget": 20000, "scopeTypes": ["REPOSITORY", "PROJECT", "SOLUTION", "ORGANIZATION", "GLOBAL"] },
+      "next": { "completed": "ready-for-human-review", "blocked": "human-review", "failed": "failed" }
+    },
+    "ready-for-human-review": {},
+    "human-review": {},
+    "failed": {}
+  }
+}

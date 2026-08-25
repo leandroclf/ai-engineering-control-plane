@@ -1,3 +1,5 @@
+import { providerExecutionRecord, providerExecutionsByRun } from "./provider-execution-evidence-store.mjs";
+
 function mapRun(row) {
   const metadata = row.task_metadata ?? row.metadata ?? {};
   return {
@@ -136,6 +138,10 @@ export class PostgresRunStore {
     );
     return result.rows;
   }
+
+  // Provider attempts are evidence attached to a run, not a second run state.
+  record(input) { return providerExecutionRecord(this.database, input); }
+  async listByRun(runId) { return (await providerExecutionsByRun(this.database, runId)).rows; }
 
   async getContext(contextId) {
     const result = await this.#query(
