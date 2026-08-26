@@ -18,7 +18,7 @@ test("AUTH and EXECUTION contracts are explicitly separated", () => {
 
 test("runtime compliance passes only with immutable, non-root, isolated behavior", async () => {
   const contract = createRuntimeContract({ provider: "opencode" });
-  const report = await runRuntimeCompliance({ inspect: inspected(), contract, exec: async (command) => ({ exitCode: command[2].includes("touch") ? 1 : 0 }), manifest: { digest: "sha256:" + "a".repeat(64) } });
+  const report = await runRuntimeCompliance({ inspect: inspected(), contract, exec: async (command) => ({ exitCode: command[0] === "touch" ? 1 : 0 }), manifest: { digest: "sha256:" + "a".repeat(64) } });
   assert.equal(report.status, "PASS");
   assert.ok(report.checks.every((item) => item.status === "PASS"));
 });

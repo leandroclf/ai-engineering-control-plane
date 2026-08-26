@@ -30,11 +30,11 @@ export async function runRuntimeCompliance({ inspect, exec = null, contract, man
     checks.push(check("mcp-auto-discovery-forbidden", env.AICP_MCP_AUTO_DISCOVERY === "forbidden" || env.AICP_EXTENSION_POLICY === "STRICT"));
   }
   if (runBehavioral && exec) {
-    const rootWrite = await exec(["sh", "-c", "touch /aicp-rootfs-write-test"]);
+    const rootWrite = await exec(["touch", "/aicp-rootfs-write-test"]);
     checks.push(check("rootfs-write-denied", rootWrite.exitCode !== 0, `exitCode=${rootWrite.exitCode}`));
-    const workspaceWrite = await exec(["sh", "-c", "test -w /workspace/project"]);
+    const workspaceWrite = await exec(["test", "-w", "/workspace/project"]);
     checks.push(check("workspace-write-allowed", workspaceWrite.exitCode === 0, `exitCode=${workspaceWrite.exitCode}`));
-    const socketProbe = await exec(["sh", "-c", "test ! -S /var/run/docker.sock"]);
+    const socketProbe = await exec(["test", "!", "-S", "/var/run/docker.sock"]);
     checks.push(check("socket-behavior-denied", socketProbe.exitCode === 0, `exitCode=${socketProbe.exitCode}`));
   }
   const failed = checks.filter((item) => item.status === "FAIL");

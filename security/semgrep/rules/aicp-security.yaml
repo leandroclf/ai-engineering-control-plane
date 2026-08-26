@@ -5,9 +5,14 @@ rules:
     languages: [javascript, typescript]
     patterns:
       - pattern-either:
-          - pattern: exec($INPUT)
-          - pattern: execSync($INPUT)
-      - pattern-not: exec("...")
+          - pattern: exec(["sh", "-c", $COMMAND])
+          - pattern: exec(["bash", "-c", $COMMAND])
+          - pattern: exec(["/bin/sh", "-c", $COMMAND])
+          - pattern: exec(["/bin/bash", "-c", $COMMAND])
+          - pattern: execSync(["sh", "-c", $COMMAND])
+          - pattern: execSync(["bash", "-c", $COMMAND])
+          - pattern: execSync(["/bin/sh", "-c", $COMMAND])
+          - pattern: execSync(["/bin/bash", "-c", $COMMAND])
       - pattern-not: execSync("...")
     metadata:
       category: security

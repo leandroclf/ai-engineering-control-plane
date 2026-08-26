@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
 import { WorkerManager } from "../runtime/ephemeral-worker-contract.mjs";
 import { WorkerCommandPolicy } from "./worker-command-policy.mjs";
@@ -38,11 +39,15 @@ export class DockerWorkerManager extends WorkerManager {
       ...(this.opencodeConfigSource ? { OPENCODE_CONFIG_DIR: "/opt/aicp/opencode" } : {}),
       ...(this.runtimeContract ? { HOME: this.runtimeContract.home.path, AICP_EXTENSION_POLICY: this.runtimeContract.extensions.policy, AICP_NATIVE_SKILLS: this.runtimeContract.extensions.nativeSkills, AICP_PLUGINS: this.runtimeContract.extensions.plugins, AICP_MCP_AUTO_DISCOVERY: this.runtimeContract.extensions.mcpAutoDiscovery } : {}),
     };
-    const workerMounts = [{ source: resolve(spec.projectDirectory), target: "/workspace/project", readOnly: false }];
+    const projectDirectory = resolve(spec.projectDirectory);
+    const workspaceOwner = this.runtimeContract ? await stat(projectDirectory) : null;
+    if (workspaceOwner && (!Number.isInteger(workspaceOwner.uid) || workspaceOwner.uid <= 0 || !Number.isInteger(workspaceOwner.gid) || workspaceOwner.gid < 0)) throw new Error("WORKSPACE_OWNER_INVALID");
+    const runtimeUser = workspaceOwner ? `${workspaceOwner.uid}:${workspaceOwner.gid}` : null;
+    const workerMounts = [{ source: projectDirectory, target: "/workspace/project", readOnly: false }];
     if (this.opencodeConfigSource) workerMounts.push({ source: resolve(this.opencodeConfigSource), target: "/opt/aicp/opencode", readOnly: true });
     const tmpfs = ["/tmp:rw,noexec,nosuid,size=512m", "/home/worker/.cache:rw,nosuid,size=512m", "/home/worker/.config:rw,nosuid,size=32m", "/home/worker/.local:rw,nosuid,size=128m", "/home/node/.cache:rw,nosuid,size=512m", "/home/node/.config:rw,nosuid,size=32m", "/home/node/.local:rw,nosuid,size=128m", "/home/node/.semgrep:rw,nosuid,size=32m"];
-    if (this.runtimeContract) tmpfs.push(`${this.runtimeContract.home.path}:rw,nosuid,nodev,size=128m,uid=10001,gid=10001,mode=700`);
-    const containerId = await this.docker.create({ name: workerName(spec.runId), runId: spec.runId, image: profile.image, network: this.network, environment, mounts: workerMounts, tmpfs });
+    if (workspaceOwner) tmpfs.push(`${this.runtimeContract.home.path}:rw,nosuid,nodev,size=128m,uid=${workspaceOwner.uid},gid=${workspaceOwner.gid},mode=700`);
+    const containerId = await this.docker.create({ name: workerName(spec.runId), runId: spec.runId, image: profile.image, network: this.network, user: runtimeUser, environment, mounts: workerMounts, tmpfs });
     try {
       const inspected = await this.docker.inspect(containerId);
       const mounts = inspected.Mounts ?? [];

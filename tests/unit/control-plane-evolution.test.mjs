@@ -16,6 +16,7 @@ import { createHash } from "node:crypto";
 import { WorkerProfileRegistry } from "../../harness/src/workers/worker-profile-registry.mjs";
 import { WorkloadIdentityService } from "../../harness/src/workers/workload-identity-service.mjs";
 import { DockerWorkerManager } from "../../harness/src/workers/docker-worker-manager.mjs";
+import { createRuntimeContract } from "../../harness/src/runtime/runtime-contract.mjs";
 
 test("invocation estimator reserves prompt schema output margin and worst eligible deployment", async () => {
   const estimator = new InvocationEstimator({ tokenizer: { count: async (value) => String(value).length }, fixedOverheadTokens: 10, safetyMargin: 1.2,
@@ -155,4 +156,25 @@ test("worker manager refuses capacity exhaustion before creating another contain
   await assert.rejects(manager.create(spec("run-b", secondToken)), /WORKER_CAPACITY_EXHAUSTED/);
   assert.equal(creates, 1);
   await manager.destroy("run-a");
+});
+
+test("runtime worker uses the workspace owner for bind-mount write access", async () => {
+  const projectDirectory = await mkdtemp(join(tmpdir(), "aicp-runtime-owner-"));
+  const uid = process.getuid?.() ?? 1001;
+  const gid = process.getgid?.() ?? 1001;
+  const identities = new WorkloadIdentityService({ secret: "x".repeat(32) });
+  const identityToken = identities.issue("run-owner");
+  const inspect = {
+    Config: { User: `${uid}:${gid}`, Env: ["HOME=/run/aicp-home", "AICP_EXTENSION_POLICY=STRICT", "AICP_NATIVE_SKILLS=forbidden", "AICP_PLUGINS=forbidden", "AICP_MCP_AUTO_DISCOVERY=forbidden"], Labels: { "aicp.run_id": "run-owner" } },
+    HostConfig: { ReadonlyRootfs: true, Tmpfs: { "/run/aicp-home": `rw,uid=${uid},gid=${gid}` }, CapDrop: ["ALL"], SecurityOpt: ["no-new-privileges"] },
+    Mounts: [{ Destination: "/workspace/project", RW: true }], Image: `sha256:${"a".repeat(64)}`,
+  };
+  let created;
+  const docker = { create: async (options) => { created = options; return "worker-owner"; }, inspect: async () => inspect, exec: async (_id, command) => ({ exitCode: command[0] === "touch" ? 1 : 0, stdout: "v1" }), remove: async () => undefined };
+  const profiles = new WorkerProfileRegistry({ schemaVersion: 1, profiles: { node: { projectKinds: ["node"], image: "node", dockerfile: "Dockerfile", probes: [["node", "--version"]] } } });
+  const manager = new DockerWorkerManager({ docker, profiles, identityService: identities, runtimeContract: createRuntimeContract({ provider: "opencode" }), secretResolver: async () => "scoped" });
+  const identity = new WorkloadIdentity({ runId: "run-owner", litellmKeyRef: "llm/owner", memoryTokenRef: "memory/owner", expiresAt: new Date(Date.now() + 60_000) });
+  await manager.create(new EphemeralWorkerSpec({ runId: "run-owner", projectDirectory, profile: "node", environment: {}, identity, identityToken }));
+  assert.equal(created.user, `${uid}:${gid}`);
+  assert.match(created.tmpfs.at(-1), new RegExp(`uid=${uid},gid=${gid}`));
 });

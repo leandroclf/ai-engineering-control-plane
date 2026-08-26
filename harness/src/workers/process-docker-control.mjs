@@ -19,6 +19,7 @@ export class ProcessDockerControl {
   }
   async create(options) {
     const args = ["create", "--name", options.name, "--label", `aicp.run_id=${options.runId}`, "--read-only", "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--pids-limit", "512", "--memory", "4g", "--cpus", "4", "--network", options.network];
+    if (options.user) args.push("--user", String(options.user));
     for (const mount of options.mounts) args.push("--mount", `type=bind,src=${mount.source},dst=${mount.target}${mount.readOnly ? ",readonly" : ""}`);
     for (const tmpfs of options.tmpfs) args.push("--tmpfs", tmpfs);
     for (const [name, value] of Object.entries(options.environment)) args.push("--env", `${name}=${value}`);
