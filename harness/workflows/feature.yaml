@@ -4,9 +4,9 @@
   "initial": "discover",
   "terminal": ["ready-for-human-review", "failed", "human-review"],
   "states": {
-    "discover": { "agent": "architect", "context": { "budget": 12000, "scopeTypes": ["REPOSITORY", "PROJECT", "SOLUTION", "ORGANIZATION", "GLOBAL"] }, "next": { "success": "plan", "failed": "failed" } },
-    "plan": { "agent": "architect", "context": { "budget": 12000, "scopeTypes": ["REPOSITORY", "PROJECT", "SOLUTION", "ORGANIZATION", "GLOBAL"] }, "next": { "approved": "implement", "blocked": "human-review" } },
-    "implement": { "agent": "implementer", "context": { "budget": 16000, "scopeTypes": ["REPOSITORY", "PROJECT", "SOLUTION"] }, "next": { "changed": "fast-verify", "blocked": "human-review" } },
+    "discover": { "agent": "planner", "context": { "budget": 12000, "progressiveDisclosure": true, "scopeTypes": ["REPOSITORY", "PROJECT", "SOLUTION", "ORGANIZATION", "GLOBAL"] }, "next": { "success": "plan", "failed": "failed" } },
+    "plan": { "agent": "architect", "context": { "budget": 12000, "progressiveDisclosure": true, "scopeTypes": ["REPOSITORY", "PROJECT", "SOLUTION", "ORGANIZATION", "GLOBAL"] }, "next": { "approved": "implement", "blocked": "human-review" } },
+    "implement": { "agent": "implementer", "context": { "budget": 16000, "progressiveDisclosure": true, "scopeTypes": ["REPOSITORY", "PROJECT", "SOLUTION"] }, "next": { "changed": "fast-verify", "blocked": "human-review" } },
     "fast-verify": { "gates": ["build", "lint", "changed-tests", "secret-diff", "sast-diff"], "next": { "pass": "full-verify", "fail": "targeted-repair", "error": "human-review" } },
     "targeted-repair": { "maxIterations": 2, "next": { "progress": "fast-verify", "exhausted": "human-review" } },
     "full-verify": { "gates": ["unit-tests", "integration-tests", "coverage", "semgrep", "trivy", "gitleaks"], "next": { "pass": "security-review", "fail": "targeted-repair", "error": "human-review" } },

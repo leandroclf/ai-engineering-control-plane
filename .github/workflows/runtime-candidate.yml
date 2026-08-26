@@ -1,0 +1,54 @@
+name: runtime-candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: Provider runtime to validate
+        required: true
+        type: choice
+        options: [codex, claude, opencode]
+      cli_package:
+        description: Exact provider CLI package (required except opencode)
+        required: false
+        type: string
+      cli_version:
+        description: Exact provider CLI version; floating versions are forbidden
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Build candidate image
+        run: bash scripts/runtime/build-candidate.sh "${{ inputs.provider }}" "${{ inputs.cli_package }}" "${{ inputs.cli_version }}"
+      - name: Start isolated candidate
+        id: container
+        shell: bash
+        run: |
+          image="$(cat .aicp/evidence/runtime/${{ inputs.provider }}/image.txt)"
+          workspace="$RUNNER_TEMP/aicp-runtime-project"
+          mkdir -p "$workspace"
+          id="$(docker run --detach --read-only --cap-drop ALL --security-opt no-new-privileges --network none --mount "type=bind,src=$workspace,dst=/workspace/project" --tmpfs /run/aicp-home:rw,nosuid,nodev,size=128m,uid=10001,gid=10001,mode=700 --tmpfs /tmp:rw,noexec,nosuid,size=128m "$image")"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+      - run: bash scripts/runtime/compliance.sh "${{ inputs.provider }}" "${{ steps.container.outputs.id }}"
+      - run: bash scripts/runtime/contract-tests.sh "${{ inputs.provider }}"
+      - run: bash scripts/runtime/adversarial.sh "${{ inputs.provider }}"
+      - run: bash scripts/runtime/evidence.sh "${{ inputs.provider }}"
+      - if: always()
+        run: docker rm --force "${{ steps.container.outputs.id }}" || true
+      - if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: aicp-runtime-evidence-${{ inputs.provider }}
+          path: .aicp/evidence/runtime/${{ inputs.provider }}
+          if-no-files-found: error

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "provider": "claude",
+  "status": "VALIDATED",
+  "cliVersion": "2.1.241",
+  "image": "aicp-runtime-claude:candidate-2.1.241",
+  "digest": "sha256:30730327055d7eb06f816f73b1d7f64b667e340083d400f809a8993be9b54a78",
+  "validatedAt": "2026-08-26T13:57:44.262Z",
+  "contractsVersion": "1",
+  "evalSuite": "runtime-eval-v1",
+  "authModeValidated": true,
+  "executionModeValidated": true,
+  "rollbackDigest": null,
+  "limitation": null
+}
