@@ -11,6 +11,7 @@ import { WorkloadIdentityService } from "./workload-identity-service.mjs";
 import { WorkerCommandPolicy } from "./worker-command-policy.mjs";
 import { CredentialBroker } from "../credentials/credential-broker.mjs";
 import { RunWorktreeManager } from "./run-worktree-manager.mjs";
+import { createRuntimeContract } from "../runtime/runtime-contract.mjs";
 
 const required = (name) => process.env[name] || (() => { throw new TypeError(`${name} is required`); })();
 const apiToken = required("WORKER_MANAGER_TOKEN");
@@ -28,6 +29,7 @@ const manager = new DockerWorkerManager({
   docker: new ProcessDockerControl(), profiles, identityService: identities, commandPolicy, network: process.env.WORKER_NETWORK ?? "none",
   secretResolver: async (reference) => credentials.resolve(reference),
   credentials,
+  runtimeContract: createRuntimeContract({ provider: process.env.AICP_RUNTIME_PROVIDER ?? "opencode", extensionPolicy: process.env.AICP_EXTENSION_POLICY ?? "STRICT", network: process.env.WORKER_NETWORK ?? "none" }),
 });
 await manager.reconcile();
 await worktrees.reconcile();

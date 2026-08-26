@@ -27,6 +27,7 @@ import { createWorkflowHandlers } from "./workflow-handlers.mjs";
 import { CapabilityRouter } from "../capabilities/provider.mjs";
 import { HttpBrowserCapabilityProvider } from "../capabilities/http-browser-provider.mjs";
 import { SkillRegistry } from "../skills/registry.mjs";
+import { SkillManifestRegistry } from "../skills/manifest-resolver.mjs";
 import { AgentMetrics } from "../telemetry/agent-metrics.mjs";
 import { AgentHarnessMemoryClient } from "../memory/agent-harness-memory-client.mjs";
 import { createAgentProviderRuntime } from "../providers/agent-runtime.mjs";
@@ -48,6 +49,7 @@ export async function createProductionRuntime({ environment = process.env } = {}
   const routingConfiguration = JSON.parse(await readFile(environment.HARNESS_MODEL_ROUTING_PATH ?? "harness/config/model-routing.json", "utf8"));
   const agentProviderConfiguration = JSON.parse(await readFile(environment.HARNESS_AGENT_PROVIDERS_PATH ?? "harness/config/agent-providers.json", "utf8"));
   const scannerBundle = JSON.parse(await readFile(environment.HARNESS_SCANNER_BUNDLE_PATH ?? "security/scanner-bundle.json", "utf8"));
+  const skillManifestRegistry = new SkillManifestRegistry(JSON.parse(await readFile(environment.HARNESS_SKILL_MANIFESTS_PATH ?? "harness/config/skill-manifests.json", "utf8")));
   const workerProfiles = new WorkerProfileRegistry(JSON.parse(await readFile(environment.WORKER_PROFILES_PATH ?? "harness/config/worker-profiles.json", "utf8")));
   const ephemeral = environment.AICP_EXECUTION_MODE === "ephemeral";
   if (environment.AICP_RELEASE_MODE === "production" && !ephemeral) throw new Error("PRODUCTION_REQUIRES_EPHEMERAL_EXECUTION");
@@ -170,7 +172,7 @@ export async function createProductionRuntime({ environment = process.env } = {}
       executionPlane,
     });
     return {
-      runtime, capabilityRouter, skillRegistry, metrics, providerLayer,
+      runtime, capabilityRouter, skillRegistry, skillManifestRegistry, metrics, providerLayer,
       async close() {
         opencode?.server.close();
         await database.end();

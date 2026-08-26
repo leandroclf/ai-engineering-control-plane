@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "provider": "codex",
+  "status": "VALIDATED",
+  "cliVersion": "0.148.0",
+  "image": "aicp-runtime-codex:candidate-0.148.0",
+  "digest": "sha256:706d97e8064da4bb3d198b577b0229dd6ffdfc276f95a5fd1298082d337e969f",
+  "validatedAt": "2026-08-26T13:57:44.183Z",
+  "contractsVersion": "1",
+  "evalSuite": "runtime-eval-v1",
+  "authModeValidated": true,
+  "executionModeValidated": true,
+  "rollbackDigest": null,
+  "limitation": null
+}

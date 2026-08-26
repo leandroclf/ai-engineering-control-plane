@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "provider": "opencode",
+  "status": "VALIDATED",
+  "cliVersion": "1.18.21",
+  "image": "aicp-runtime-opencode:candidate-1.18.21",
+  "digest": "sha256:8b1637a14aef18124b7a72c7ddf6a19acbf567420b591838d9ac42f4272860ce",
+  "validatedAt": "2026-08-26T13:57:44.339Z",
+  "contractsVersion": "1",
+  "evalSuite": "runtime-eval-v1",
+  "authModeValidated": true,
+  "executionModeValidated": true,
+  "rollbackDigest": null,
+  "limitation": null
+}

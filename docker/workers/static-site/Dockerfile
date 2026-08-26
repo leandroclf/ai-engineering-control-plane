@@ -9,15 +9,16 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates git python3 python3-pip \
     && rm -rf /var/lib/apt/lists/* \
     && npm install --global "opencode-ai@${OPENCODE_VERSION}" \
-    && pip3 install --break-system-packages --no-cache-dir semgrep==1.174.0
+    && pip3 install --break-system-packages --no-cache-dir semgrep==1.174.0 \
+    && useradd --create-home --uid 10001 --shell /bin/bash worker
 
 COPY --from=gitleaks /usr/bin/gitleaks /usr/local/bin/gitleaks
 COPY --from=trivy /usr/local/bin/trivy /usr/local/bin/trivy
 COPY opencode /opt/aicp/opencode-base
 
-ENV OPENCODE_CONFIG_DIR=/home/node/.config/opencode
+ENV OPENCODE_CONFIG_DIR=/home/worker/.config/opencode
 ENV SEMGREP_SEND_METRICS=off
 ENV SEMGREP_ENABLE_VERSION_CHECK=0
-USER node
+USER worker
 WORKDIR /workspace/project
-ENTRYPOINT ["sh", "-ec", "mkdir -p /home/node/.config/opencode && cp -a /opt/aicp/opencode-base/. /home/node/.config/opencode/ && exec sleep infinity"]
+ENTRYPOINT ["sh", "-ec", "if [ \"${AICP_EXTENSION_POLICY:-NATIVE}\" != STRICT ]; then mkdir -p /home/worker/.config/opencode && cp -a /opt/aicp/opencode-base/. /home/worker/.config/opencode/; fi; exec sleep infinity"]

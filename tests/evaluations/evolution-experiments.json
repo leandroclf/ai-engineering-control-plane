@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "baselineCommit": "47ea973c4fffcfba86fd145e2b70b141f2a04396",
+  "status": "design-ready",
+  "experiments": [
+    { "id": "A", "name": "CLI direto vs AICP", "arms": ["cli-direct", "aicp-current", "aicp-progressive"], "metrics": ["first_pass_success", "time_to_green_ms", "input_tokens", "output_tokens", "useful_context_ratio", "repair_loops", "requirement_coverage", "runtime_overhead_ms"] },
+    { "id": "B", "name": "Architect condicional", "arms": ["architect-always", "architect-structural-only"], "metrics": ["first_pass_success", "time_to_green_ms", "input_tokens", "architecture_regressions"] },
+    { "id": "C", "name": "Skill loading", "arms": ["full", "summary", "progressive", "none"], "metrics": ["first_pass_success", "input_tokens", "skill_hit_precision", "context_expansion_count"] },
+    { "id": "D", "name": "Cross-model review", "arms": ["same-model", "cross-model"], "metrics": ["blocking_findings", "regression_findings", "review_tokens"] },
+    { "id": "E", "name": "Control Plane vs CLI direto", "arms": ["cli-direct", "aicp"], "metrics": ["first_pass_success", "time_to_green_ms", "input_tokens", "runtime_overhead_ms", "adversarial_pass_rate"] }
+  ],
+  "observations": [],
+  "limitation": "Live provider lifecycle evidence is available for the three candidate images; P1.1 still requires a paired workload run and this file intentionally contains no invented performance measurements."
+}

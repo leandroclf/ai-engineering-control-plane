@@ -42,6 +42,9 @@
     "generate:model-catalog": "node scripts/generate-model-catalog.mjs",
     "validate:model-catalog": "node scripts/generate-model-catalog.mjs --check",
     "validate:project": "node harness/src/cli/validate-project.mjs",
+    "validate:runtime-manifests": "node scripts/validate-runtime-manifests.mjs",
+    "test:runtime-contract": "node --test tests/runtime/*.test.mjs",
+    "evaluate:evolution": "node observability/evaluation/run-evolution-evals.mjs",
     "build:console": "npm --workspace @aicp/console run build",
     "dev:console": "npm --workspace @aicp/console run dev",
     "generate:api": "npm --workspace @aicp/api-client run generate",
@@ -56,7 +59,7 @@
     "presentations:pptx": "node scripts/build-presentations.mjs --format pptx",
     "test:ui": "npm --workspace @aicp/console run test && node --experimental-strip-types --test packages/ui/tests/*.test.ts packages/tutorial-engine/tests/*.test.ts packages/architecture-catalog/tests/*.test.ts",
     "screenshots:docs": "npm --workspace @aicp/console run screenshots",
-    "validate": "npm test && npm run test:python && npm run test:providers && npm run test:providers:integration && npm run test:providers:adversarial && npm run validate:suppressions && npm run test:security && npm run test:acceptance"
+    "validate": "npm test && npm run test:runtime-contract && npm run validate:runtime-manifests && npm run test:python && npm run test:providers && npm run test:providers:integration && npm run test:providers:adversarial && npm run validate:suppressions && npm run test:security && npm run test:acceptance"
   },
   "engines": {
     "node": ">=18"
