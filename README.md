@@ -1,5 +1,9 @@
 # AI Engineering Control Plane
 
+> **Known repository gate:** the current PR validation reports an open high-severity dependency finding (CVE-2026-93749 in `source-map-js`). The portfolio-status change must not bypass that security gate; remediation is separate from the convergence decision.
+
+> **Portfolio status (2026-10-06): architecture laboratory / reference.** New control-plane infrastructure is intentionally frozen until real or explicitly synthetic workload analysis demonstrates a requirement that cannot be met more simply by the canonical `ai-engineering-team` runtime. Existing code and evidence remain available for reuse; this status does not claim deprecation or production readiness.
+
 Governed, reproducible engineering environment for bounded AI-assisted work.
 
 ## AICP Console
