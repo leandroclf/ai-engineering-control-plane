@@ -1,5 +1,7 @@
 # AI Engineering Control Plane
 
+> **Portfolio status (2026-10-06): architecture laboratory / reference.** New control-plane infrastructure is intentionally frozen until measured end-to-end workloads demonstrate a requirement that cannot be met more simply by the canonical `ai-engineering-team` runtime. Existing code and evidence remain available for reuse; this status does not claim deprecation or production readiness.
+
 Governed, reproducible engineering environment for bounded AI-assisted work.
 
 ## AICP Console
