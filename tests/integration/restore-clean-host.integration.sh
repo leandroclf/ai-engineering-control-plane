@@ -15,7 +15,8 @@ done
 for container in "$source_container" "$target_container"; do
   ready=false
   for _ in $(seq 1 60); do
-    if docker exec "$container" psql -v ON_ERROR_STOP=1 -U aicp -d postgres -c 'SELECT 1' >/dev/null 2>&1; then
+    # O servidor temporário do initdb só aceita socket; aguarde o servidor TCP definitivo.
+    if docker exec "$container" pg_isready -h 127.0.0.1 -U aicp -d postgres >/dev/null 2>&1; then
       ready=true
       break
     fi
