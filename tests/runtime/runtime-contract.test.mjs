@@ -27,3 +27,10 @@ test("runtime compliance fails closed for host credential mounts and writable ro
   const contract = createRuntimeContract({ provider: "claude" });
   await assert.rejects(runRuntimeCompliance({ inspect: inspected({ readOnly: false, mounts: [{ Destination: "/root/.ssh", Source: "/home/user/.ssh", RW: true }] }), contract, exec: async () => ({ exitCode: 0 }) }), /RUNTIME_COMPLIANCE_FAILED/);
 });
+
+test("runtime compliance rejects root regardless of the group spelling", async () => {
+  const contract = createRuntimeContract({ provider: "opencode" });
+  for (const user of ["root:root", "root:1000", "0:1000", "00:00"]) {
+    await assert.rejects(runRuntimeCompliance({ inspect: inspected({ user }), contract, runBehavioral: false }), /non-root/, user);
+  }
+});

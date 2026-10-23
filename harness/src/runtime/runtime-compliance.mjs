@@ -4,6 +4,11 @@ import { assertRuntimeContract } from "./runtime-contract.mjs";
 function check(id, passed, detail = null, status = passed ? "PASS" : "FAIL") { return { id, status, detail }; }
 function envMap(inspect) { return Object.fromEntries((inspect.Config?.Env ?? []).map((item) => { const index = item.indexOf("="); return [index < 0 ? item : item.slice(0, index), index < 0 ? "" : item.slice(index + 1)]; })); }
 
+export function isNonRootUser(value) {
+  const user = String(value ?? "").split(":")[0];
+  return Boolean(user && user !== "root" && Number(user) !== 0);
+}
+
 export async function runRuntimeCompliance({ inspect, exec = null, contract, manifest = null, runBehavioral = true } = {}) {
   assertRuntimeContract(contract);
   if (!inspect || typeof inspect !== "object") throw new TypeError("container inspection is required");
@@ -11,7 +16,7 @@ export async function runRuntimeCompliance({ inspect, exec = null, contract, man
   const mounts = inspect.Mounts ?? [];
   const tmpfs = inspect.HostConfig?.Tmpfs ?? {};
   const checks = [
-    check("non-root", Boolean(inspect.Config?.User && !["0", "0:0", "root"].includes(String(inspect.Config.User)))),
+    check("non-root", isNonRootUser(inspect.Config?.User)),
     check("root-filesystem-read-only", inspect.HostConfig?.ReadonlyRootfs === true),
     check("home-ephemeral", env.HOME === contract.home.path && Boolean(tmpfs[contract.home.path])),
     check("workspace-only-rw", mounts.some((mount) => mount.Destination === contract.filesystem.workspace && mount.RW === true) && !mounts.some((mount) => mount.Destination === "/root" || mount.Destination === "/home")),

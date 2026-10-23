@@ -5,7 +5,7 @@ import { WorkerManager } from "../runtime/ephemeral-worker-contract.mjs";
 import { WorkerCommandPolicy } from "./worker-command-policy.mjs";
 import { WorkerAgentController } from "./worker-agent-controller.mjs";
 import { assertRuntimeContract } from "../runtime/runtime-contract.mjs";
-import { runRuntimeCompliance } from "../runtime/runtime-compliance.mjs";
+import { isNonRootUser, runRuntimeCompliance } from "../runtime/runtime-compliance.mjs";
 
 const PHYSICAL_PROVIDER_CREDENTIAL = /^(?:OPENAI|ANTHROPIC|GEMINI|GOOGLE)_.*(?:KEY|TOKEN|SECRET)$/i;
 function workerName(runId) { return `aicp-run-${createHash("sha256").update(runId).digest("hex").slice(0, 20)}`; }
@@ -54,7 +54,7 @@ export class DockerWorkerManager extends WorkerManager {
       const envNames = (inspected.Config?.Env ?? []).map((value) => value.split("=", 1)[0]);
       const compliance = this.runtimeContract ? await runRuntimeCompliance({ inspect: inspected, exec: (command) => this.docker.exec(containerId, command), contract: this.runtimeContract, manifest: this.runtimeManifest }) : null;
       const attestation = {
-        nonRoot: Boolean(inspected.Config?.User && inspected.Config.User !== "0" && inspected.Config.User !== "0:0"),
+        nonRoot: isNonRootUser(inspected.Config?.User),
         readOnlyRoot: inspected.HostConfig?.ReadonlyRootfs === true,
         dockerSocket: mounts.some((mount) => mount.Destination === "/var/run/docker.sock"),
         providerSecrets: envNames.some((name) => PHYSICAL_PROVIDER_CREDENTIAL.test(name)),

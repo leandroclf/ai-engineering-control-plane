@@ -4,7 +4,7 @@ export const CONTEXT_KINDS = Object.freeze(["policy", "task", "repo", "adr", "sk
 const KIND_PRIORITY = Object.freeze({ policy: 0, task: 1, repo: 2, adr: 2, project: 3, skill: 4, retrieval: 5 });
 
 function hash(value) { return createHash("sha256").update(String(value ?? "")).digest("hex"); }
-function tokens(candidate) { return Number.isInteger(candidate.tokens) && candidate.tokens >= 0 ? candidate.tokens : Math.ceil(String(candidate.content ?? candidate.summary ?? "").length / 4); }
+function tokens(candidate) { return Math.max(Number.isInteger(candidate.tokens) && candidate.tokens >= 0 ? candidate.tokens : 0, Math.ceil(String(candidate.content ?? candidate.summary ?? "").length / 4)); }
 function normalize(value) { return String(value ?? "").toLowerCase().replaceAll(/\s+/g, " ").trim(); }
 function sourceOf(candidate) { return candidate.source ?? candidate.provenance?.source ?? candidate.provenance?.path ?? candidate.id; }
 function relevant(candidate, capabilities) { return !capabilities?.length || !candidate.capabilities?.length || candidate.capabilities.some((capability) => capabilities.includes(capability)); }
@@ -26,7 +26,7 @@ export function toContextEvidence(candidate, disclosure = "summary") {
     contentHash: candidate.contentHash ?? hash(candidate.content ?? candidate.summary ?? ""),
     ...(candidate.capability ? { capability: candidate.capability } : {}),
     priority: candidate.priority ?? KIND_PRIORITY[kind],
-    estimatedTokens: tokens({ ...candidate, content }),
+    estimatedTokens: disclosure === "metadata" ? 0 : tokens({ ...candidate, content }),
   };
 }
 
@@ -70,7 +70,7 @@ export function compileProgressiveContext({ taskPlan = {}, candidates = [], budg
     const cap = categoryBudget({ ...budget, maxInputTokens }, category);
     const allowed = maxInputTokens - reserve;
     if (used + evidence.estimatedTokens <= allowed && (categoryUsed.get(category) ?? 0) + evidence.estimatedTokens <= cap) {
-      selected.push({ ...candidate, content: disclosure === "full" ? candidate.content ?? candidate.summary ?? "" : candidate.summary ?? candidate.content ?? "", disclosure, provenance: candidate.provenance ?? [evidence], evidence });
+      selected.push({ ...candidate, content: disclosure === "metadata" ? "" : disclosure === "full" ? candidate.content ?? candidate.summary ?? "" : candidate.summary ?? candidate.content ?? "", disclosure, provenance: candidate.provenance ?? [evidence], evidence });
       used += evidence.estimatedTokens;
       categoryUsed.set(category, (categoryUsed.get(category) ?? 0) + evidence.estimatedTokens);
     } else deferred.push({ id: candidate.id, source: sourceOf(candidate), disclosure: "on-demand", estimatedTokens: evidence.estimatedTokens });

@@ -24,26 +24,30 @@ jobs:
   validate-runtime:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      PROVIDER: ${{ inputs.provider }}
+      CLI_PACKAGE: ${{ inputs.cli_package }}
+      CLI_VERSION: ${{ inputs.cli_version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - name: Build candidate image
-        run: bash scripts/runtime/build-candidate.sh "${{ inputs.provider }}" "${{ inputs.cli_package }}" "${{ inputs.cli_version }}"
+        run: bash scripts/runtime/build-candidate.sh "$PROVIDER" "$CLI_PACKAGE" "$CLI_VERSION"
       - name: Start isolated candidate
         id: container
         shell: bash
         run: |
-          image="$(cat .aicp/evidence/runtime/${{ inputs.provider }}/image.txt)"
+          image="$(cat ".aicp/evidence/runtime/$PROVIDER/image.txt")"
           workspace="$RUNNER_TEMP/aicp-runtime-project"
           mkdir -p "$workspace"
           id="$(docker run --detach --read-only --cap-drop ALL --security-opt no-new-privileges --network none --mount "type=bind,src=$workspace,dst=/workspace/project" --tmpfs /run/aicp-home:rw,nosuid,nodev,size=128m,uid=10001,gid=10001,mode=700 --tmpfs /tmp:rw,noexec,nosuid,size=128m "$image")"
           echo "id=$id" >> "$GITHUB_OUTPUT"
-      - run: bash scripts/runtime/compliance.sh "${{ inputs.provider }}" "${{ steps.container.outputs.id }}"
-      - run: bash scripts/runtime/contract-tests.sh "${{ inputs.provider }}"
-      - run: bash scripts/runtime/adversarial.sh "${{ inputs.provider }}"
-      - run: bash scripts/runtime/evidence.sh "${{ inputs.provider }}"
+      - run: bash scripts/runtime/compliance.sh "$PROVIDER" "${{ steps.container.outputs.id }}"
+      - run: bash scripts/runtime/contract-tests.sh "$PROVIDER"
+      - run: bash scripts/runtime/adversarial.sh "$PROVIDER"
+      - run: bash scripts/runtime/evidence.sh "$PROVIDER"
       - if: always()
         run: docker rm --force "${{ steps.container.outputs.id }}" || true
       - if: always()
