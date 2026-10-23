@@ -32,7 +32,7 @@ export class GovernedContextProvider {
     });
     const progressive = policy.progressiveDisclosure ? compileProgressiveContext({
       taskPlan: { requiredCapabilities: metadata.requiredCapabilities ?? [] },
-      candidates: (result.artifacts ?? []).map((artifact) => ({ ...artifact, tokens: artifact.tokens ?? artifact.tokenCount, kind: artifact.kind ?? (artifact.reason === "exact-symbol" ? "repo" : "retrieval"), source: artifact.source ?? artifact.provenance?.path })),
+      candidates: (result.artifacts ?? []).map((artifact) => ({ ...artifact, tokens: artifact.tokens ?? artifact.tokenCount ?? artifact.token_count, contentHash: artifact.contentHash ?? artifact.content_hash, kind: artifact.kind ?? (artifact.reason === "exact-symbol" ? "repo" : "retrieval"), source: artifact.source ?? artifact.provenance?.path })),
       budget: { maxInputTokens: result.budget ?? policy.budget, reserve: policy.reserve ?? 0 },
       expand: metadata.expandContext ?? [],
     }) : null;

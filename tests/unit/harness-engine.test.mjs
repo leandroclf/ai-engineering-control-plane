@@ -389,3 +389,33 @@ test("node project adapter detects declared commands without inventing missing g
   assert.equal(commands.lint, null);
   assert.equal(commands.coverage, null);
 });
+
+test("planner persists TaskPlan and conditional Architect preserves blocked outcome", async () => {
+  for (const [query, invokesArchitect] of [["alterar rótulo", false], ["add migrations", true], ["melhorar código", true]]) {
+    const stages = [], calls = [];
+    const definition = { terminal: [], states: {
+      discover: { agent: "planner", next: { success: "plan" } },
+      plan: { agent: "architect", next: { approved: "implement", blocked: "human-review" } },
+      implement: { agent: "implementer", next: { success: "done" } },
+    } };
+    const plane = { hasRun: () => true, invokeAgent: async (_id, request) => {
+      calls.push(request);
+      return { structured: { outcome: request.agent === "architect" ? "blocked" : "success", summary: "reviewed", artifacts: [] } };
+    } };
+    const handlers = createWorkflowHandlers({ definition, executionPlane: plane, store: { listStages: async () => stages } });
+    const input = { run: { id: "plan-persistence", version: 1 }, task: { id: "t", metadata: { query, projectDirectory: "/workspace/project" } }, context: { expandable: [{ id: "deferred" }] } };
+    const discovered = await handlers.discover(input);
+    assert.equal(calls.length, 0);
+    stages.push({ state_from: "discover", evidence: { handler: discovered.evidence } });
+    const planned = await handlers.plan(input);
+    assert.equal(planned.outcome, invokesArchitect ? "blocked" : "approved");
+    assert.equal(calls.length, invokesArchitect ? 1 : 0);
+    if (invokesArchitect) assert.equal(definition.states.plan.next[planned.outcome], "human-review");
+    else {
+      assert.equal(planned.evidence.architectureReview, "skipped-local-impact");
+      const implemented = await handlers.implement(input);
+      assert.equal(implemented.evidence.implementationContract.objective, query);
+      assert.match(calls.at(-1).prompt, /Deferred context.*deferred/);
+    }
+  }
+});
