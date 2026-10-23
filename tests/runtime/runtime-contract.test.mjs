@@ -5,7 +5,7 @@ import { createAuthContract, createRuntimeContract, assertModeSeparation } from 
 import { runRuntimeCompliance } from "../../harness/src/runtime/runtime-compliance.mjs";
 
 function inspected({ image = "sha256:" + "a".repeat(64), env = [], mounts = [], tmpfs = { "/run/aicp-home": "rw" }, user = "10001", readOnly = true } = {}) {
-  return { Config: { User: user, Env: ["HOME=/run/aicp-home", "AICP_EXTENSION_POLICY=STRICT", "AICP_NATIVE_SKILLS=forbidden", "AICP_PLUGINS=forbidden", "AICP_MCP_AUTO_DISCOVERY=forbidden", ...env] }, HostConfig: { ReadonlyRootfs: readOnly, Tmpfs: tmpfs, CapDrop: ["ALL"], SecurityOpt: ["no-new-privileges"] }, Mounts: [{ Destination: "/workspace/project", RW: true }, ...mounts], Image: image };
+  return { Config: { User: user, Env: ["HOME=/run/aicp-home", "AICP_EXTENSION_POLICY=STRICT", "AICP_NATIVE_SKILLS=forbidden", "AICP_PLUGINS=forbidden", "AICP_MCP_AUTO_DISCOVERY=forbidden", ...env] }, HostConfig: { ReadonlyRootfs: readOnly, Tmpfs: tmpfs, CapDrop: ["ALL"], SecurityOpt: ["no-new-privileges"], NetworkMode: "none" }, Mounts: [{ Destination: "/workspace/project", RW: true }, ...mounts], Image: image };
 }
 
 test("AUTH and EXECUTION contracts are explicitly separated", () => {
@@ -17,7 +17,7 @@ test("AUTH and EXECUTION contracts are explicitly separated", () => {
 });
 
 test("runtime compliance passes only with immutable, non-root, isolated behavior", async () => {
-  const contract = createRuntimeContract({ provider: "opencode" });
+  const contract = createRuntimeContract({ provider: "opencode", extensionPolicy: "NATIVE" });
   const report = await runRuntimeCompliance({ inspect: inspected(), contract, exec: async (command) => ({ exitCode: command[0] === "touch" ? 1 : 0 }), manifest: { digest: "sha256:" + "a".repeat(64) } });
   assert.equal(report.status, "PASS");
   assert.ok(report.checks.every((item) => item.status === "PASS"));
@@ -33,4 +33,8 @@ test("runtime compliance rejects root regardless of the group spelling", async (
   for (const user of ["root:root", "root:1000", "0:1000", "00:00"]) {
     await assert.rejects(runRuntimeCompliance({ inspect: inspected({ user }), contract, runBehavioral: false }), /non-root/, user);
   }
+});
+
+test("declarations alone cannot attest STRICT extension isolation", async () => {
+  await assert.rejects(runRuntimeCompliance({ inspect: inspected(), contract: createRuntimeContract({ provider: "opencode" }), runBehavioral: false }), /extension-policy-enforced/);
 });

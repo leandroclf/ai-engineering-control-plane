@@ -6,8 +6,9 @@ const KIND_PRIORITY = Object.freeze({ policy: 0, task: 1, repo: 2, adr: 2, proje
 function hash(value) { return createHash("sha256").update(String(value ?? "")).digest("hex"); }
 function tokens(candidate) { return Math.max(Number.isInteger(candidate.tokens) && candidate.tokens >= 0 ? candidate.tokens : 0, Math.ceil(String(candidate.content ?? candidate.summary ?? "").length / 4)); }
 function normalize(value) { return String(value ?? "").toLowerCase().replaceAll(/\s+/g, " ").trim(); }
+function provenanceOf(candidate) { return Array.isArray(candidate.provenance) ? candidate.provenance : candidate.provenance ? [candidate.provenance] : []; }
 function sourceOf(candidate) { return candidate.source ?? candidate.provenance?.source ?? candidate.provenance?.path ?? candidate.id; }
-function relevant(candidate, capabilities) { return !capabilities?.length || !candidate.capabilities?.length || candidate.capabilities.some((capability) => capabilities.includes(capability)); }
+function relevant(candidate, capabilities) { return candidate.kind === "policy" || !capabilities?.length || !candidate.capabilities?.length || candidate.capabilities.some((capability) => capabilities.includes(capability)); }
 
 export function resolveCapabilities({ objective = "", requiredCapabilities = [], manifests = [] } = {}) {
   const text = normalize(objective);
@@ -39,10 +40,10 @@ export function deduplicateWithProvenance(candidates = []) {
     const current = groups.get(key);
     const evidence = toContextEvidence(candidate, "summary");
     if (!current) {
-      groups.set(key, { ...candidate, tokens: tokens(candidate), provenance: [...(candidate.provenance ?? []), evidence], sources: [sourceOf(candidate)] });
+      groups.set(key, { ...candidate, tokens: tokens(candidate), provenance: [...provenanceOf(candidate), evidence], sources: [sourceOf(candidate)] });
       continue;
     }
-    current.provenance = [...current.provenance, ...(candidate.provenance ?? []), evidence];
+    current.provenance = [...current.provenance, ...provenanceOf(candidate), evidence];
     current.sources = [...new Set([...current.sources, sourceOf(candidate)])].sort();
     if ((candidate.priority ?? KIND_PRIORITY[candidate.kind] ?? 9) < (current.priority ?? 9)) Object.assign(current, { ...candidate, provenance: current.provenance, sources: current.sources });
   }

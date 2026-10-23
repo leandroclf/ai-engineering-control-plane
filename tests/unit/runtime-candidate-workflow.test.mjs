@@ -24,3 +24,12 @@ test("candidate workflow passes dispatch values as data rather than shell comman
   assert.equal(existsSync(marker), false, "untrusted dispatch input executed a shell command");
   assert.deepEqual(readFileSync(output, "utf8").trimEnd().split("\n"), ["codex", "@openai/codex", attack]);
 });
+
+test("live evidence and promotion cannot be synthesized from caller arguments", () => {
+  for (const script of ["record-live-auth-evidence.sh", "promote.sh"]) {
+    const result = spawnSync("bash", [new URL(`../../scripts/runtime/${script}`, import.meta.url).pathname, "codex", "image", "1.2.3"], { encoding: "utf8" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /BLOCKED/);
+    assert.doesNotMatch(result.stdout, /PASS/);
+  }
+});

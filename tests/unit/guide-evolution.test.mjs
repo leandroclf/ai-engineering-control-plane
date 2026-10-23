@@ -45,3 +45,10 @@ test("capability resolver and reviewer finding keep authority explicit", () => {
   const finding = normalizeReviewFinding({ requirementId: "AC-1", diffRef: "src/a.js", testRef: "tests/a.test.mjs", evidenceRef: "gate:unit-tests", message: "missing test" });
   assert.equal(finding.requirementId, "AC-1");
 });
+
+test("structural inference and ambiguity cannot be downgraded by task metadata", () => {
+  for (const objective of ["alterar arquitetura", "add migrations", "change deployment", "change persistence", "change contracts", "change schemas", "corrigir segurança", "alterar migração"]) {
+    assert.equal(shouldInvokeArchitect(planTask({ objective, risk: { architectureImpact: "local" } })), true, objective);
+  }
+  assert.equal(shouldInvokeArchitect(planTask({ objective: "melhorar código" })), true);
+});

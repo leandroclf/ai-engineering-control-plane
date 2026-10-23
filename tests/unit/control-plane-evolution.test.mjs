@@ -166,13 +166,13 @@ test("runtime worker uses the workspace owner for bind-mount write access", asyn
   const identityToken = identities.issue("run-owner");
   const inspect = {
     Config: { User: `${uid}:${gid}`, Env: ["HOME=/run/aicp-home", "AICP_EXTENSION_POLICY=STRICT", "AICP_NATIVE_SKILLS=forbidden", "AICP_PLUGINS=forbidden", "AICP_MCP_AUTO_DISCOVERY=forbidden"], Labels: { "aicp.run_id": "run-owner" } },
-    HostConfig: { ReadonlyRootfs: true, Tmpfs: { "/run/aicp-home": `rw,uid=${uid},gid=${gid}` }, CapDrop: ["ALL"], SecurityOpt: ["no-new-privileges"] },
+    HostConfig: { ReadonlyRootfs: true, Tmpfs: { "/run/aicp-home": `rw,uid=${uid},gid=${gid}` }, CapDrop: ["ALL"], SecurityOpt: ["no-new-privileges"], NetworkMode: "none" },
     Mounts: [{ Destination: "/workspace/project", RW: true }], Image: `sha256:${"a".repeat(64)}`,
   };
   let created;
   const docker = { create: async (options) => { created = options; return "worker-owner"; }, inspect: async () => inspect, exec: async (_id, command) => ({ exitCode: command[0] === "touch" ? 1 : 0, stdout: "v1" }), remove: async () => undefined };
   const profiles = new WorkerProfileRegistry({ schemaVersion: 1, profiles: { node: { projectKinds: ["node"], image: "node", dockerfile: "Dockerfile", probes: [["node", "--version"]] } } });
-  const manager = new DockerWorkerManager({ docker, profiles, identityService: identities, runtimeContract: createRuntimeContract({ provider: "opencode" }), secretResolver: async () => "scoped" });
+  const manager = new DockerWorkerManager({ docker, profiles, identityService: identities, runtimeContract: createRuntimeContract({ provider: "opencode", extensionPolicy: "NATIVE" }), secretResolver: async () => "scoped" });
   const identity = new WorkloadIdentity({ runId: "run-owner", litellmKeyRef: "llm/owner", memoryTokenRef: "memory/owner", expiresAt: new Date(Date.now() + 60_000) });
   await manager.create(new EphemeralWorkerSpec({ runId: "run-owner", projectDirectory, profile: "node", environment: {}, identity, identityToken }));
   assert.equal(created.user, `${uid}:${gid}`);

@@ -15,6 +15,8 @@ if [[ "$provider" != opencode && ( -z "$cli_package" || -z "$cli_version" ) ]]; 
 fi
 cli_package="${cli_package:-opencode-ai}"
 cli_version="${cli_version:-1.18.21}"
+[[ "$cli_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "exact CLI version is required" >&2; exit 2; }
+case "$provider:$cli_package" in codex:@openai/codex|claude:@anthropic-ai/claude-code|opencode:opencode-ai) ;; *) echo "official provider package is required" >&2; exit 2 ;; esac
 image="aicp-runtime-${provider}:candidate-${cli_version}"
 docker build --file "$root/runtime/$provider/Dockerfile" --tag "$image" \
   --build-arg "CLI_PACKAGE=$cli_package" --build-arg "CLI_VERSION=$cli_version" \

@@ -33,7 +33,7 @@ export class GovernedContextProvider {
     const progressive = policy.progressiveDisclosure ? compileProgressiveContext({
       taskPlan: { requiredCapabilities: metadata.requiredCapabilities ?? [] },
       candidates: (result.artifacts ?? []).map((artifact) => ({ ...artifact, tokens: artifact.tokens ?? artifact.tokenCount, kind: artifact.kind ?? (artifact.reason === "exact-symbol" ? "repo" : "retrieval"), source: artifact.source ?? artifact.provenance?.path })),
-      budget: { maxInputTokens: result.budget ?? policy.budget, reserve: policy.reserve ?? 0.1 },
+      budget: { maxInputTokens: result.budget ?? policy.budget, reserve: policy.reserve ?? 0 },
       expand: metadata.expandContext ?? [],
     }) : null;
     return {
@@ -42,6 +42,7 @@ export class GovernedContextProvider {
       budget: result.budget,
       artifacts: progressive?.artifacts ?? result.artifacts,
       envelope: result.envelope,
+      ...(progressive ? { expandable: progressive.expandable } : {}),
       metrics: { ...(result.metrics ?? {}), ...(progressive ? { progressiveDisclosure: true, ...progressive.metrics, contextBudgetUsed: progressive.budget.used, contextBudgetRemaining: progressive.budget.remaining } : {}) },
       provenance: progressive?.evidence ?? result.provenance ?? [],
       metadata: {

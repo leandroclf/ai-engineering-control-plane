@@ -29,11 +29,9 @@ export async function runRuntimeCompliance({ inspect, exec = null, contract, man
     check("image-digest-present", Boolean(inspect.Image && /^sha256:[a-f0-9]{64}$/.test(inspect.Image)), "image digest must be immutable"),
     check("manifest-digest-match", !manifest || !manifest.digest || manifest.digest === inspect.Image, manifest ? `manifest=${manifest.digest ?? "none"}; observed=${inspect.Image ?? "none"}` : null),
   ];
-  if (contract.extensions.policy === "STRICT") {
-    checks.push(check("native-skills-forbidden", env.AICP_NATIVE_SKILLS === "forbidden" || env.AICP_EXTENSION_POLICY === "STRICT"));
-    checks.push(check("plugins-forbidden", env.AICP_PLUGINS === "forbidden" || env.AICP_EXTENSION_POLICY === "STRICT"));
-    checks.push(check("mcp-auto-discovery-forbidden", env.AICP_MCP_AUTO_DISCOVERY === "forbidden" || env.AICP_EXTENSION_POLICY === "STRICT"));
-  }
+  checks.push(check("network-mode-match", inspect.HostConfig?.NetworkMode === contract.network.mode));
+  // shortcut: no provider adapter attests native discovery yet; restrictive modes fail closed.
+  checks.push(check("extension-policy-enforced", contract.extensions.policy === "NATIVE", "STRICT/CONTROLLED require behavioral provider attestation"));
   if (runBehavioral && exec) {
     const rootWrite = await exec(["touch", "/aicp-rootfs-write-test"]);
     checks.push(check("rootfs-write-denied", rootWrite.exitCode !== 0, `exitCode=${rootWrite.exitCode}`));

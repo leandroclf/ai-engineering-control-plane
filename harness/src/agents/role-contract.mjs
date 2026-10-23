@@ -4,7 +4,7 @@ export const AGENT_ROLES = Object.freeze(["planner", "architect", "implementer",
 export const ARCHITECTURE_IMPACTS = Object.freeze(["local", "structural"]);
 export const RISK_LEVELS = Object.freeze(["low", "medium", "high"]);
 
-const STRUCTURAL_TERMS = /\b(arquitet|architecture|schema|database|migration|public api|contrato|contract|boundary|security|auth|oauth|infra|deploy|workflow|state|persist|breaking|monorepo)\b/i;
+const STRUCTURAL_TERMS = /\b(arquitet|architecture|schema|database|migration|public api|contrato|contract|boundary|security|auth|oauth|infra|deploy|workflow|state|persist|breaking|monorepo|segurança|migra)[\p{L}\p{N}_]*/iu;
 const AMBIGUOUS_TERMS = /\b(melhorar|melhore|otimizar|refatorar|fixar|ajustar|improve|optimize|refactor|fix)\b/i;
 
 function list(value) { return [...new Set((Array.isArray(value) ? value : []).filter((item) => typeof item === "string" && item.trim()).map((item) => item.trim()))]; }
@@ -16,7 +16,7 @@ export function planTask({ objective, intent = "feature", scope = {}, risk = {},
   if (typeof objective !== "string" || !objective.trim()) throw new TypeError("task objective is required");
   const riskLevel = level(risk.level);
   const reasons = list(risk.reasons);
-  const architectureImpact = impact(risk.architectureImpact ?? (STRUCTURAL_TERMS.test(objective) || riskLevel === "high" ? "structural" : "local"));
+  const architectureImpact = STRUCTURAL_TERMS.test(objective) || riskLevel === "high" ? "structural" : impact(risk.architectureImpact);
   const ambiguous = Boolean(risk.ambiguous ?? (AMBIGUOUS_TERMS.test(objective) && !acceptanceCriteria.length));
   return Object.freeze({
     schemaVersion: 1,
@@ -42,7 +42,7 @@ export function assertTaskPlan(plan) {
 
 export function shouldInvokeArchitect(plan) {
   assertTaskPlan(plan);
-  return plan.architectureImpact === "structural" || plan.risk.level === "high";
+  return plan.architectureImpact === "structural" || plan.risk.level === "high" || plan.ambiguous;
 }
 
 export function createImplementationContract({ taskPlan, architectureDecisions = [], relevantContext = [], requiredTests = [], constraints = [], evidenceRequired = [] } = {}) {

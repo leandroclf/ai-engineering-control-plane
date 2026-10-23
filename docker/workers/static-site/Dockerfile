@@ -21,4 +21,4 @@ ENV SEMGREP_SEND_METRICS=off
 ENV SEMGREP_ENABLE_VERSION_CHECK=0
 USER worker
 WORKDIR /workspace/project
-ENTRYPOINT ["sh", "-ec", "if [ \"${AICP_EXTENSION_POLICY:-NATIVE}\" != STRICT ]; then mkdir -p /home/worker/.config/opencode && cp -a /opt/aicp/opencode-base/. /home/worker/.config/opencode/; fi; exec sleep infinity"]
+ENTRYPOINT ["sh", "-ec", "mkdir -p /home/node/.config/opencode && cp -a /opt/aicp/opencode-base/. /home/node/.config/opencode/ && exec sleep infinity"]
