@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "provider": "claude",
+  "status": "UNVALIDATED",
+  "cliVersion": "2.1.241",
+  "image": "aicp-runtime-claude:candidate-2.1.241",
+  "digest": null,
+  "validatedAt": null,
+  "contractsVersion": "1",
+  "evalSuite": "runtime-eval-v1",
+  "authModeValidated": false,
+  "executionModeValidated": false,
+  "rollbackDigest": null,
+  "limitation": "Candidato experimental; autenticação live e isolamento de extensões ainda não atestados."
+}

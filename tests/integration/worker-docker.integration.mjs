@@ -10,7 +10,8 @@ import { WorkloadIdentityService } from "../../harness/src/workers/workload-iden
 import { ProcessDockerControl } from "../../harness/src/workers/process-docker-control.mjs";
 import { DockerWorkerManager } from "../../harness/src/workers/docker-worker-manager.mjs";
 
-test("Docker worker create exec collect destroy leaves no reusable identity", { skip: process.env.AICP_DOCKER_TEST !== "1" }, async () => {
+for (const profile of ["node22", "static-site"]) {
+test(`Docker ${profile} worker preserves governed config and leaves no reusable identity`, { skip: process.env.AICP_DOCKER_TEST !== "1" }, async () => {
   const runId = randomUUID();
   const project = resolve(`.aicp/worker-tests/${runId}`);
   await mkdir(project, { recursive: true });
@@ -21,11 +22,15 @@ test("Docker worker create exec collect destroy leaves no reusable identity", { 
   const identity = new WorkloadIdentity({ runId, litellmKeyRef: `llm/${runId}`, memoryTokenRef: `memory/${runId}`, expiresAt: new Date(Date.now() + 300_000) });
   const manager = new DockerWorkerManager({ docker: new ProcessDockerControl(), profiles: new WorkerProfileRegistry(config), identityService: identities, network: "none", secretResolver: async () => "scoped-test-token" });
   try {
-    const handle = await manager.create(new EphemeralWorkerSpec({ runId, projectDirectory: project, profile: "node22", identity, identityToken: token }));
+    const handle = await manager.create(new EphemeralWorkerSpec({ runId, projectDirectory: project, profile, identity, identityToken: token }));
     assert.equal(handle.attestation.nonRoot, true);
     assert.equal(handle.attestation.readOnlyRoot, true);
     assert.equal(handle.attestation.dockerSocket, false);
     assert.equal((await manager.exec(runId, ["node", "--version"])).exitCode, 0);
+    if (profile === "static-site") {
+      const configuration = await manager.exec(runId, ["node", "-e", 'const c=JSON.parse(require("node:fs").readFileSync(process.env.OPENCODE_CONFIG_DIR+"/opencode.json"));if(!c.provider.controlplane||c.permission["*"]!=="deny")process.exit(1)']);
+      assert.equal(configuration.exitCode, 0, configuration.stderr);
+    }
     await assert.rejects(manager.exec(randomUUID(), ["node", "--version"]), /WORKER_NOT_FOUND/);
     assert.equal((await manager.collectEvidence(runId)).runId, runId);
   } finally {
@@ -34,3 +39,4 @@ test("Docker worker create exec collect destroy leaves no reusable identity", { 
   assert.throws(() => identities.verify(token, runId), /WORKLOAD_IDENTITY_INVALID/);
 });
 
+}

@@ -1,3 +1,5 @@
+import { compileProgressiveContext } from "../../../context/compiler/context-intelligence.mjs";
+
 export class GovernedContextProvider {
   constructor({ contextClient }) {
     if (!contextClient?.compile) throw new TypeError("context API client is required");
@@ -28,13 +30,21 @@ export class GovernedContextProvider {
       commit: metadata.commit,
       changed_paths: metadata.changedPaths ?? [],
     });
+    const progressive = policy.progressiveDisclosure ? compileProgressiveContext({
+      taskPlan: { requiredCapabilities: metadata.requiredCapabilities ?? [] },
+      candidates: (result.artifacts ?? []).map((artifact) => ({ ...artifact, tokens: artifact.tokens ?? artifact.tokenCount ?? artifact.token_count, contentHash: artifact.contentHash ?? artifact.content_hash, kind: artifact.kind ?? (artifact.reason === "exact-symbol" ? "repo" : "retrieval"), source: artifact.source ?? artifact.provenance?.path })),
+      budget: { maxInputTokens: result.budget ?? policy.budget, reserve: policy.reserve ?? 0 },
+      expand: metadata.expandContext ?? [],
+    }) : null;
     return {
       contextId: result.context_id,
-      tokenCount: result.token_count,
+      tokenCount: progressive?.budget.used ?? result.token_count,
       budget: result.budget,
-      artifacts: result.artifacts,
+      artifacts: progressive?.artifacts ?? result.artifacts,
       envelope: result.envelope,
-      metrics: result.metrics,
+      ...(progressive ? { expandable: progressive.expandable } : {}),
+      metrics: { ...(result.metrics ?? {}), ...(progressive ? { progressiveDisclosure: true, ...progressive.metrics, contextBudgetUsed: progressive.budget.used, contextBudgetRemaining: progressive.budget.remaining } : {}) },
+      provenance: progressive?.evidence ?? result.provenance ?? [],
       metadata: {
         schemaVersion: result.schema_version,
         requestedBudget: result.requested_budget,

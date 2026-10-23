@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "defaultProvider": "opencode",
+  "mode": "EXECUTION",
+  "extensionPolicy": "STRICT",
+  "network": "none",
+  "requirements": {
+    "validatedImageDigest": true,
+    "nonRoot": true,
+    "readOnlyRoot": true,
+    "ephemeralHome": true,
+    "workspaceOnlyWrite": true,
+    "hostHomeMount": false,
+    "dockerSocket": false,
+    "interactiveLogin": false
+  }
+}

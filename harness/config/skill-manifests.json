@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "manifests": [
+    {
+      "id": "secure-change-review",
+      "version": "1",
+      "capabilities": ["security-review", "code-review"],
+      "appliesWhen": ["reviewing a change for security and policy regressions"],
+      "knowledge": { "source": "opencode/skills/secure-change-review/", "disclosure": "on-demand" },
+      "priority": "domain",
+      "status": "validated"
+    }
+  ]
+}

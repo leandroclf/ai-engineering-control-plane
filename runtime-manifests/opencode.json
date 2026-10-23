@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "provider": "opencode",
+  "status": "UNVALIDATED",
+  "cliVersion": "1.18.21",
+  "image": "aicp-runtime-opencode:candidate-1.18.21",
+  "digest": null,
+  "validatedAt": null,
+  "contractsVersion": "1",
+  "evalSuite": "runtime-eval-v1",
+  "authModeValidated": false,
+  "executionModeValidated": false,
+  "rollbackDigest": null,
+  "limitation": "Candidato experimental; autenticação live e isolamento de extensões ainda não atestados."
+}

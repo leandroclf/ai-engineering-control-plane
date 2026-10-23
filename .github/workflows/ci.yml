@@ -160,6 +160,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Verify shell injection rule regressions
+        run: |
+          docker run --rm -v "$PWD:/src:ro" -w /src \
+            semgrep/semgrep:1.174.0@sha256:f1f7b71861c7b28b6e0f661225a2c4f58a484f5d0f182465c6d6b3b22f972ade \
+            semgrep --test --config security/semgrep/rules/aicp-security.yaml tests/fixtures/semgrep-shell.js
       - name: Run versioned scanner containers
         shell: bash
         run: |

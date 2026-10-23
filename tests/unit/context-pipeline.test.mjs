@@ -198,3 +198,15 @@ test("context API client loads persistent Git state and sends sync delta", async
   assert.equal(calls[1][1].method, "POST");
   assert.deepEqual(impact.dependents, ["app.js"]);
 });
+
+test("progressive context preserves object provenance and exposes overflow", async () => {
+  const provider = new GovernedContextProvider({ contextClient: { compile: async () => ({
+    context_id: "ctx_overflow", budget: 2, artifacts: [
+      { id: "policy", kind: "policy", content: "deny", capabilities: ["security"], provenance: { path: "policy.md" } },
+      { id: "large", content: "x".repeat(200), provenance: { path: "large.md" } },
+    ],
+  }) } });
+  const result = await provider.load({ task: { id: "t", metadata: { repository: "repo", query: "q", requiredCapabilities: ["code"] } }, state: "implement", policy: { budget: 2, progressiveDisclosure: true } });
+  assert.deepEqual(result.artifacts.map(a => a.id), ["policy"]);
+  assert.deepEqual(result.expandable.map(a => a.id), ["large"]);
+});

@@ -9,6 +9,8 @@ rules:
           - pattern: execSync($INPUT)
       - pattern-not: exec("...")
       - pattern-not: execSync("...")
+      - pattern-not: exec([...])
+      - pattern-not: execSync([...])
     metadata:
       category: security
       cwe: CWE-78

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "provider": "codex",
+  "status": "UNVALIDATED",
+  "cliVersion": "0.148.0",
+  "image": "aicp-runtime-codex:candidate-0.148.0",
+  "digest": null,
+  "validatedAt": null,
+  "contractsVersion": "1",
+  "evalSuite": "runtime-eval-v1",
+  "authModeValidated": false,
+  "executionModeValidated": false,
+  "rollbackDigest": null,
+  "limitation": "Candidato experimental; autenticação live e isolamento de extensões ainda não atestados."
+}
