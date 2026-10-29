@@ -231,6 +231,8 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Test Trivy DB fallback and fail-closed policy
+        run: python3 -m unittest discover -s tests/unit -p test_trivy_db_fallback.py
       - name: Validate immutable owned image inputs
         run: npm run validate:supply-chain
       - name: Build owned images for downstream scanning
